@@ -1,3 +1,6 @@
 # Config local de cada dev (no compartida)
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/locigen-*/
 CLAUDE.local.md
