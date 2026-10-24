@@ -34,8 +34,8 @@ export const teatro: Theme = {
 
   ui: {
     fonts: {
-      display: "'Gloock', 'Times New Roman', serif",
-      body: "'Hanken Grotesk', system-ui, sans-serif",
+      display: "'Public Sans', sans-serif",
+      body: "'Public Sans', sans-serif",
     },
     // La landing va "empapada" del primer pigmento; las fichas son de yeso (blanco sin tinte cálido).
     tokens: {

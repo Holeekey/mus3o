@@ -19,7 +19,7 @@ Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio.
 |---|---|---|
 | [arquitectura.md](./arquitectura.md) | Monorepo, stack, flujo de punta a punta, dónde vive cada cosa | Llegas nuevo o necesitas ubicar algo |
 | [contrato-shared.md](./contrato-shared.md) | Esquemas Zod de `packages/shared`: `Museum`, salas, piezas, grafo, diorama, límites | Tocas datos, validación o el JSON que devuelve la IA |
-| [servidor.md](./servidor.md) | Endpoints, rate limits, caché, tope diario, llamadas a Claude, prompts, proxy de imágenes | Tocas `apps/server` |
+| [servidor.md](./servidor.md) | Endpoints, rate limits, caché, tope diario, llamadas a Claude, prompts, proxy de imágenes, **modelos 3D de Poly Pizza, flujo DSL, costos y mediciones** | Tocas `apps/server` |
 | [frontend.md](./frontend.md) | Pantallas, store de Zustand, parser de apuntes, layout del palacio, escena 3D, HUD, controles, Aris | Tocas `apps/web` |
 | [memoria-y-examen.md](./memoria-y-examen.md) | Curva de olvido, llaves, puertas, examen, repaso, "máquina del tiempo" | Tocas progreso, llaves o repaso |
 | [diorama.md](./diorama.md) | "Entrar al cuadro": escena de maqueta, props, terreno, atmósfera | Tocas `apps/web/src/diorama` o el campo `diorama` |
@@ -33,6 +33,7 @@ Documentos previos (decisiones de producto y de seguridad, no cambian con el có
 - [idea.md](./idea.md): concepto, fundamento cognitivo y visión.
 - [contrato-flujo.md](./contrato-flujo.md): propuesta original del contrato del flujo de generación (modo, grafo, imágenes).
 - [seguridad.md](./seguridad.md): prompt injection, validación de salida, límites de costo y privacidad.
+- [plan-poly-pizza-3d-assets.md](./plan-poly-pizza-3d-assets.md): plan original de los modelos 3D dinámicos (implementado; las desviaciones están en `servidor.md`).
 
 ---
 

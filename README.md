@@ -35,7 +35,7 @@ npm install
 npm run dev              # web en :5173, server en :3001
 ```
 
-Demos rápidas: `?demo`, `?demo=ia`, `?demo=historia`, `?demo=dungeon`.
+Demos rápidas: `?demo`, `?demo=ia`, `?demo=historia`, `?demo=medicina`, `?demo=dungeon`, `?demo=compuesto` (salas sin diorama: cada una recibe uno compuesto por `diorama/compose.ts`; con `?dioramas=library` se desactiva la composición).
 
 ## Documentación
 

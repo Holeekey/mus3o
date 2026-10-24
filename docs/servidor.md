@@ -27,6 +27,9 @@ Archivos:
 | `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
+| `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |
+| `GET /api/assets-review?status=` | `pending` \| `approved` \| `rejected` (opcional) | `{ assets: [{ assetId, keywords, title, author, license, score, sourceUrl, status, uses }] }` | **Solo curaduría**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
+| `POST /api/assets-review/:id/:action` | `approve` \| `reject` \| `reset` | La entrada actualizada | Igual que arriba. 400 acción/id inválido; 404 modelo no registrado |
 
 ### Respuestas de error
 
@@ -154,3 +157,113 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 2. Usa `respondWithMuseum`-like: caché → tope diario → generar → error controlado. No expongas el error crudo.
 3. Si la IA produce algo nuevo, cambia el prompt en `prompts.ts` **y** el esquema. Y añade la prueba en `flow.test.ts`.
 4. Registra solo tipos y conteos en los logs, nunca el contenido.
+
+## Modelos 3D dinámicos (Poly Pizza)
+
+Tras enriquecer el museo, `hydrateMuseumAssets` (`polyPizza.ts`) asigna a cada pieza con `searchKeyword` (máx. 24)
+el modelo que mejor **coincide**:
+
+1. **Búsqueda** en paralelo (una por palabra clave distinta, con respaldo a su última palabra: "rusty shield" → "shield").
+2. **Relevancia** (`relevance`): título igual (6) > contiene todas las palabras (4) > alguna palabra (2) > etiqueta/categoría (1).
+   Sin coincidencia (0) se descarta: mejor el glifo procedural que un objeto equivocado. A igual coincidencia, CC0 antes que CC-BY
+   (se excluyen NC/ND/SA).
+3. **Reparto**: piezas con la misma palabra reciben modelos distintos si hay alternativas.
+4. **Descarga** en paralelo a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`; prueba hasta 3 candidatos)
+   y rellena `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`).
+
+Timeout de 2500 ms por fase (`AbortController`); ante cualquier fallo la pieza conserva su glifo. Sin `POLY_PIZZA_API_KEY`
+la etapa no hace nada. El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra
+el crédito en la ficha (`Hud.tsx`) si la licencia es CC-BY.
+
+### Revisión de modelos
+
+Cada asignación queda en `.cache/assets/review.json` (`assetReview.ts`) con su palabra clave, puntaje y estado (`pending` por
+defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra persistente: la hidratación no lo vuelve a
+asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
+Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
+
+## Costo de generación (flujo `/api/generate-museum`)
+
+Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el servidor **arma** (modelos 3D, imágenes, citas).
+
+- **Salida liviana con Poly Pizza** (`POLY_PIZZA_API_KEY` definida): se usa `SYSTEM_PROMPT_LIGHT`; la IA ya no dibuja 2 a 8 partes procedurales
+  por pieza (lo más caro de la salida) sino un glifo de respaldo + `searchKeyword`. `max_tokens` baja de 16 000 a 9 000. Sin clave se
+  mantiene el prompt completo con partes procedurales, porque no habría modelo que lo reemplace.
+- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes y dioramas) van al final del system prompt con `cache_control`,
+  no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
+- **Sin parámetro `thinking`**: Sonnet 5.5 no razona antes de responder y rechaza `thinking: {type:"disabled"}` (400); por eso `askForJson` no lo envía. Solo se desactiva en llamadas a Haiku (digest y respaldo).
+- **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
+
+### DSL (tema y apuntes) y modelos 3D
+
+La línea `PIECE: <concepto> | <glifo> | <anclaje> | <searchKeyword>` ahora tiene la palabra clave como campo obligatorio en el prompt
+(con ejemplo; `-` si no hay objeto). `parseMus3oDSL` la toma siempre del **último** campo (un `|` dentro del anclaje ya no corre los
+campos) y la normaliza con `normalizeSearchKeyword`: minúsculas, sin tildes ni signos, máx. 3 palabras. Si no queda nada usable, la pieza
+conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre también en esta ruta.
+
+### Buscar primero, crear solo lo que falta
+
+Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
+(`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
+(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
+por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
+`POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
+
+### Formato DSL actual y tolerancia del parser
+
+`PIECE: <concepto> | <glifo> | <anclaje> | <searchKeyword> | <explicación>` (5 campos; la explicación es 1 frase ≤ 160 car. y pasa a `piece.text`;
+sin ella `text` repite el concepto). Palabra clave y explicación se leen **desde el final**; con 4 campos (formato anterior) el último es la
+palabra clave. `parseMus3oDSL` tolera viñetas, numeración, negritas, `room:`/`piece:` en minúsculas y `｜` de ancho completo; desambigua ids de
+sala repetidos (`a`, `a-2`); recorta a `LIMITS.maxRooms` / `maxPiecesPerRoom` sin lanzar (las piezas de una sala omitida se descartan).
+`max_tokens` sube a 2000 (tema) y 3500 (apuntes) por la explicación (~35 tokens por pieza).
+
+## Flujo completo por DSL (por defecto) y consumo de API
+
+`generateFlowMuseum` usa el DSL salvo `FLOW_FORMAT=json` (formato anterior, hasta 16 000 tokens de salida). El modelo solo **elige y ordena**;
+el servidor arma el resto:
+
+| Qué | Quién |
+|---|---|
+| Salas, piezas, anclaje, `searchKeyword`, explicación; `PERIOD` (biography), `QUIZ` (quiz), `IMAGE` (opcional) | IA, una salida DSL de ~2-4 mil tokens (`max_tokens` 5000) |
+| Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
+| Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
+| Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
+| Dioramas | Llamada aparte **solo** para las salas que la IA marcó con `diorama` (8.º campo de `ROOM`, máx. 2); sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal) |
+
+Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
+simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
+en quiz) se reintenta una vez con el error, como antes. Cada llamada registra sus tokens en el log.
+
+### Medición real (Sonnet 5.5, 2026-10-24, modo education, "La Revolución Francesa")
+
+| Formato | Tokens de salida | Tiempo | Resultado |
+|---|---|---|---|
+| `FLOW_FORMAT=json` (anterior) | 10 925 (entrada 811, +3 062 escritos en caché) | 70 s | 3 salas, 11 piezas, 1 diorama |
+| DSL (por defecto) | 1 847 + 1 518 del diorama = **3 365** (entrada 191 + 155) | 27 s | 5 salas, 18 piezas, 1 diorama |
+
+≈ 3,2× menos salida y 2,6× menos tiempo, con más contenido. Un solo pedido por formato: es una muestra, no un promedio.
+Hallazgo de la medición: sin la instrucción explícita de marcar salas con `diorama`, el modelo no marcó ninguna y se perdía el diorama; el prompt ahora lo pide para temas de historia, geografía y naturaleza.
+
+### Más ahorros y mediciones (2026-10-24)
+
+- **Caché de museos en disco** (`MUSEUM_CACHE_DIR`, por defecto `.cache/museums`): tras un reinicio no se vuelven a pagar los museos ya generados; al leer se revalida con `MuseumSchema` y un archivo dañado se ignora. La LRU en memoria sigue limitando a 100 entradas.
+- **Clave de caché del flujo** ignora mayúsculas y espacios del pedido (`"Roma  "` = `"roma"`).
+- **Modos probados con IA real** (Sonnet 5.5, sin Poly Pizza): biography → 5 salas / 25 piezas / 5 períodos, 3 453 + 1 665 tokens de salida; quiz → 4 salas / 20 piezas / 20 quiz, 4 360 + 1 932. Ninguno necesitó reintento. La segunda generación leyó la caché del prompt (1 393 tokens de entrada leídos en vez de escritos).
+- **Dioramas con Haiku: descartado.** Con razonamiento (por defecto) gastó 3 359 tokens de salida (el doble que Sonnet, 1 632); sin razonamiento devolvió dioramas sin props válidos (0 props tras validar). Se queda Sonnet para los dioramas.
+
+### Validación con la API real de Poly Pizza (2026-10-24)
+
+- **Búsqueda: funciona.** `x-auth-token` válido, respuesta en 0,15-0,5 s y campos confirmados (ver `estado-y-pendientes.md`).
+- **Descarga del `.glb`: bloqueada.** `static.poly.pizza` responde 403 con una página de desafío anti-bots de Cloudflare ("Just a moment...") a las peticiones del servidor. Resultado en una generación real: 0 de 18 piezas con asset; todas usaron el respaldo creado / glifo.
+- **Cortacircuito** (`DownloadBlockedError`, `polyBlocked`): ante 403/429/503 o una respuesta HTML se dejan de buscar y descargar durante 10 min, para no sumar ~2,5 s de espera por generación mientras dure el bloqueo.
+- **Pendiente (decisión de producto):** no se intentó saltar el desafío (falsear navegador/Referer). Opciones legítimas: pedir a Poly Pizza que habilite descargas desde servidor para la clave, o que el **navegador** descargue el `.glb` directamente desde `static.poly.pizza` (el cliente ya recibe la URL) en vez de pasar por el proxy del servidor.
+
+### Salas según el contenido y grafo no lineal (2026-10-24)
+
+`roomPlan` (`prompts.ts`) elige el rango de salas por el volumen de texto (prompt + fuentes): ≤150 car. → 4-5 salas; ≤800 → 3-5; ≤4 000 → 4-6; ≤12 000 → 6-8;
+más → 9-12 (máx. `LIMITS.maxRooms` = 12). El prompt lo indica junto con las piezas por sala (3-5 hasta 4-7) y `max_tokens` crece con el plan (`flowMaxTokens`, tope 16 000).
+Estructura: `ROOM` lleva `<requires>` (prerrequisitos, solo salas **anteriores**, por eso no hay ciclos) y un 9.º campo `<related>` (conexiones transversales).
+`buildGraph` (shared/`dsl.ts`) deriva por modo: education → DAG de prerrequisitos (ramas y convergencias); exploration/quiz → árbol + cruces; biography → cadena + cruces.
+En el cliente, `planRoomGrid` también abre puerta entre las salas vecinas unidas por una arista fuera del árbol (bucles y atajos), de modo que el recorrido no es una cadena de puertas.
+
+Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequisitos + 7 cruces, 1 convergencia; 24 558 caracteres de apuntes → **12 salas**, 48 piezas, 13 prerrequisitos + 11 cruces, 2 convergencias, 5 046 tokens de salida (entrada 7 993), sin reintentos.

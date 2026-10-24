@@ -25,7 +25,9 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 ## 2. Landing (`ui/Landing.tsx`)
 
-- Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
+- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los palacios destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
+- **Equipo:** `#equipo` muestra una página aparte (`ui/TeamSection.tsx`, elegida en `App.tsx` con `ui/useHash.ts`): galería vertical donde la tarjeta en el centro de la pantalla va a color y el resto en blanco y negro. Fotos en `public/team/<nombre>.jpg`.
+- Editor "Tus apuntes" (texto libre); el palacio se valida con el parser local (salas y conceptos en la barra de estado).
 - **"+ Fuentes"** abre y cierra una columna **dentro del recuadro del editor**, a la derecha del texto (debajo en pantallas ≤ 640 px) (`ui/SourcesPanel.tsx`); también se cierra con ✕ o Escape: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
 
 | Tipo | Cómo se lee |
@@ -101,13 +103,13 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 `buildLayout(palace)` convierte el `Museum` en geometría determinista (función pura, testeable):
 
 - Todo en metros, plano XZ; `Y` es la altura.
-- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`.
+- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`. Hasta 12 salas y grafos no lineales (ramas, convergencias): además del árbol de recorrido, toda arista entre salas vecinas en la grilla tiene puerta (bucles y atajos).
 - Tamaño de sala según el número de piezas (`sizes`). Muros con hueco de puerta; cada pared con puerta se divide en dos tramos.
 - **Puertas** (`DoorLayout`): `fromRoomId` determina qué llave abre cada puerta.
 - **Corredores** (`CorridorLayout`): piso y muros entre salas.
 - **Pedestales** (`PedestalLayout`): una pieza por pedestal, con forma `Glyph` (o modelo, en la escena).
 - **Cuadros** (`PaintingSlot`): huecos en muros interiores, fuera de las puertas. `SLOT_Y = 2.3`, `SLOT_GAP = 0.4`, `SLOT_DOOR_MARGIN = 0.6`, máx. 16 por sala.
-- **Colores de sala:** `ROOM_COLORS` (8 colores de neón) en orden de sala.
+- **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
 
@@ -122,13 +124,15 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `Player.tsx` | Controles FPS: **WASD** (o flechas), **Shift** correr, **mouse** mirar (pointer lock), colisiones, foco del concepto |
 | `ProceduralModel.tsx` | Dibuja modelos `procedural` con primitivas (cotas de tamaño) |
 | `Shapes.tsx` | Dibuja `glyph` (formas geométricas simples) |
+| `DynamicTotem.tsx` | Modelo `.glb` externo (`piece.dynamicAsset`, Poly Pizza): `useGLTF` + `scene.clone`, `Resize` 0,7 m + `Center bottom`, `ErrorBoundary` y `Suspense` con respaldo (el glifo o modelo procedural de siempre) |
 | `DungeonAssets.tsx` | Carga modelos de `catalog.json` (`type: "catalog"`) |
 | `Painting.tsx` | Cuadro con imagen real (`useResolvedImage`) |
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
-| `Preview.tsx` | Vista previa del palacio en la landing |
+| `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
+| `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
 | `pointerLock.ts` | Utilidad para bloquear el puntero |
 
 ### Controles
@@ -150,7 +154,7 @@ En el examen, responder exige escribir, así que se libera el puntero.
 
 | Componente | Función |
 |---|---|
-| `Hud` | Panel de concepto (`ConceptCard`), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |

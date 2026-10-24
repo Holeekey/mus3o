@@ -9,6 +9,7 @@ npm install
 npm run dev                          # web http://localhost:5173 · server http://localhost:3001
 ```
 
+- **Después de cada `git pull` de `dev`, corre `npm install`.** El equipo suma dependencias seguido; si no se instalan, Vite falla con `Failed to resolve import` (ver §9).
 - Sin `ANTHROPIC_API_KEY`: los temas devuelven un museo mock y los apuntes responden 503. El cliente usa su parser local.
 - Atajos de navegador: `http://localhost:5173/?demo`, `?demo=ia`, `?demo=historia`, `?demo=dungeon`. Ver [frontend.md](./frontend.md) §1.
 
@@ -42,7 +43,13 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `PORT` | No | `3001` |
 | `WEB_ORIGIN` | No | `http://localhost:5173` |
 | `MAX_DAILY_GENERATIONS` | No | `200` |
-| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt`) |
+| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt` y `/api/assets-review`) |
+| `POLY_PIZZA_API_KEY` | No | — (sin ella no se buscan modelos 3D; los pedestales usan glifos) |
+| `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
+| `MUSEUM_CACHE_DIR` | No | `.cache/museums` (museos generados, sobrevive a reinicios) |
+| `ANTHROPIC_FALLBACK_MODEL` | No | `claude-haiku-5-5` (respaldo creado de piezas sin asset) |
+| `ANTHROPIC_DIORAMA_MODEL` | No | el principal (Haiku se probó y se descartó: ver `servidor.md`) |
+| `FLOW_FORMAT` | No | `dsl` (`json` = formato anterior, más caro) |
 
 **Reglas:** `.env` está ignorado por git. Solo el servidor lee variables. Nunca uses `VITE_*` para secretos.
 
@@ -62,6 +69,13 @@ WEB_ORIGIN=http://localhost:5173
 MAX_DAILY_GENERATIONS=200
 # Solo depuración: habilita POST /api/improve-prompt (con "true"). Déjalo vacío en producción.
 ENABLE_DEBUG_ROUTES=
+# Modelos 3D (Poly Pizza), cachés y flujo: ver .env.example y servidor.md
+POLY_PIZZA_API_KEY=
+ASSET_CACHE_DIR=
+MUSEUM_CACHE_DIR=
+ANTHROPIC_FALLBACK_MODEL=claude-haiku-5-5
+ANTHROPIC_DIORAMA_MODEL=
+FLOW_FORMAT=dsl
 ```
 
 Si agregas una variable nueva, añádela aquí con un comentario y actualiza la tabla de arriba y [servidor.md](./servidor.md) §6.
@@ -150,6 +164,9 @@ Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
 | `error: packfile … index unavailable` al hacer `git pull` | Un paquete de objetos de git incompleto en el clon local | Observado una vez en esta sesión; el pull terminó como fast-forward. Si vuelve, `git fsck` muestra el estado |
+| Vite: `Failed to resolve import "mammoth" from "src/lib/files.ts"` (u otro paquete) | Se hizo `git pull` con dependencias nuevas sin instalarlas | `npm install` en la raíz; Vite lo toma solo, recarga la página |
+| `git pull`: `git-lfs filter-process: git-lfs: command not found` | El repo usa Git LFS para assets y no está instalado | `brew install git-lfs` y repite el pull |
+| "No pudimos generar el palacio con IA" y en el server `generate-museum falló tras … ms: Error` | La API de Anthropic rechaza la llamada; visto con `400 Your credit balance is too low` (cuenta sin créditos) | Revisa los créditos en la consola de Anthropic. Reintentar no sirve hasta cargarlos |
 | La landing dice "IA no configurada" | Falta `ANTHROPIC_API_KEY` | Añádela en `.env` y reinicia el server |
 | "Demasiadas solicitudes" (429) | Rate limit 10/min o tope diario de 200 | Espera un minuto; el tope diario se reinicia a medianoche UTC |
 | Un palacio guardado no carga | No pasa `MuseumSchema` tras un cambio de contrato | `merge` lo descarta a propósito. Borra `mus3o-v1` en `localStorage` o regenera el palacio |

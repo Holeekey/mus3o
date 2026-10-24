@@ -24,7 +24,7 @@ Un `Museum` viejo sigue validando y el frontend sigue funcionando sin cambios.
 |---|---|---|
 | Temario | **No es un campo aparte.** Sala = tema, pieza = subtema | Evita duplicar datos y gastar tokens de salida |
 | Modo | Se elige antes de generar y viaja en el request y en la respuesta | Cambia el prompt y la forma del grafo |
-| Cantidad de salas | Dinámica según los temas, dentro de los límites actuales (1 a 8) | Ya está en `MuseumSchema` |
+| Cantidad de salas | Dinámica según los temas, dentro de los límites actuales (1 a 12; el servidor pide 3-12 según el volumen de contenido) | Ya está en `MuseumSchema` |
 | Grafo | Los nodos son las salas; se agregan solo las aristas y la sala inicial | Los dos mapas salen de la misma fuente |
 | Archivos (Word, Excel, CSV, txt) | El texto se extrae en el navegador y se envía solo el texto | Regla de `architecture` y `docs/seguridad.md` §6: no se guardan documentos |
 | Imágenes | Se envían en memoria; la IA decide en qué pieza va cada una | Decisión del equipo |

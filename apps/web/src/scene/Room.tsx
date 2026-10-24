@@ -6,6 +6,7 @@ import { assignPaintings, type Box, type PedestalLayout, RoomLayout, Side } from
 import { useConceptLevel } from '../memory/hooks'
 import { spinOf } from '../memory/shown'
 import { inExamScope, useStore } from '../store'
+import { DynamicTotem } from './DynamicTotem'
 import { DecayWrap, FadingFloor, WallFlakes } from './Decay'
 import { LabelPlate } from './LabelPlate'
 import { Painting } from './Painting'
@@ -93,6 +94,8 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
 const MODEL_SCALE = 0.45
 const PEDESTAL_TOP = 1.05
 const LABEL_CULL = 14 // m: más lejos la etiqueta del pedestal no se lee ni se ve (muros de por medio)
+// El modelo externo ya viene normalizado a ~0,7 m; se agranda un poco para leerse sobre el pedestal.
+const DYNAMIC_SCALE = 1.3
 // La etiqueta se apaga a medida que el recuerdo se debilita.
 const LABEL_OPACITY = { new: 0.85, intact: 0.85, cracked: 0.65, broken: 0.5, forgotten: 0.4 } as const
 
@@ -112,11 +115,25 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
     spinOf.set(p.concept.id, ref.current.rotation.y)
   })
 
+  const k = focused ? 1.1 : 1
+  const dynamic = p.concept.dynamicAsset
+  const fallback = model ? (
+    <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k}>
+      <group scale={MODEL_SCALE}>
+        <ProceduralModel parts={model.parts} />
+      </group>
+    </group>
+  ) : (
+    <mesh position={[0, 1.55, 0]} scale={k} castShadow receiveShadow>
+      <ShapeGeometry shape={p.shape} size={0.3} />
+      <Plaster theme={theme} color={focused ? '#FFFFFF' : undefined} />
+    </mesh>
+  )
+
   const hidden = asked && !result
   const label = hidden ? '???' : p.concept.title
   const tokens = theme.ui.tokens
   const band = asked && result ? (result === 'ok' ? tokens.ok : tokens.danger) : memorized ? palette.trim : null
-  const k = focused ? 1.1 : 1
 
   return (
     <group position={[p.x, 0, p.z]}>
@@ -136,24 +153,21 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
       )}
       <Reveal id={objectKey(p.concept.id)} mode="drop">
       <DecayWrap id={p.concept.id}>
-      {model ? (
-        <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k}>
-          <group ref={ref} scale={MODEL_SCALE}>
-            <ProceduralModel parts={model.parts} />
+      <group ref={ref}>
+        {dynamic ? (
+          <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k * DYNAMIC_SCALE}>
+            <DynamicTotem url={dynamic.url} fallback={fallback} />
           </group>
-        </group>
-      ) : (
-        <mesh ref={ref} position={[0, 1.55, 0]} scale={k} castShadow receiveShadow>
-          <ShapeGeometry shape={p.shape} size={0.3} />
-          <Plaster theme={theme} color={focused ? '#FFFFFF' : undefined} />
-        </mesh>
-      )}
+        ) : (
+          fallback
+        )}
+      </group>
       </DecayWrap>
       </Reveal>
       {!isIntroPlaying && (
         <Reveal id={objectKey(p.concept.id)} mode="pop" origin={[0, 2.2, 0]}>
         <Suspense fallback={null}>
-          <Billboard position={[0, model ? 2.3 : 2.15, 0]}>
+          <Billboard position={[0, model || dynamic ? 2.3 : 2.15, 0]}>
             <LabelPlate
               font={FONT_BODY}
               fontSize={0.17}
@@ -218,6 +232,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
             theme={theme}
             diorama={a.diorama}
             roomId={a.roomId}
+            title={room.title}
           />
         </Reveal>
       ))}
