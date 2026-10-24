@@ -1,6 +1,6 @@
 import { Billboard, Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Atmosphere } from './atmosphere'
 import type { Diorama } from './dioramaSchema'
@@ -8,6 +8,7 @@ import { Builder, darken, lighten, mat } from './geo'
 import { makeDioramaMaterials, type TimeUniform } from './material'
 import { getDioramaModel, type DioramaModel, type PropGroup } from './model'
 import { buildGrassTuft } from './props/nature'
+import { ScienceAmbient, ScienceOverlay, useScienceMaterials } from './props/science/ScienceOverlay' // science-kit
 import { mulberry32, range } from './random'
 import { TERRAIN_EXTENT } from './terrain'
 
@@ -123,7 +124,7 @@ function Clouds({ atmo, clipping }: { atmo: Atmosphere; clipping: THREE.Plane[] 
 // --- Hierba: mechones instanciados que se balancean con el viento ---
 function Grass({ model, material }: { model: DioramaModel; material: THREE.Material }) {
   const { diorama, field, layout } = model
-  const density = { plain: 2600, hills: 2600, forest: 3000, river: 2200, coast: 1500, mountains: 900, desert: 500, city: 0, interior: 0, abstract: 0 }[diorama.terrain]
+  const density = ({ plain: 2600, hills: 2600, forest: 3000, river: 2200, coast: 1500, mountains: 900, desert: 500, city: 0, interior: 0, abstract: 0 } as Record<string, number>)[diorama.terrain] ?? 0 // science-kit: ?? 0
   const geo = useMemo(() => buildGrassTuft(lighten(diorama.palette.ground, 0.06)), [diorama.palette.ground])
   const mesh = useRef<THREE.InstancedMesh>(null)
   const count = density
@@ -177,7 +178,16 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
       let roll = 0
       let ox = 0
       let oz = 0
-      if (motion === 'gallop') {
+      let yaw = 0
+      if (motion === 'drift') {
+        // science-kit: moléculas y orgánulos que flotan a la deriva
+        y += Math.sin(t * 0.55 + i.phase) * 0.45
+        ox = Math.cos(t * 0.23 + i.phase * 1.7) * 0.55
+        oz = Math.sin(t * 0.19 + i.phase) * 0.55
+        roll = Math.sin(t * 0.4 + i.phase) * 0.12
+        pitch = Math.cos(t * 0.33 + i.phase * 2) * 0.08
+        yaw = t * 0.12 + i.phase
+      } else if (motion === 'gallop') {
         const w = t * 6.2 + i.phase
         y += Math.abs(Math.sin(w)) * 0.13 * i.scale
         pitch = Math.sin(w + 0.7) * 0.045
@@ -192,7 +202,7 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
         roll = Math.sin(t * 0.6 + i.phase) * 0.025
         pitch = Math.sin(t * 0.5 + i.phase * 2) * 0.012
       }
-      _e.set(pitch, i.rotY, roll, 'YXZ')
+      _e.set(pitch, i.rotY + yaw, roll, 'YXZ')
       _q.setFromEuler(_e)
       _p.set(i.x + ox, y, i.z + oz)
       _s.setScalar(i.scale)
@@ -298,6 +308,7 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
     material.clippingPlanes = clipping
     material.needsUpdate = true
   }, [material, clipping])
+  const sci = useScienceMaterials(time, clipping) // science-kit
 
   // prefers-reduced-motion: la maqueta queda quieta (sin viento ni oleaje de telas).
   const still = useMemo(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
@@ -362,8 +373,12 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
           </mesh>
         )}
         <Grass model={model} material={material} />
+        <ScienceAmbient model={model} time={time} clipping={clipping} />
         {model.groups.map((g) => (
-          <PropMesh key={`${g.index}-${g.variant}`} group={g} material={material} depth={depth} time={time} />
+          <Fragment key={`${g.index}-${g.variant}`}>
+            {!g.built.science?.dynamicOnly && <PropMesh group={g} material={g.built.science?.shader ? sci.material : material} depth={g.built.science?.shader ? sci.depth : depth} time={time} />}
+            {g.built.science && <ScienceOverlay group={g} material={material} depth={depth} time={time} clipping={clipping} />}
+          </Fragment>
         ))}
         {labels && model.layout.linked.map((l) => <LinkedMark key={l.pieceId} link={l} focused={focusedPieceId === l.pieceId} />)}
         {fires.map((g) =>

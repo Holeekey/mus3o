@@ -1,5 +1,7 @@
 import type { Diorama } from './dioramaSchema'
 import { darken, lighten, mixHex } from './geo'
+import type { DioramaTerrain } from './dioramaSchema' // science-kit
+import { isScienceTerrain, scienceAtmosphere } from './terrain/science' // science-kit
 
 export type Atmosphere = {
   skyTop: string
@@ -21,7 +23,8 @@ export type Atmosphere = {
 }
 
 // Sol duro y luz plana, sin brillo ni bloom: el cielo es una escalera de tonos, no un degradado suave.
-export function atmosphereOf(d: Pick<Diorama, 'time' | 'palette'>): Atmosphere {
+export function atmosphereOf(d: Pick<Diorama, 'time' | 'palette'> & { terrain?: DioramaTerrain }): Atmosphere {
+  if (d.terrain && isScienceTerrain(d.terrain)) return scienceAtmosphere({ palette: d.palette, terrain: d.terrain }) // science-kit: los interiores ignoran la hora
   const { sky, ground } = d.palette
   const water = mixHex('#2a6f97', sky, 0.35)
   switch (d.time) {
