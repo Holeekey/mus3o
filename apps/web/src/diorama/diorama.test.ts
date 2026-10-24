@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Vector3 } from 'three'
 import { atmosphereOf } from './atmosphere'
-import { CARABOBO, CARABOBO_PIECES } from './carabobo'
+import { CARABOBO, CARABOBO_PIECES } from '../mocks/caraboboDiorama'
 import { dioramaRequest, handleDioramaKey, isDioramaActive, useDioramaStore } from './dioramaStore'
-import { KINDS, TERRAINS, TIMES, parseDiorama } from './dioramaSchema'
+import { KINDS, TERRAINS, TIMES, parseDiorama } from '@mus3o/shared'
 import { layoutDiorama } from './layout'
 import { getDioramaModel } from './model'
 import { buildCustom, buildProp } from './props'
@@ -104,6 +104,23 @@ describe('terreno y atmósfera', () => {
     expect(a.fogFar).toBeGreaterThan(a.fogNear)
     expect(a.sunIntensity).toBeGreaterThan(0)
     expect(a.skyTop).toMatch(/^#/)
+  })
+
+  it('la bandera con aspa (Cruz de Borgoña) tiene campo blanco y aspa roja, no franjas', () => {
+    const colors = (g: ReturnType<typeof buildProp>['geometry']) => {
+      const c = g.getAttribute('color')
+      const set = new Set<string>()
+      for (let i = 0; i < c.count; i++) set.add([c.getX(i), c.getY(i), c.getZ(i)].map((v) => Math.round(v * 8)).join(','))
+      return set
+    }
+    const saltire = buildProp('flag', { ...ctx, pattern: 'saltire', color: '#efe8d8', secondary: '#b3262d' }, 0)
+    const stripes = buildProp('flag', { ...ctx }, 0)
+    expect(saltire.geometry.getAttribute('position').count).toBeGreaterThan(stripes.geometry.getAttribute('position').count)
+    // sin amarillo ni azul: solo blanco y rojo (y el asta de madera/oro)
+    const sc = colors(saltire.geometry)
+    const yellowBlue = colors(stripes.geometry)
+    expect(sc.size).toBeGreaterThan(0)
+    expect([...yellowBlue].some((k) => !sc.has(k))).toBe(true)
   })
 
   it('un diorama de cada terreno y hora se construye entero', () => {

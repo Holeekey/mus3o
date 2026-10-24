@@ -1,4 +1,5 @@
 import { MuseumSchema, sampleMuseum, type Museum, type Part } from "@mus3o/shared";
+import { CARABOBO } from "./caraboboDiorama";
 
 const part = (shape: Part["shape"], args: number[], pos: [number, number, number], color: string, rot: [number, number, number] = [0, 0, 0]): Part => ({
   shape,
@@ -75,6 +76,8 @@ const historia: Museum = {
       name: "Batalla de Carabobo (1821)",
       description: "La batalla que selló la independencia de Venezuela.",
       imageSearch: { wikiTitle: "Batalla de Carabobo (1821)", commonsQuery: "Batalla de Carabobo Tovar", lang: "es" },
+      // Al acercarse al cuadro se disuelve en este diorama (se entra con E).
+      diorama: CARABOBO,
       pieces: [
         {
           id: "carabobo-fecha",
