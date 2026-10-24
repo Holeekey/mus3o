@@ -1,5 +1,7 @@
 import { Text } from '@react-three/drei'
-import { useState, type ReactNode } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import * as THREE from 'three'
 
 type Bounds = [number, number, number, number] // minX, minY, maxX, maxY
 
@@ -16,11 +18,46 @@ type Props = {
   padding?: number
   /** Se dibuja siempre encima de la escena (rótulos de dioramas, que no deben taparse con los props). */
   onTop?: boolean
+  /** Más lejos que esto (m) la placa no se dibuja: ni plano ni texto (cada etiqueta lejana cuesta draw calls). */
+  cullDistance?: number
+}
+
+// Las tres capas de la placa (sombra dura, borde, yeso) van en una sola malla con color por vértice.
+function plateGeometry(box: Bounds, pad: number, border: number, shadow: number, ink: string, surface: string): THREE.BufferGeometry {
+  const [x0, y0, x1, y1] = box
+  const cx = (x0 + x1) / 2
+  const cy = (y0 + y1) / 2
+  const w = x1 - x0 + pad * 2
+  const h = y1 - y0 + pad * 2
+  const layers: [number, number, number, number, string, number][] = [
+    // centro x, centro y, ancho, alto, color, alfa
+    [cx + shadow, cy - shadow, w + border * 2, h + border * 2, ink, 0.9],
+    [cx, cy, w + border * 2, h + border * 2, ink, 1],
+    [cx, cy, w, h, surface, 1],
+  ]
+  const pos: number[] = []
+  const col: number[] = []
+  const idx: number[] = []
+  const c = new THREE.Color()
+  layers.forEach(([lx, ly, lw, lh, color, a], i) => {
+    c.set(color)
+    for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      pos.push(lx + (dx * lw) / 2, ly + (dy * lh) / 2, -0.002)
+      col.push(c.r, c.g, c.b, a)
+    }
+    const o = i * 4
+    idx.push(o, o + 1, o + 2, o, o + 2, o + 3)
+  })
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4))
+  g.setIndex(idx)
+  return g
 }
 
 // Placa legible sobre cualquier pared: el fondo se ajusta al tamaño real del texto
 // (medido por troika al componer) y lleva borde y sombra dura, como las fichas de la UI.
-export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, opacity = 1, padding, onTop = false }: Props) {
+export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, opacity = 1, padding, onTop = false, cullDistance = Infinity }: Props) {
   const [bounds, setBounds] = useState<Bounds | null>(null)
   const pad = padding ?? fontSize * 0.45
   const transparent = opacity < 1 || onTop
@@ -34,38 +71,34 @@ export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, o
   const estH = estLines * fontSize * 1.2
   const box: Bounds = bounds ?? [-estW / 2, -estH / 2, estW / 2, estH / 2]
 
-  let plate: ReactNode = null
-  if (text) {
-    const [x0, y0, x1, y1] = box
-    const w = x1 - x0 + pad * 2
-    const h = y1 - y0 + pad * 2
-    const cx = (x0 + x1) / 2
-    const cy = (y0 + y1) / 2
-    const border = fontSize * 0.08
-    const shadow = fontSize * 0.14
-    plate = (
-      <group position={[cx, cy, 0]}>
-        {/* Sombra dura desplazada, sin desenfoque */}
-        <mesh position={[shadow, -shadow, -0.006]} renderOrder={ro + 1}>
-          <planeGeometry args={[w + border * 2, h + border * 2]} />
-          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity * 0.9} depthWrite={false} depthTest={depthTest} />
-        </mesh>
-        {/* Borde de tinta */}
-        <mesh position={[0, 0, -0.004]} renderOrder={ro + 2}>
-          <planeGeometry args={[w + border * 2, h + border * 2]} />
-          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity} depthWrite={false} depthTest={depthTest} />
-        </mesh>
-        {/* Yeso */}
-        <mesh position={[0, 0, -0.002]} renderOrder={ro + 3}>
-          <planeGeometry args={[w, h]} />
-          <meshBasicMaterial color={surface} transparent={transparent} opacity={opacity} depthWrite={false} depthTest={depthTest} />
-        </mesh>
-      </group>
-    )
-  }
+  const [x0, y0, x1, y1] = box
+  const border = fontSize * 0.08
+  const shadow = fontSize * 0.14
+  const geo = useMemo(
+    () => (text ? plateGeometry([x0, y0, x1, y1], pad, border, shadow, ink, surface) : null),
+    [text, x0, y0, x1, y1, pad, border, shadow, ink, surface],
+  )
+  useEffect(() => () => geo?.dispose(), [geo])
+
+  // Etiquetas lejanas: se ocultan (la comprobación es barata y no ocurre en todos los frames).
+  const root = useRef<THREE.Group>(null)
+  const phase = useRef(Math.floor(Math.random() * 6))
+  const wp = useMemo(() => new THREE.Vector3(), [])
+  useFrame((state) => {
+    if (cullDistance === Infinity || !root.current) return
+    if (phase.current++ % 6 !== 0) return
+    root.current.getWorldPosition(wp)
+    root.current.visible = wp.distanceToSquared(state.camera.position) < cullDistance * cullDistance
+  })
+
+  const plate: ReactNode = geo ? (
+    <mesh geometry={geo} renderOrder={ro + 1}>
+      <meshBasicMaterial vertexColors transparent={transparent} opacity={opacity} depthWrite={false} depthTest={depthTest} />
+    </mesh>
+  ) : null
 
   return (
-    <group>
+    <group ref={root}>
       {plate}
       <Text
         font={font}

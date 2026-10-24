@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
+import { capTextureSize } from '../lib/capTexture'
 import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { useIntro } from '../intro/store'
+import { buildFrameGeometry } from './frameGeometry'
 import { LabelPlate } from './LabelPlate'
 import type { PaintingSlot, UserImage } from '../palace/layout'
 import type { RoomPalette, Theme } from '../theme'
@@ -28,8 +30,9 @@ function useTexture(src?: string): Texture | null {
     loader.load(
       src,
       (texture) => {
+        capTextureSize(texture)
         texture.colorSpace = SRGBColorSpace
-        texture.anisotropy = 8
+        texture.anisotropy = 4
         loaded = texture
         if (alive) setState({ src, texture })
         else texture.dispose()
@@ -138,12 +141,9 @@ export function Painting({
   const roughness = theme.scene.object.roughness
   const frame = palette.trim
 
-  const bars: [number, number, number, number][] = [
-    [0, oh / 2 + FRAME_T / 2, ow + 2 * FRAME_T, FRAME_T],
-    [0, -oh / 2 - FRAME_T / 2, ow + 2 * FRAME_T, FRAME_T],
-    [-ow / 2 - FRAME_T / 2, 0, FRAME_T, oh],
-    [ow / 2 + FRAME_T / 2, 0, FRAME_T, oh],
-  ]
+  // Las ocho piezas del marco son una sola geometría (una malla, un draw call).
+  const frameGeo = useMemo(() => buildFrameGeometry(ow, oh, FRAME_T, FRAME_DEPTH, WALL_Z), [ow, oh])
+  useEffect(() => () => frameGeo.dispose(), [frameGeo])
   const bottom = -oh / 2 - FRAME_T
 
   // Centro de la obra en el mundo (mismo plano que el cuadro plano), para el portal.
@@ -171,19 +171,9 @@ export function Painting({
         <meshStandardMaterial color={matColor} roughness={roughness} flatShading />
       </mesh>
       {!diorama && flat}
-      {bars.map(([x, y, bw, bh], i) => (
-        <group key={i} position={[x, y, WALL_Z + FRAME_DEPTH / 2]}>
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[bw, bh, FRAME_DEPTH]} />
-            <meshStandardMaterial color={frame} roughness={0.9} flatShading />
-          </mesh>
-          {/* Filete biselado: una pestaña más delgada y saliente. */}
-          <mesh position={[0, 0, FRAME_DEPTH / 2 + 0.01]} castShadow>
-            <boxGeometry args={[bw * (bw > bh ? 0.97 : 0.55), bh * (bw > bh ? 0.55 : 0.97), 0.02]} />
-            <meshStandardMaterial color={frame} roughness={0.9} flatShading />
-          </mesh>
-        </group>
-      ))}
+      <mesh geometry={frameGeo} castShadow receiveShadow>
+        <meshStandardMaterial color={frame} roughness={0.9} flatShading />
+      </mesh>
       {(showImagePlate || (diorama && !isIntroPlaying)) && (
         <Suspense fallback={null}>
           {/* Cartela de yeso bajo el cuadro: legible sobre cualquier pared. Sin imagen, rotula la sala. */}
@@ -192,6 +182,7 @@ export function Painting({
               font={FONT_BODY}
               fontSize={slot.main ? 0.085 : 0.07}
               maxWidth={Math.max(slot.maxWidth, 1.6)}
+              cullDistance={10}
               surface={theme.ui.tokens.surface}
               ink={theme.ui.tokens.ink}
             >
