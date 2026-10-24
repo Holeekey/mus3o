@@ -161,8 +161,16 @@ async function speakRemote(text: string, mine: number): Promise<boolean> {
     if (!res.ok) return false
     const blob = await res.blob()
     if (mine !== token) return true // llegó tarde: otra frase o un stop ya la reemplazó
-    currentUrl = URL.createObjectURL(blob)
-    currentAudio = new Audio(currentUrl)
+    const audioUrl = URL.createObjectURL(blob)
+    currentUrl = audioUrl
+    currentAudio = new Audio(audioUrl)
+    currentAudio.onended = () => {
+      if (currentUrl === audioUrl) {
+        URL.revokeObjectURL(audioUrl)
+        currentUrl = null
+        currentAudio = null
+      }
+    }
     await currentAudio.play()
     return true
   } catch {
