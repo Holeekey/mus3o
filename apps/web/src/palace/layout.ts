@@ -1,4 +1,4 @@
-import type { Glyph, Museum, Piece } from '@mus3o/shared'
+import { planRoomGrid, type Glyph, type Museum, type Piece } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -50,13 +50,6 @@ export function hash(s: string): number {
   return h >>> 0
 }
 
-// Recorrido en serpiente: salas consecutivas siempre son vecinas en la grilla.
-function cellOf(i: number, cols: number) {
-  const row = Math.floor(i / cols)
-  const col = row % 2 === 0 ? i % cols : cols - 1 - (i % cols)
-  return { row, col }
-}
-
 function sideToward(a: { row: number; col: number }, b: { row: number; col: number }): Side {
   if (b.col > a.col) return 'e'
   if (b.col < a.col) return 'w'
@@ -91,9 +84,11 @@ function roomWalls(x: number, z: number, w: number, d: number, h: number, doors:
 }
 
 export function buildLayout(palace: Museum): PalaceLayout {
-  const n = palace.rooms.length
-  const cols = Math.max(1, Math.ceil(Math.sqrt(n)))
-  const cells = palace.rooms.map((_, i) => cellOf(i, cols))
+  // Celdas y puertas salen del grafo (o de la serpiente si el museo no trae grafo).
+  const plan = planRoomGrid(palace)
+  const indexOf = new Map(palace.rooms.map((room, i) => [room.id, i]))
+  const cells = palace.rooms.map((room) => plan.cells[room.id])
+  const links = plan.links.map(({ from, to }) => [indexOf.get(from)!, indexOf.get(to)!] as const)
 
   // Tamaño de cada sala según cuántos conceptos tiene (anillo de pedestales).
   const sizes = palace.rooms.map((room, i) => {
@@ -106,10 +101,10 @@ export function buildLayout(palace: Museum): PalaceLayout {
   const cell = Math.max(...sizes.map((s) => Math.max(s.w, s.d))) + CORRIDOR_LEN
 
   const doorsOf: Side[][] = palace.rooms.map(() => [])
-  for (let i = 0; i < n - 1; i++) {
-    const s = sideToward(cells[i], cells[i + 1])
+  for (const [i, j] of links) {
+    const s = sideToward(cells[i], cells[j])
     doorsOf[i].push(s)
-    doorsOf[i + 1].push(opposite[s])
+    doorsOf[j].push(opposite[s])
   }
 
   const rooms: RoomLayout[] = palace.rooms.map((room, i) => {
@@ -150,10 +145,10 @@ export function buildLayout(palace: Museum): PalaceLayout {
   })
 
   const corridors: CorridorLayout[] = []
-  for (let i = 0; i < n - 1; i++) {
+  for (const [i, j] of links) {
     const a = rooms[i]
-    const b = rooms[i + 1]
-    const side = a.doors.find((s) => s === sideToward(cells[i], cells[i + 1]))!
+    const b = rooms[j]
+    const side = sideToward(cells[i], cells[j])
     const h = 3.6
     if (side === 'e' || side === 'w') {
       const x1 = side === 'e' ? a.x + a.w / 2 : b.x + b.w / 2
@@ -191,7 +186,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
 
   const xs = rooms.flatMap((r) => [r.x - r.w / 2, r.x + r.w / 2])
   const zs = rooms.flatMap((r) => [r.z - r.d / 2, r.z + r.d / 2])
-  const first = rooms[0]
+  const first = rooms[indexOf.get(plan.start) ?? 0]
   // Aparece en una esquina sin puerta, mirando al monumento: lejos del anillo de pedestales.
   const sx = first.x - first.w / 2 + 1.5
   const sz = first.z - first.d / 2 + 1.5
