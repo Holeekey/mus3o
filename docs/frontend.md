@@ -112,6 +112,7 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 - **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
+- **Identidad de sala** (`palace/roomIdentity.ts`): cada `RoomLayout` trae `floorStyle` (`checker` mármol, `radial` rosetón, `hexRings` anillos) y `decor` (`columns`, `arches`, `niches` en las esquinas, o `kind: null` en ~25 % de las salas). Salen del título de la sala (hash) y difieren de la sala anterior; la decoración esquiva puertas (`doorOpenings`), cuadros (`slotZone`), pedestales, la pieza central y el punto de entrada, y sus cajas (`decorBox`) entran en `layout.colliders`. Al añadir una puerta solo desaparece lo que la tapa. Test: `roomIdentity.test.ts`.
 
 Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `sourceText.test.ts`, `pieceKind.test.ts`.
 
@@ -130,6 +131,8 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
+| `Decay.tsx` (`FadingFloor`) + `floorGeometry.ts` | Suelo de la sala: una malla con color por vértice (derivado de `palette.floor`/`trim`) que se desvanece a yeso pálido con la memoria (shader con `uFade`) |
+| `RoomDecor.tsx` + `decorGeometry.ts` | Columnas, arcos o nichos de la sala fundidos en una sola malla (yeso y moldura); no proyectan sombra para ahorrar draw calls |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
 | `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
 | `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
