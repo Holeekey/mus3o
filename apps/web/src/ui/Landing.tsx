@@ -11,10 +11,17 @@ import { dueCountFor } from '../memory/hooks'
 import { dueLabel } from '../memory/dueLabel'
 import { useStore } from '../store'
 import { FreeExploreToggle } from './FreeExploreToggle'
+import { SiteHeader } from './SiteHeader'
 import { SourcesPanel, type Attachment } from './SourcesPanel'
+import { useReveal } from './reveal'
+import { useShowcaseScroll } from './showcase'
 
-// La maqueta 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
-const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.Preview })))
+// La sala 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
+const RoomPeek = lazy(() => import('../scene/RoomPeek').then((m) => ({ default: m.RoomPeek })))
+
+// Sala de ejemplo fija: no depende del editor, así no se reconstruye ni pide imágenes en cada tecla.
+const exampleResult = parsePalace(EXAMPLE_TEXT, detectFormat(EXAMPLE_TEXT))
+const EXAMPLE_LAYOUT = exampleResult.ok ? buildLayout(exampleResult.palace) : null
 
 const PLACEHOLDER = ['# Tema 1', '- Concepto A: explicación', '- Concepto B', '', '# Tema 2', '- Concepto C'].join(String.fromCharCode(10))
 // Peso máximo de cada archivo antes de leerlo (las imágenes se achican después a 1024 px).
@@ -55,7 +62,16 @@ export function Landing() {
   // Palacio generado con IA a la espera de entrar: deja ver cuántos conceptos se verificaron.
   const [aiResult, setAiResult] = useState<{ palace: Museum; text: string; userImages?: Record<string, string> } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const showcaseRef = useRef<HTMLElement>(null)
+  const open = useShowcaseScroll(showcaseRef)
+  const workbenchRef = useRef<HTMLElement>(null)
+  useReveal(workbenchRef)
   useEffect(() => () => abortRef.current?.abort(), [])
+  // Al volver desde #equipo con un ancla (#crear, #como-funciona) la sección recién se montó: se baja a mano.
+  useEffect(() => {
+    const id = window.location.hash.slice(1)
+    if (id) document.getElementById(id)?.scrollIntoView()
+  }, [])
 
   const generateWithAi = async () => {
     const withFiles = attachments.length > 0
@@ -106,7 +122,6 @@ export function Landing() {
   const deferred = useDeferredValue(input)
   // El formato se detecta solo: un JSON pegado (p. ej. un palacio exportado) se sigue aceptando.
   const result = useMemo(() => parsePalace(deferred, detectFormat(deferred)), [deferred])
-  const layout = useMemo(() => (result.ok ? buildLayout(result.palace) : null), [result])
   const conceptCount = result.ok ? result.palace.rooms.reduce((n, r) => n + r.pieces.length, 0) : 0
 
   const onFiles = async (files: File[]) => {
@@ -152,93 +167,129 @@ export function Landing() {
   }
 
   return (
-    <main className="landing">
-      <section className="landing-left">
-        <p className="brand">mus3o</p>
-        <h1>Un lugar para cada idea</h1>
+    <main id="top" className="landing">
+      <SiteHeader />
+      <section className="landing-hero">
+        <h1>Un lugar para cada <i>idea</i></h1>
         <p className="lead">
-          Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y mus3o levanta uno:
+          Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y <span className="inline-logo" role="img" aria-label="mus3o" /> levanta uno:
           cada tema es una sala de un solo color, cada concepto un objeto de yeso sobre su pedestal.
         </p>
+        <a className="scroll-cue" href="#como-funciona">
+          Baja para entrar <span aria-hidden>↓</span>
+        </a>
+      </section>
 
-        <div className="presets-section">
-          <p className="presets-label">Entrada directa a palacios destacados:</p>
-          <div className="presets-grid">
-            {PRESET_PALACES.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className="preset-card"
-                onClick={() => enterPalace(preset.museum)}
-                title={`Entrar a ${preset.title}`}
-              >
-                <div className="preset-card-top">
-                  <span className="preset-icon">{preset.icon}</span>
-                  <span className="preset-badge">{preset.themeBadge}</span>
-                </div>
-                <strong className="preset-title">{preset.title}</strong>
-                <p className="preset-subtitle">{preset.subtitle}</p>
-                <span className="preset-meta">
-                  {preset.roomCount} salas · {preset.conceptCount} conceptos
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="editor">
-          <div className="tabs">
-            <span className="tab active">Tus apuntes</span>
-            <button
-              className="tab tab-file"
-              onClick={() => setSourcesOpen((open) => !open)}
-              title="Word, Excel, CSV, texto, JSON o imágenes"
-              aria-expanded={sourcesOpen}
-              aria-controls="sources-panel"
-            >
-              + Fuentes{attachments.length > 0 && ` (${attachments.length})`}
-            </button>
-          </div>
-          <div className={sourcesOpen ? 'editor-body editor-body-split' : 'editor-body'}>
-            <textarea
-              value={input}
-              onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
-              placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
-              spellCheck={false}
-              maxLength={MAX_INPUT_CHARS}
-              aria-label="Apuntes"
-            />
-            <SourcesPanel
-              open={sourcesOpen}
-              onClose={closeSources}
-              attachments={attachments}
-              onAdd={onFiles}
-              onRemove={removeAttachment}
-              error={fileError}
-            />
-          </div>
-          <div className="editor-status">
-            {aiError ? (
-              <span className="error">{aiError}</span>
-            ) : attachments.length > 0 && !aiResult ? (
-              <span>
-                {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
-                «Generar con IA»
-              </span>
-            ) : aiResult ? (
-              <span>{sourceSummary(aiResult.palace)}</span>
-            ) : result.ok ? (
-              <span>
-                {result.palace.rooms.length} salas · {conceptCount} conceptos
-                {result.warnings.length > 0 && <span className="warn"> · {result.warnings[0]}</span>}
-              </span>
-            ) : (
-              <span className="error">{result.error}</span>
+      {/* Al hacer scroll la maqueta se abre a pantalla completa y luego se vuelve a cerrar. */}
+      <section id="como-funciona" ref={showcaseRef} className="showcase" aria-label="Vista previa del palacio">
+        <div className="showcase-sticky">
+          <div className="showcase-frame">
+            {EXAMPLE_LAYOUT && (
+              <Suspense fallback={null}>
+                <RoomPeek layout={EXAMPLE_LAYOUT} open={open} />
+              </Suspense>
             )}
+            {aiState === 'loading' && (
+              <div className="preview-loading" role="status">
+                <span className="bricks" aria-hidden>
+                  <i /><i /><i /><i /><i /><i />
+                </span>
+                <p>Levantando muros…</p>
+                <p className="sub">La IA modela un objeto para cada concepto.</p>
+              </div>
+            )}
+            <div className="plinth">
+              <p className="plinth-title">Así se recorre por dentro</p>
+              <p className="plinth-sub">Sala de ejemplo: Biología celular, en primera persona.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="crear" ref={workbenchRef} className="landing-workbench">
+        <header className="workbench-head">
+          <h2 data-reveal>Ahora, <i>el tuyo</i></h2>
+          <p data-reveal>Pega tus apuntes o entra directo a uno de los palacios destacados.</p>
+        </header>
+        {/* Apuntes a la izquierda y palacios destacados a la derecha, a la misma altura. */}
+        <div className="workbench-grid" data-reveal>
+          <div className="editor">
+            <div className="tabs">
+              <span className="tab active">Tus apuntes</span>
+              <button
+                className="tab tab-file"
+                onClick={() => setSourcesOpen((open) => !open)}
+                title="Word, Excel, CSV, texto, JSON o imágenes"
+                aria-expanded={sourcesOpen}
+                aria-controls="sources-panel"
+              >
+                + Fuentes{attachments.length > 0 && ` (${attachments.length})`}
+              </button>
+            </div>
+            <div className={sourcesOpen ? 'editor-body editor-body-split' : 'editor-body'}>
+              <textarea
+                value={input}
+                onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
+                placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
+                spellCheck={false}
+                maxLength={MAX_INPUT_CHARS}
+                aria-label="Apuntes"
+              />
+              <SourcesPanel
+                open={sourcesOpen}
+                onClose={closeSources}
+                attachments={attachments}
+                onAdd={onFiles}
+                onRemove={removeAttachment}
+                error={fileError}
+              />
+            </div>
+            <div className="editor-status">
+              {aiError ? (
+                <span className="error">{aiError}</span>
+              ) : attachments.length > 0 && !aiResult ? (
+                <span>
+                  {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
+                  «Generar con IA»
+                </span>
+              ) : aiResult ? (
+                <span>{sourceSummary(aiResult.palace)}</span>
+              ) : result.ok ? (
+                <span>
+                  {result.palace.rooms.length} salas · {conceptCount} conceptos
+                  {result.warnings.length > 0 && <span className="warn"> · {result.warnings[0]}</span>}
+                </span>
+              ) : (
+                <span className="error">{result.error}</span>
+              )}
+            </div>
+          </div>
+          <div className="presets-section">
+            <p className="presets-label">Entrada directa a palacios destacados</p>
+            <div className="presets-list">
+              {PRESET_PALACES.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className="preset-card"
+                  onClick={() => enterPalace(preset.museum)}
+                  title={`Entrar a ${preset.title}`}
+                >
+                  <div className="preset-card-top">
+                    <span className="preset-badge">{preset.themeBadge}</span>
+                  </div>
+                  <strong className="preset-title">{preset.title}</strong>
+                  <p className="preset-subtitle">{preset.subtitle}</p>
+                  <span className="preset-meta">
+                    {preset.roomCount} salas · {preset.conceptCount} conceptos
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="actions">
+        <div className="actions" data-reveal>
           {aiResult && (
             <button className="btn btn-primary btn-lg" onClick={() => enterPalace(aiResult.palace, aiResult.text, aiResult.userImages)}>
               Entrar al palacio
@@ -272,27 +323,6 @@ export function Landing() {
           )}
         </div>
         <FreeExploreToggleConnected />
-      </section>
-
-      <section className="landing-right" aria-label="Vista previa del palacio">
-        <div className="preview-frame">
-          <Suspense fallback={null}>
-            <Preview layout={layout} />
-          </Suspense>
-          {aiState === 'loading' && (
-            <div className="preview-loading" role="status">
-              <span className="bricks" aria-hidden>
-                <i /><i /><i /><i /><i /><i />
-              </span>
-              <p>Levantando muros…</p>
-              <p className="sub">La IA modela un objeto para cada concepto.</p>
-            </div>
-          )}
-        </div>
-        <div className="plinth">
-          <p className="plinth-title">Maqueta del palacio</p>
-          <p className="plinth-sub">Se levanta de nuevo cada vez que cambias el texto.</p>
-        </div>
       </section>
     </main>
   )
