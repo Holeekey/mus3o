@@ -53,6 +53,8 @@ const FALLBACK_MODEL = () => process.env.ANTHROPIC_FALLBACK_MODEL || "claude-hai
 const DIORAMA_MODEL = () => process.env.ANTHROPIC_DIORAMA_MODEL || MODEL();
 /** "dsl" (por defecto) o "json" (formato anterior, más caro). */
 const flowFormat = () => (process.env.FLOW_FORMAT === "json" ? "json" : "dsl");
+/** Haiku razona por defecto (y se cobra como salida); Sonnet 5.5 no lo admite como "disabled". */
+const noThinking = (model: string) => (/haiku/i.test(model) ? { thinking: { type: "disabled" as const } } : {});
 const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
@@ -217,6 +219,7 @@ export async function addDioramas(museum: Museum, roomIds: string[]): Promise<Mu
     const res = await getClient().messages.create(
       {
         model: DIORAMA_MODEL(),
+        ...noThinking(DIORAMA_MODEL()),
         max_tokens: 4000,
         system: [{ type: "text", text: DIORAMA_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: dioramaPrompt(museum, wanted) }],

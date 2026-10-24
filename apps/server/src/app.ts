@@ -140,7 +140,9 @@ app.post("/api/generate-museum", async (req, res) => {
     })),
   };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
-  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
+  // La clave ignora mayúsculas y espacios del pedido: "Roma  " y "roma" son el mismo museo (y el mismo gasto).
+  const keyed = { ...cleanFlow, prompt: cleanFlow.prompt.replace(/\s+/g, " ").trim().toLowerCase() };
+  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(keyed)), () => generateFlowMuseum(cleanFlow));
 });
 
 // Fuentes que superan LIMITS.maxNotesChars: un modelo barato las resume en un temario base.

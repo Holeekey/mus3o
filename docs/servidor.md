@@ -243,3 +243,10 @@ en quiz) se reintenta una vez con el error, como antes. Cada llamada registra su
 
 ≈ 3,2× menos salida y 2,6× menos tiempo, con más contenido. Un solo pedido por formato: es una muestra, no un promedio.
 Hallazgo de la medición: sin la instrucción explícita de marcar salas con `diorama`, el modelo no marcó ninguna y se perdía el diorama; el prompt ahora lo pide para temas de historia, geografía y naturaleza.
+
+### Más ahorros y mediciones (2026-10-24)
+
+- **Caché de museos en disco** (`MUSEUM_CACHE_DIR`, por defecto `.cache/museums`): tras un reinicio no se vuelven a pagar los museos ya generados; al leer se revalida con `MuseumSchema` y un archivo dañado se ignora. La LRU en memoria sigue limitando a 100 entradas.
+- **Clave de caché del flujo** ignora mayúsculas y espacios del pedido (`"Roma  "` = `"roma"`).
+- **Modos probados con IA real** (Sonnet 5.5, sin Poly Pizza): biography → 5 salas / 25 piezas / 5 períodos, 3 453 + 1 665 tokens de salida; quiz → 4 salas / 20 piezas / 20 quiz, 4 360 + 1 932. Ninguno necesitó reintento. La segunda generación leyó la caché del prompt (1 393 tokens de entrada leídos en vez de escritos).
+- **Dioramas con Haiku: descartado.** Con razonamiento (por defecto) gastó 3 359 tokens de salida (el doble que Sonnet, 1 632); sin razonamiento devolvió dioramas sin props válidos (0 props tras validar). Se queda Sonnet para los dioramas.
