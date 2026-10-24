@@ -157,6 +157,8 @@ Asistente de estudio **sin IA**, por reglas:
 ## 8. Otras piezas
 
 - **`palace/keys.ts`:** llaves. Ver [memoria-y-examen.md](./memoria-y-examen.md).
+- **`palace/conceptIds.ts`:** `conceptIdList` y `conceptIdSet`, ids de todos los conceptos cacheados por palacio (por referencia). Los usan el HUD, los hooks de memoria y el runtime del diorama para no reconstruir la lista en cada render o frame.
+- **`memory/dueLabel.ts`:** texto del chip "N repasos pendientes" de la landing (función pura).
 - **`palace/match.ts`:** `isCorrectAnswer` tolera tildes, mayúsculas y errores menores de tipeo.
 - **`palace/pieceKind.ts`:** tipo de pieza de la mazmorra (`key`, `chest`, `trap`, `door`, `standard`). Lo decide el id del modelo de catálogo, no el título, para que el texto del usuario no afecte la lógica.
 - **`lib/images.ts`:** resolución de imágenes con caché, deduplicación de peticiones simultáneas, reintentos con espera ante límite de Wikimedia, precarga (`prefetchPalaceImages`), línea de crédito de la licencia (`creditLine`). Ver [fuentes-e-imagenes.md](./fuentes-e-imagenes.md).
@@ -166,4 +168,4 @@ Asistente de estudio **sin IA**, por reglas:
 
 ## 9. Tests del frontend
 
-`npm test -w @mus3o/web` (Vitest): **13 archivos, 139 pruebas**. Se centran en lógica pura (layout, llaves, memoria, parser, citas, imágenes, diorama). No hay pruebas de render 3D; esas se validan a mano con `?demo=…` y la skill `3d-validation`.
+`npm test -w @mus3o/web` (Vitest): **15 archivos, 150 pruebas**. Se centran en lógica pura (layout, llaves, memoria, parser, citas, imágenes, diorama). No hay pruebas de render 3D; esas se validan a mano con `?demo=…` y la skill `3d-validation`.

@@ -28,7 +28,7 @@ IA → quote (copiada, NO parafraseada)
   → sanitizeRawSources: recorta a 240 car. y descarta "line" que mandó la IA
   → MuseumSchema
   → verifySources(museum, notes)
-      · locateFragment(notes, quote) para cada pieza
+      · apuntes normalizados una vez (prepareText); locateIn(preparado, quote) para cada pieza
       · encontrada  → source = texto real de los apuntes + line; unverified no se marca
       · no encontrada → se quita source y se marca unverified: true
   → respuesta con stats en el log: "fuentes: 7/9 piezas verificadas, 2 sin fuente"
