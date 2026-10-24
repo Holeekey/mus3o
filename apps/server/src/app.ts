@@ -12,6 +12,9 @@ import { imageRouter } from "./images";
 import { getCached, setCached } from "./cache";
 
 export const app = express();
+// Detrás del proxy de Render: la IP real viene en X-Forwarded-For. Sin esto todos los usuarios
+// comparten un mismo límite de solicitudes.
+app.set("trust proxy", 1);
 const WEB_ORIGIN = process.env.WEB_ORIGIN;
 
 app.use(cors(WEB_ORIGIN ? { origin: WEB_ORIGIN } : undefined));
@@ -136,6 +139,9 @@ if (webDistPath) {
         // Hashed assets in assets/ can be safely cached for 1 year
         if (filePath.includes("/assets/")) {
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (filePath.endsWith("index.html")) {
+          // El HTML apunta a los assets con hash: si se cachea, un redeploy sirve una versión vieja.
+          res.setHeader("Cache-Control", "no-cache");
         }
       },
     }),
@@ -146,6 +152,7 @@ if (webDistPath) {
       next();
       return;
     }
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(webDistPath, "index.html"));
   });
 }

@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
-import { countSources, type Museum } from '@mus3o/shared'
+import { countSources, LIMITS, type Museum } from '@mus3o/shared'
 import { generateMuseum } from '../lib/api'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
@@ -43,6 +43,11 @@ export function Landing() {
 
   const generateWithAi = async () => {
     if (!input.trim() || aiState === 'loading') return
+    // El server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
+    if (input.trim().length > LIMITS.maxNotesChars) {
+      setAiError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
+      return
+    }
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
