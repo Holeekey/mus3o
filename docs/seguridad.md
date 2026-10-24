@@ -142,3 +142,7 @@ Cobertura de la matriz V1–V6 y cambios de esta revisión:
 - **Bug de despliegue corregido:** el build ESM de producción fallaba con `__dirname is not defined`; ahora se calcula con `import.meta.url`.
 - **`render.yaml`:** `ANTHROPIC_MODEL` pasa a `claude-sonnet-5-5`.
 - **Decisión consciente:** `listen` enlaza a todas las interfaces porque Render necesita que el servicio sea alcanzable por su proxy; la exposición se limita con rate limit, tope diario y la validación de entrada.
+
+## 10. Voz con ElevenLabs (opcional)
+
+La clave `ELEVENLABS_API_KEY` solo la lee el servidor (`apps/server/src/tts.ts`); el navegador llama a `/api/tts`. Protecciones: texto de 1-500 caracteres con `.strict()` y saneado, límite de 30 peticiones/min por IP, tope diario de caracteres, id de voz validado, timeout de 15 s y nunca se reenvía el cuerpo de error del proveedor. Si falla o no está configurado, `apps/web/src/lib/voice.ts` cae a la síntesis del navegador. Estado: **código listo, sin clave configurada**.

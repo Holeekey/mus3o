@@ -23,6 +23,8 @@ Archivos:
 | `POST /api/generate-museum` | `{ topic }` (legacy) **o** `{ mode, prompt, sources[], images[] }` | `Museum` | Único endpoint de generación. Cuerpo ≤ 8 MB |
 | `POST /api/improve-prompt` | Mismo que el flujo sin imágenes | `{ suggestions[], improvedPrompt }` | **Solo depuración**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
+| `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
+| `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 
 ### Respuestas de error
@@ -115,6 +117,9 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 | `WEB_ORIGIN` | `http://localhost:5173` | Origen permitido por CORS |
 | `MAX_DAILY_GENERATIONS` | `200` | Tope diario de llamadas a Claude |
 | `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt` |
+| `ELEVENLABS_API_KEY` | (vacía) | Activa la voz natural; sin ella el cliente usa la voz del navegador |
+| `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voz por defecto / `eleven_multilingual_v2` | Voz y modelo (el id se valida alfanumérico) |
+| `MAX_DAILY_TTS_CHARS` | `30000` | Tope diario de caracteres enviados a ElevenLabs |
 
 ## 7. Proxy de imágenes (`images.ts`)
 
