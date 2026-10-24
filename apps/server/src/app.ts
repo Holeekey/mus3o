@@ -4,9 +4,15 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { GenerateMuseumRequestSchema, ImprovePromptRequestSchema, LIMITS, type Museum } from "@mus3o/shared";
+import fs from "node:fs";
+import {
+  GenerateMuseumRequestSchema,
+  ImprovePromptRequestSchema,
+  LIMITS,
+  sanitizeUntrustedText,
+  type Museum,
+} from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { getCached, setCached } from "./cache";
@@ -17,7 +23,16 @@ export const app = express();
 app.set("trust proxy", 1);
 const WEB_ORIGIN = process.env.WEB_ORIGIN;
 
-app.use(cors(WEB_ORIGIN ? { origin: WEB_ORIGIN } : undefined));
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
+// En producción el servidor sirve el frontend (mismo origen): sin WEB_ORIGIN no se abre CORS a terceros.
+const IS_PROD = process.env.NODE_ENV === "production";
+if (WEB_ORIGIN) app.use(cors({ origin: WEB_ORIGIN }));
+else if (!IS_PROD) app.use(cors());
 
 // Health check endpoint for Render and uptime monitoring
 app.get("/api/health", (_req, res) => {
@@ -83,7 +98,12 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
 app.post("/api/generate-museum", async (req, res) => {
   const legacy = RequestSchema.safeParse(req.body);
   if (legacy.success) {
-    await respondWithMuseum(res, cacheKey(legacy.data), () => generateMuseum(legacy.data));
+    const cleanInput: GenerateInput =
+      "notes" in legacy.data
+        ? { notes: sanitizeUntrustedText(legacy.data.notes, LIMITS.maxNotesChars) }
+        : { topic: sanitizeUntrustedText(legacy.data.topic, 200) };
+
+    await respondWithMuseum(res, cacheKey(cleanInput), () => generateMuseum(cleanInput));
     return;
   }
   const flow = GenerateMuseumRequestSchema.safeParse(req.body);
@@ -91,8 +111,16 @@ app.post("/api/generate-museum", async (req, res) => {
     res.status(400).json({ error: `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)` });
     return;
   }
+  const cleanFlow = {
+    ...flow.data,
+    prompt: sanitizeUntrustedText(flow.data.prompt, LIMITS.maxNotesChars),
+    sources: flow.data.sources.map((s) => ({
+      ...s,
+      text: sanitizeUntrustedText(s.text, LIMITS.maxNotesChars),
+    })),
+  };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
-  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(flow.data)), () => generateFlowMuseum(flow.data));
+  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
 });
 
 // Solo para depurar el flujo: sugiere mejoras al pedido antes de generar.
