@@ -167,6 +167,10 @@ Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/
 | Botones en las fichas ("marcar como memorizado", ✕) y en el examen ("reintentar", "escribir") | `M`, `E`, `R`, `Y` |
 | Tocar "Narrador" | `N` |
 
+El joystick y la mirada táctil funcionan igual dentro del cuadro: `scene/moveInput.ts` (`moveAxes`, `applyTouchLook`) lo comparten `Player.tsx` y `diorama/DioramaRuntime.tsx`.
+
+Teléfono horizontal (`max-height: 520px` en `index.css`): mismo HUD compacto que en vertical (minimapa como botón 🗺️; el del cuadro, pequeño), placa solo con el título, contadores y avisos más chicos, "Repasos pendientes" solo si hay, y los botones 🤖 ✓ 👁️ en fila.
+
 `ui/KeyHint.tsx` dibuja cada atajo: en escritorio `<kbd>E</kbd> Examinar`; en táctil un botón con la misma acción, o nada si la tecla no tiene equivalente. La primera vez se muestra la ayuda "Arrastra a la izquierda para moverte · desliza a la derecha para mirar" hasta el primer movimiento (`localStorage` `mus3o-touch-tip`).
 
 ## 6. HUD (`ui/Hud.tsx`) y otros componentes de `ui/`

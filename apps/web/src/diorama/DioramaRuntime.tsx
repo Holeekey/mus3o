@@ -10,6 +10,7 @@ import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
+import { applyTouchLook, moveAxes } from '../scene/moveInput'
 
 // El mundo del diorama vive muy lejos del palacio, en el mismo Canvas: así el cambio de
 // mundo es solo mover la cámara y no hay segundo renderer ni recarga.
@@ -273,13 +274,15 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
     f.normalize()
     const locked = useStore.getState().locked
     if (locked && t?.kind !== 'reveal') {
-      const ax = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      const az = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      if (ax || az) {
-        const speed = (k.ShiftLeft || k.ShiftRight ? RUN : WALK) * dt
-        let dx = f.x * az - f.z * ax
-        let dz = f.z * az + f.x * ax
-        const len = Math.hypot(dx, dz)
+      // Mirada y joystick táctiles: Player no corre mientras se está dentro, así que se leen aquí.
+      applyTouchLook(camera)
+      const { ax, az, running } = moveAxes(k)
+      let dx = f.x * az - f.z * ax
+      let dz = f.z * az + f.x * ax
+      const len = Math.hypot(dx, dz)
+      if (len > 0.001) {
+        // Con teclado la magnitud es 1; con el joystick, proporcional a cuánto se empuja.
+        const speed = (running ? RUN : WALK) * dt * Math.min(1, len)
         dx = (dx / len) * speed
         dz = (dz / len) * speed
         // Límites invisibles + obstáculos circulares (árboles, cañones...) + el agua.

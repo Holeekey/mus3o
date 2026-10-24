@@ -1117,6 +1117,20 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     padding: 14px 16px 24px;
   }
 
+  /* Panel de pausa */
+  .pause-panel {
+    width: calc(100vw - 20px);
+    max-height: 85dvh;
+    overflow-y: auto;
+    padding: 16px 14px;
+  }
+  .pause-panel h1 { font-size: 1.4rem; }
+  .pause-actions { flex-direction: column; align-items: stretch; }
+  .pause-actions .btn { width: 100%; text-align: center; }
+}
+
+/* Pantallas chicas: teléfono vertical (ancho) o teléfono horizontal (alto). Minimapa como botón y HUD compacto. */
+@media (max-width: 768px), (max-height: 520px) {
   /* Minimapa Popup en móvil */
   .minimap-mobile-fab {
     display: flex;
@@ -1211,18 +1225,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     max-width: 90vw;
     text-align: center;
   }
-
-  /* Panel de pausa */
-  .pause-panel {
-    width: calc(100vw - 20px);
-    max-height: 85dvh;
-    overflow-y: auto;
-    padding: 16px 14px;
-  }
-  .pause-panel h1 { font-size: 1.4rem; }
-  .pause-actions { flex-direction: column; align-items: stretch; }
-  .pause-actions .btn { width: 100%; text-align: center; }
 }
+
 
 @media (max-width: 480px) {
   .landing {
@@ -1366,6 +1370,31 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 /* En táctil el botón 🤖 de la botonera reemplaza al de escritorio, y el narrador sube sobre el joystick. */
 :root[data-touch] .aris-trigger-btn { display: none; }
 :root[data-touch] .narrator { left: 16px; bottom: 150px; z-index: 36; }
+@media (max-height: 520px) { :root[data-touch] .narrator { left: 14px; bottom: 108px; } }
 :root[data-touch] .hud-legend { display: none; }
 /* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
 :root[data-touch] .hint { bottom: 30% !important; }
+
+/* Teléfono horizontal: queda poca altura, así que el HUD se reduce a lo esencial y no compite con la escena. */
+@media (max-height: 520px) {
+  .plaque { top: 8px; left: 8px; padding: 5px 10px; box-shadow: 2px 2px 0 var(--shadow); }
+  .plaque-meta, .plaque-memory { display: none; }
+  .plaque-title { font-size: 0.95rem; }
+  .hud-right { top: 8px; right: 8px; gap: 4px; }
+  .minimap-mobile-fab { width: 34px; height: 34px; font-size: 1rem; box-shadow: 2px 2px 0 var(--shadow); }
+  .hud-progress, .hud-due, .key-badge { font-size: 0.7rem; padding: 2px 6px; box-shadow: 2px 2px 0 var(--shadow); }
+  .hud-due:not(.hud-due-on) { display: none; }
+  .narrator { font-size: 0.7rem; padding: 3px 7px; box-shadow: 2px 2px 0 var(--shadow); }
+  .hint { font-size: 0.78rem; padding: 4px 9px; box-shadow: 2px 2px 0 var(--shadow); }
+  .touch-actions-cluster { flex-direction: row; right: 12px; bottom: 12px; gap: 8px; }
+  .touch-action-btn { width: 40px; height: 40px; font-size: 1rem; box-shadow: 2px 2px 0 var(--shadow); }
+  .touch-joystick-base.is-idle { bottom: 14px; left: 14px; }
+  .touch-tip { font-size: 0.75rem; }
+}
+
+/* El minimapa del cuadro no tiene botón 🗺️: en pantallas chicas se muestra pequeño en vez de ocultarse. */
+@media (max-width: 768px), (max-height: 520px) {
+  .minimap-wrapper.minimap-inline { display: flex; }
+  .minimap-inline .minimap-header { display: none; }
+  .minimap-inline .minimap { width: 96px !important; height: 96px !important; }
+}
