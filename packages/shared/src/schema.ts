@@ -107,7 +107,11 @@ export const DynamicAssetSchema = z.object({
   title: z.string().max(120),
   author: z.string().max(120),
   license: z.enum(["CC0", "CC-BY"]),
-  sourceUrl: z.string().max(300),
+  sourceUrl: z
+    .string()
+    .url()
+    .max(300)
+    .refine((u) => /^https?:\/\//i.test(u), "URL debe usar HTTP o HTTPS"),
 });
 export type DynamicAsset = z.infer<typeof DynamicAssetSchema>;
 
