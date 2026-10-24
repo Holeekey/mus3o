@@ -4,6 +4,7 @@ import {
   DigestSourcesResponseSchema,
   findImageAssignmentIssues,
   LIMITS,
+  parseDiorama,
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
@@ -30,13 +31,32 @@ import {
   IMPROVE_SYSTEM_PROMPT,
   improvePrompt as improvePromptText,
   notesPrompt,
+  DIORAMA_SYSTEM_PROMPT,
+  dioramaPrompt,
+  FALLBACK_MODEL_SYSTEM_PROMPT,
+  FLOW_DSL_SYSTEM_PROMPT,
+  flowMaxTokens,
+  roomPlan,
+  flowDslPrompt,
+  FLOW_STATIC_RULES,
   SYSTEM_PROMPT,
+  SYSTEM_PROMPT_LIGHT,
   userPrompt,
 } from "./prompts";
 import { attachImageSearches, retrieveSources } from "./enrich";
+import { hydrateMuseumAssets, polyEnabled } from "./polyPizza";
+import { fillMissingModels } from "./modelFallback";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
+/** Modelo barato para dibujar el respaldo de las piezas sin asset. */
+const FALLBACK_MODEL = () => process.env.ANTHROPIC_FALLBACK_MODEL || "claude-haiku-5-5";
+/** Los dioramas piden props y posiciones coherentes: por defecto el modelo principal. */
+const DIORAMA_MODEL = () => process.env.ANTHROPIC_DIORAMA_MODEL || MODEL();
+/** "dsl" (por defecto) o "json" (formato anterior, más caro). */
+const flowFormat = () => (process.env.FLOW_FORMAT === "json" ? "json" : "dsl");
+/** Haiku razona por defecto (y se cobra como salida); Sonnet 5.5 no lo admite como "disabled". */
+const noThinking = (model: string) => (/haiku/i.test(model) ? { thinking: { type: "disabled" as const } } : {});
 const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
@@ -83,6 +103,25 @@ export function enrichMuseum(museum: Museum, notes?: string): Museum {
   return notes === undefined ? images : retrieveSources(attachSources(images, notes), notes);
 }
 
+/** Buscar primero: trae assets y, solo para las piezas que quedaron sin modelo, la IA dibuja un respaldo. */
+async function resolveModels(museum: Museum): Promise<Museum> {
+  const hydrated = await hydrateMuseumAssets(museum);
+  // Sin búsqueda activa no hay "faltantes" que rellenar (todas las piezas conservan su glifo).
+  if (!polyEnabled() || !process.env.ANTHROPIC_API_KEY) return hydrated;
+  return fillMissingModels(hydrated, async (prompt, maxTokens) => {
+    const res = await getClient().messages.create({
+      model: FALLBACK_MODEL(),
+      thinking: { type: "disabled" },
+      max_tokens: maxTokens,
+      system: FALLBACK_MODEL_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }, { timeout: 20_000, maxRetries: 0 });
+    const u = res.usage;
+    console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
+    return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  });
+}
+
 export type GenerateInput = { topic: string } | { notes: string };
 
 export class AiUnavailableError extends Error {}
@@ -100,7 +139,7 @@ function getClient(): Anthropic {
 
 /** Pide JSON a Claude y, si no valida, le devuelve el error una vez para que lo corrija. */
 async function askForJson<T>(
-  options: { system: string; content: Anthropic.MessageParam["content"]; maxTokens: number },
+  options: { system: string | Anthropic.TextBlockParam[]; content: Anthropic.MessageParam["content"]; maxTokens: number},
   parse: (raw: string) => T,
 ): Promise<T> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: options.content }];
@@ -113,6 +152,9 @@ async function askForJson<T>(
       system: options.system,
       messages,
     });
+    // Solo conteos de tokens (nunca contenido): sirve para vigilar el costo real por generación.
+    const u = res.usage;
+    console.log(`tokens: entrada ${u.input_tokens}, salida ${u.output_tokens}, caché leída ${u.cache_read_input_tokens ?? 0}, caché escrita ${u.cache_creation_input_tokens ?? 0}`);
     const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     try {
       return parse(text);
@@ -140,14 +182,14 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
 
   // El formato DSL reduce la longitud requerida a <2000 tokens garantizando baja latencia
   const museum = await askForJson(
-    { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
+    { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 3500 : 2000 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
-  return enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined);
+  return resolveModels(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
-export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.ContentBlockParam[] {
+export function buildFlowContent(request: GenerateMuseumRequest, format: "json" | "dsl" = "json"): Anthropic.ContentBlockParam[] {
   const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => {
     const safeName = image.name.replace(/[<>\r\n]/g, "").slice(0, 80);
     return [
@@ -155,17 +197,83 @@ export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.Cont
       { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
     ];
   });
-  return [...images, { type: "text", text: flowPrompt(request) }];
+  const text = format === "dsl" ? flowDslPrompt(request) : flowPrompt(request, { staticRules: false });
+  return [...images, { type: "text", text }];
+}
+
+/** Salida DSL del flujo completo: valida el formato y las imágenes asignadas contra el request. */
+export function parseFlowDsl(raw: string, request: GenerateMuseumRequest, onDioramaRooms?: (ids: string[]) => void): Museum {
+  const imageIds = request.images.map((i) => i.id);
+  const museum = repairAndSanitizeMuseum(parseMus3oDSL(stripFence(raw), { mode: request.mode, imageIds, onDioramaRooms }));
+  const issues = findImageAssignmentIssues(museum, imageIds);
+  if (issues.length > 0) throw new Error(issues.join("; "));
+  return museum;
+}
+
+/**
+ * Los dioramas van en una llamada aparte y SOLO para las salas que el modelo marcó como representables
+ * (sin marcas no hay llamada). Un fallo no bloquea el museo.
+ */
+export async function addDioramas(museum: Museum, roomIds: string[]): Promise<Museum> {
+  const wanted = roomIds.filter((id) => museum.rooms.some((r) => r.id === id)).slice(0, 2);
+  if (wanted.length === 0) return museum;
+  try {
+    const res = await getClient().messages.create(
+      {
+        model: DIORAMA_MODEL(),
+        ...noThinking(DIORAMA_MODEL()),
+        max_tokens: 4000,
+        system: [{ type: "text", text: DIORAMA_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: dioramaPrompt(museum, wanted) }],
+      },
+      { timeout: 60_000, maxRetries: 0 },
+    );
+    console.log(`tokens (diorama): entrada ${res.usage.input_tokens}, salida ${res.usage.output_tokens}, caché leída ${res.usage.cache_read_input_tokens ?? 0}`);
+    const raw = JSON.parse(stripFence(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""))) as Record<string, unknown>;
+    const ids = new Set(museum.rooms.map((r) => r.id));
+    const chosen = Object.keys(raw).filter((id) => ids.has(id) && wanted.includes(id));
+    if (chosen.length === 0) return museum;
+    return { ...museum, rooms: museum.rooms.map((r) => (chosen.includes(r.id) ? { ...r, diorama: parseDiorama(raw[r.id]) } : r)) };
+  } catch (err) {
+    console.error(`dioramas fallaron: ${(err as Error).name}`);
+    return museum;
+  }
 }
 
 export async function generateFlowMuseum(request: GenerateMuseumRequest): Promise<Museum> {
   if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("IA no configurada");
+  if (flowFormat() === "dsl") return generateFlowMuseumDsl(request);
   const imageIds = request.images.map((i) => i.id);
+  // Con Poly Pizza activo el modelo 3D lo trae el servidor: la IA solo elige un glifo de respaldo y emite
+  // bastante menos salida. Las reglas fijas van en el system prompt con caché (se leen a ~10 % del precio).
+  const light = polyEnabled();
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: light ? SYSTEM_PROMPT_LIGHT : SYSTEM_PROMPT },
+    { type: "text", text: FLOW_STATIC_RULES, cache_control: { type: "ephemeral" } },
+  ];
   const museum = await askForJson(
-    { system: SYSTEM_PROMPT, content: buildFlowContent(request), maxTokens: 16000 },
+    { system, content: buildFlowContent(request), maxTokens: light ? 9000 : 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
-  return enrichMuseum(museum, flowNotesText(request));
+  return resolveModels(enrichMuseum(museum, flowNotesText(request)));
+}
+
+/**
+ * Flujo completo por DSL: una salida de ~2-4 mil tokens en lugar de un JSON de hasta 16 mil. El servidor deriva
+ * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas, en paralelo.
+ */
+async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Museum> {
+  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: FLOW_DSL_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
+  let dioramaRooms: string[] = [];
+  const museum = await askForJson(
+    { system, content: buildFlowContent(request, "dsl"), maxTokens: flowMaxTokens(roomPlan(request), request.mode) },
+    (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)),
+  );
+  const enriched = enrichMuseum(museum, flowNotesText(request));
+  const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms)]);
+  // Cada tarea devuelve el museo completo: se combinan por sala/pieza.
+  const dioramaByRoom = new Map(withDioramas.rooms.map((r) => [r.id, r.diorama]));
+  return { ...withModels, rooms: withModels.rooms.map((r) => (dioramaByRoom.get(r.id) ? { ...r, diorama: dioramaByRoom.get(r.id) } : r)) };
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {

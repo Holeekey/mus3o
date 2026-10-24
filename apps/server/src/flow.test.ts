@@ -3,8 +3,8 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
-import { buildFlowContent, parseFlowMuseum } from "./claude";
-import { flowPrompt, userPrompt } from "./prompts";
+import { addDioramas, buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
+import { FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -180,5 +180,90 @@ describe("HTTP routes without ANTHROPIC_API_KEY", () => {
     process.env.ENABLE_DEBUG_ROUTES = "true";
     const res = await post("/api/improve-prompt", { prompt: "Bases de datos" });
     expect(res.status).toBe(503);
+  });
+});
+
+describe("generación liviana", () => {
+  it("la variante liviana pide un glifo de respaldo y no dibujar partes", () => {
+    expect(SYSTEM_PROMPT).toContain('"procedural"');
+    expect(SYSTEM_PROMPT_LIGHT).not.toMatch(/procedural|"parts"/);
+    expect(SYSTEM_PROMPT_LIGHT).toContain('"type": "glyph"');
+    expect(SYSTEM_PROMPT_LIGHT.length).toBeLessThan(SYSTEM_PROMPT.length);
+  });
+
+  it("las reglas fijas viajan en el system prompt (cacheable) y no en el mensaje", () => {
+    const withRules = flowPrompt(request());
+    const lean = flowPrompt(request(), { staticRules: false });
+    expect(withRules).toContain('agrega a CADA sala "imageSearch"');
+    expect(lean).not.toContain('agrega a CADA sala "imageSearch"');
+    expect(lean).not.toContain("Dioramas");
+    expect(FLOW_STATIC_RULES).toContain('agrega a CADA sala "imageSearch"');
+    expect(FLOW_STATIC_RULES).toContain("Dioramas");
+    expect(lean.length).toBeLessThan(withRules.length);
+  });
+});
+
+describe("flujo completo por DSL", () => {
+  const dsl = `TITLE: Roma
+ROOM: a | Origen | ancient | #112233 | #000000 | torus | | diorama
+PIECE: Rómulo | box | cue | wolf | Fundador legendario
+IMAGE: img-1
+ROOM: b | República | ancient | #112233 | #000000 | torus | a |
+PIECE: Senado | box | cue | column | Órgano de gobierno`;
+
+  it("parseFlowDsl arma el museo según el modo y reporta las salas con diorama", () => {
+    let marked: string[] = [];
+    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }), (ids) => (marked = ids));
+    expect(m.mode).toBe("exploration");
+    expect(m.graph?.edges).toEqual([{ from: "a", to: "b", kind: "related" }]);
+    expect(m.rooms[0].pieces[0].image).toEqual({ imageId: "img-1" });
+    expect(marked).toEqual(["a"]);
+  });
+
+  it("ignora una imagen que no llegó en el request", () => {
+    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [] }));
+    expect(m.rooms[0].pieces[0].image).toBeUndefined();
+  });
+
+  it("el prompt DSL del flujo incluye la guía del modo y el contenido del usuario, sin reglas de dioramas", () => {
+    const text = flowDslPrompt(request({ mode: "quiz" }));
+    expect(text).toContain("Modo quiz");
+    expect(text).toContain("<user_notes>");
+    expect(text).not.toContain("terrain");
+  });
+
+  it("sin salas marcadas no se hace llamada de dioramas", async () => {
+    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
+    expect(await addDioramas(m, [])).toBe(m);
+  });
+});
+
+describe("roomPlan: salas según el volumen de contenido", () => {
+  const plan = (chars: number) => roomPlan({ prompt: "x".repeat(chars), sources: [] });
+
+  it("escala de 3-5 salas a 9-12 con mucha documentación", () => {
+    expect(plan(100)).toMatchObject({ minRooms: 4, maxRooms: 5 });
+    expect(plan(500)).toMatchObject({ minRooms: 3, maxRooms: 5 });
+    expect(plan(3_000)).toMatchObject({ minRooms: 4, maxRooms: 6 });
+    expect(plan(9_000)).toMatchObject({ minRooms: 6, maxRooms: 8 });
+    expect(plan(20_000)).toMatchObject({ minRooms: 9, maxRooms: 12 });
+  });
+
+  it("suma el texto de las fuentes y nunca pasa de LIMITS.maxRooms ni baja de 3", () => {
+    const big = roomPlan({ prompt: "tema", sources: [{ text: "y".repeat(15_000) }] });
+    expect(big.maxRooms).toBe(12);
+    for (const n of [10, 700, 2_000, 8_000, 19_000]) {
+      const p = plan(n);
+      expect(p.minRooms).toBeGreaterThanOrEqual(3);
+      expect(p.maxRooms).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("el prompt incluye el rango y pide una estructura lógica; max_tokens crece con el plan y tiene tope", () => {
+    const text = flowDslPrompt(request({ mode: "education", prompt: "x".repeat(20_000) }));
+    expect(text).toContain("entre 9 y 12 salas");
+    expect(text).toContain("GRAFO DE PRERREQUISITOS");
+    expect(flowMaxTokens(plan(100), "education")).toBeLessThan(flowMaxTokens(plan(20_000), "education"));
+    expect(flowMaxTokens(plan(20_000), "quiz")).toBeLessThanOrEqual(16_000);
   });
 });

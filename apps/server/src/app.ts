@@ -17,6 +17,7 @@ import {
 import { AiUnavailableError, digestSources, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { ttsRouter } from "./tts";
+import { assetRouter } from "./assetRoutes";
 import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
 export const app = express();
@@ -53,7 +54,8 @@ app.use((req, res, next) => jsonParserFor(req.path)(req, res, next));
 app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
 app.use("/api", ttsRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", assetRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
@@ -76,6 +78,9 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 // La clave de caché no guarda los apuntes en claro.
 const cacheKey = (input: GenerateInput) => ("notes" in input ? "notes:" + sha256(input.notes) : input.topic);
 
+// Pedidos idénticos simultáneos comparten UNA generación (y un solo cupo diario) en lugar de pagarla varias veces.
+const inFlight = new Map<string, Promise<Museum>>();
+
 async function respondWithMuseum(res: express.Response, key: string, generate: () => Promise<Museum>) {
   const started = Date.now();
   try {
@@ -84,13 +89,21 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
       res.json(cached);
       return;
     }
-    if (!takeDailySlot()) {
-      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
-      return;
+    let pending = inFlight.get(key);
+    if (!pending) {
+      if (!takeDailySlot()) {
+        res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+        return;
+      }
+      pending = generate()
+        .then((m) => {
+          setCached(key, m);
+          return m;
+        })
+        .finally(() => inFlight.delete(key));
+      inFlight.set(key, pending);
     }
-    const museum = await generate();
-    setCached(key, museum);
-    res.json(museum);
+    res.json(await pending);
   } catch (err) {
     if (err instanceof AiUnavailableError) {
       res.status(503).json({ error: "IA no configurada" });
@@ -127,7 +140,9 @@ app.post("/api/generate-museum", async (req, res) => {
     })),
   };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
-  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
+  // La clave ignora mayúsculas y espacios del pedido: "Roma  " y "roma" son el mismo museo (y el mismo gasto).
+  const keyed = { ...cleanFlow, prompt: cleanFlow.prompt.replace(/\s+/g, " ").trim().toLowerCase() };
+  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(keyed)), () => generateFlowMuseum(cleanFlow));
 });
 
 // Fuentes que superan LIMITS.maxNotesChars: un modelo barato las resume en un temario base.

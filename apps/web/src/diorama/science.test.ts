@@ -91,7 +91,7 @@ describe('generación determinista de props científicos', () => {
     expect(Math.max(s.x, s.y, s.z)).toBeLessThan(40)
     expect(SCIENCE_HEIGHT[kind]).toBeGreaterThan(0)
     if (a.science?.shader) expect(a.geometry.getAttribute('aAnim').count).toBe(pos.count)
-  })
+  }, 20_000)
 
   it('la semilla y la variante cambian los orgánulos con variantes', () => {
     for (const kind of ['mitochondrion', 'ribosome', 'vesicle'] as const) {

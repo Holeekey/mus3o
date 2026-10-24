@@ -38,6 +38,9 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
   const count = items.length * SHARDS_PER_CONCEPT
   const mesh = useRef<THREE.InstancedMesh>(null)
   const last = useRef(new Map<string, number>())
+  // Acumuladores por sala reutilizados en cada frame (sin Map ni objetos nuevos).
+  const accSum = useRef(new Map<string, number>())
+  const accN = useRef(new Map<string, number>())
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const reduced = useMemo(prefersReducedMotion, [])
 
@@ -58,7 +61,10 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
     const t = performance.now()
     const now = nowMs()
     const mem = useMemory.getState().palaces[key] ?? {}
-    const acc = new Map<string, { sum: number; n: number }>()
+    const sums = accSum.current
+    const counts = accN.current
+    sums.clear()
+    counts.clear()
     let dirty = false
 
     for (let k = 0; k < items.length; k++) {
@@ -68,10 +74,8 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
       shown.set(it.id, a)
       const s = a.cur
       if (rec) {
-        const r = acc.get(it.roomId) ?? { sum: 0, n: 0 }
-        r.sum += s
-        r.n++
-        acc.set(it.roomId, r)
+        sums.set(it.roomId, (sums.get(it.roomId) ?? 0) + s)
+        counts.set(it.roomId, (counts.get(it.roomId) ?? 0) + 1)
       }
       const prev = last.current.get(it.id)
       last.current.set(it.id, s)
@@ -106,8 +110,8 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
       }
     }
     if (dirty) m.instanceMatrix.needsUpdate = true
-    for (const [roomId, r] of acc) roomShown.set(roomId, r.sum / r.n)
-    for (const roomId of roomShown.keys()) if (!acc.has(roomId)) roomShown.set(roomId, 1)
+    for (const [roomId, sum] of sums) roomShown.set(roomId, sum / (counts.get(roomId) ?? 1))
+    for (const roomId of roomShown.keys()) if (!sums.has(roomId)) roomShown.set(roomId, 1)
   })
 
   if (!count) return null
@@ -186,7 +190,7 @@ export function DecayWrap({ id, children }: { id: string; children: ReactNode })
   })
 
   return (
-    <group ref={group} position={[0, PEDESTAL_TOP, 0]}>
+    <group ref={group} position={[0, PEDESTAL_TOP, 0]} userData={{ noMerge: true }}>
       <group position={[0, -PEDESTAL_TOP, 0]}>{children}</group>
     </group>
   )

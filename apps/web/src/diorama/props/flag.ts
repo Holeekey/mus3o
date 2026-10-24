@@ -62,9 +62,18 @@ export function buildFlag(ctx: PropCtx, variant: number): Built {
       }
     }
   }
+  if (ctx.pattern === 'vertical') {
+    // Tres franjas verticales (p. ej. la tricolor francesa): `color` | blanco | `secondary`.
+    const bands = [ctx.color ?? '#1f3fa0', '#f2f0ea', ctx.secondary ?? '#c8102e']
+    const bw = W / 3
+    bands.forEach((color, i) => {
+      const g = new THREE.PlaneGeometry(bw, FH, 5, 7)
+      b.add(g, root.clone().multiply(mat(0.04 + bw * (i + 0.5), top - FH / 2, 0)), { color, double: true, jitter: 0.015, wind: waveAlongX(0.04, W, 0.13) })
+    })
+  }
   let y = top
   for (const [color, frac] of stripes) {
-    if (ctx.pattern === 'saltire') break
+    if (ctx.pattern === 'saltire' || ctx.pattern === 'vertical') break
     const h = FH * frac
     const segY = Math.max(2, Math.round(h * 6))
     const g = new THREE.PlaneGeometry(W, h, 14, segY)
