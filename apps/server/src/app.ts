@@ -15,6 +15,7 @@ import {
 } from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
+import { ttsRouter } from "./tts";
 import { getCached, setCached } from "./cache";
 
 export const app = express();
@@ -46,7 +47,8 @@ app.use((req, res, next) => (req.path === "/api/generate-museum" ? generateJson 
 // Las imágenes se piden por decenas al entrar a un museo: límite aparte y más alto.
 app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", ttsRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
