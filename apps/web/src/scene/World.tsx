@@ -43,6 +43,7 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
   const unlockedDoors = useStore((s) => s.unlockedDoors)
+  const freeExplore = useStore((s) => s.freeExplore)
   const palettes = useMemo(
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
@@ -67,7 +68,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
           : [c.floor.x, 0, c.floor.z + c.floor.d / 2]
 
         const doorId = `door-${i}-entrance`
-        const isOpen = !!unlockedDoors[doorId]
+        const isOpen = freeExplore || !!unlockedDoors[doorId]
 
         return (
           <group key={i}>

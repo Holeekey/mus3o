@@ -5,8 +5,9 @@ import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
-import { allConcepts, useStore } from '../store'
+import { allConcepts, useStore, isDoorOpen } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
+import { FreeExploreToggle } from './FreeExploreToggle'
 import { Minimap } from './Minimap'
 
 function wallVars(p: RoomPalette) {
@@ -106,6 +107,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const hasKey = useStore((s) => s.hasKey)
   const unlockedDoors = useStore((s) => s.unlockedDoors)
+  const freeExplore = useStore((s) => s.freeExplore)
+  const setFreeExplore = useStore((s) => s.setFreeExplore)
+  const doorOpen = (id: string) => isDoorOpen({ freeExplore, unlockedDoors }, id)
   const openId = useStore((s) => s.openId)
   const setMode = useStore((s) => s.setMode)
   const exitToLanding = useStore((s) => s.exitToLanding)
@@ -146,7 +150,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       </div>
 
       {locked && <div className="crosshair" />}
-      {locked && focusedDoorId && !unlockedDoors[focusedDoorId] && (
+      {locked && focusedDoorId && !doorOpen(focusedDoorId) && (
         <p className={`hint ${hasKey ? 'hint-gold' : 'hint-warn'}`}>
           {hasKey ? (
             <>
@@ -157,7 +161,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
           )}
         </p>
       )}
-      {locked && (!focusedDoorId || unlockedDoors[focusedDoorId]) && focusedId && !openId && (
+      {locked && (!focusedDoorId || doorOpen(focusedDoorId)) && focusedId && !openId && (
         <p className="hint">
           <kbd>E</kbd>{' '}
           {focusedKind === 'key'
@@ -199,6 +203,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
             </div>
+            <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
           </div>
         </div>
       )}

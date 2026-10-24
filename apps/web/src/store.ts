@@ -24,6 +24,8 @@ type State = {
   locked: boolean
   hasKey: boolean
   unlockedDoors: Record<string, true>
+  /** Exploración libre: todas las puertas abiertas, sin llaves. Preferencia del usuario. */
+  freeExplore: boolean
 
   enterPalace: (palace: Museum) => void
   resume: () => void
@@ -32,6 +34,7 @@ type State = {
   toggleMemorized: (id: string) => void
   pickupKey: () => void
   unlockDoor: (doorId: string) => void
+  setFreeExplore: (on: boolean) => void
   recordExam: (id: string, result: ExamResult) => void
   set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked'>>) => void
 }
@@ -60,6 +63,7 @@ export const useStore = create<State>()(
       locked: false,
       hasKey: false,
       unlockedDoors: {},
+      freeExplore: true,
 
       enterPalace: (palace) =>
         set({
@@ -80,6 +84,7 @@ export const useStore = create<State>()(
       setMode: (mode) => set({ mode, openId: null, exam: {} }),
       pickupKey: () => set({ hasKey: true }),
       unlockDoor: (doorId) => set((s) => ({ unlockedDoors: { ...s.unlockedDoors, [doorId]: true } })),
+      setFreeExplore: (freeExplore) => set({ freeExplore }),
       toggleMemorized: (id) =>
         set((s) => {
           const memorized = { ...s.memorized }
@@ -94,15 +99,16 @@ export const useStore = create<State>()(
       name: 'mus3o-v1',
       storage: safeStorage,
       // Solo el contenido y el progreso; el layout se recalcula.
-      partialize: (s) => ({ palace: s.palace, memorized: s.memorized }),
+      partialize: (s) => ({ palace: s.palace, memorized: s.memorized, freeExplore: s.freeExplore }),
       // Lo guardado puede estar corrupto o venir de otra versión: se valida antes de usarlo.
       merge: (persisted, current) => {
-        const p = persisted as { palace?: unknown; memorized?: unknown } | undefined
+        const p = persisted as { palace?: unknown; memorized?: unknown; freeExplore?: unknown } | undefined
+        const freeExplore = typeof p?.freeExplore === 'boolean' ? p.freeExplore : current.freeExplore
         const palace = MuseumSchema.safeParse(p?.palace)
-        if (!palace.success) return current
+        if (!palace.success) return { ...current, freeExplore }
         const memorized =
           p?.memorized && typeof p.memorized === 'object' ? (p.memorized as Record<string, true>) : {}
-        return { ...current, palace: palace.data, memorized }
+        return { ...current, palace: palace.data, memorized, freeExplore }
       },
     },
   ),
@@ -110,4 +116,9 @@ export const useStore = create<State>()(
 
 export function allConcepts(palace: Museum | null) {
   return palace?.rooms.flatMap((r) => r.pieces) ?? []
+}
+
+/** Una puerta está abierta si se desbloqueó con la llave o si se explora libremente. */
+export function isDoorOpen(s: { freeExplore: boolean; unlockedDoors: Record<string, true> }, doorId: string) {
+  return s.freeExplore || !!s.unlockedDoors[doorId]
 }

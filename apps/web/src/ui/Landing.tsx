@@ -3,17 +3,14 @@ import { generateMuseum } from '../lib/api'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { buildLayout } from '../palace/layout'
-import { detectFormat, MAX_INPUT_CHARS, parsePalace, type InputFormat } from '../palace/parse'
+import { detectFormat, MAX_INPUT_CHARS, parsePalace } from '../palace/parse'
 import { useStore } from '../store'
+import { FreeExploreToggle } from './FreeExploreToggle'
 
 // La maqueta 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
 const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.Preview })))
 
-const FORMATS: { id: InputFormat; label: string; placeholder: string }[] = [
-  { id: 'text', label: 'Texto', placeholder: '# Tema 1\n- Concepto A: explicación\n- Concepto B\n\n# Tema 2\n- Concepto C' },
-  { id: 'json', label: 'JSON', placeholder: '{\n  "Tema 1": ["Concepto A", "Concepto B"],\n  "Tema 2": { "Concepto C": "explicación" }\n}' },
-  { id: 'csv', label: 'CSV', placeholder: 'sala,concepto,detalle\nTema 1,Concepto A,explicación\nTema 2,Concepto C,explicación' },
-]
+const PLACEHOLDER = ['# Tema 1', '- Concepto A: explicación', '- Concepto B', '', '# Tema 2', '- Concepto C'].join(String.fromCharCode(10))
 const MAX_FILE_BYTES = 200_000
 
 export function Landing() {
@@ -21,7 +18,6 @@ export function Landing() {
   const resume = useStore((s) => s.resume)
   const saved = useStore((s) => s.palace)
   const [input, setInput] = useState(EXAMPLE_TEXT)
-  const [format, setFormat] = useState<InputFormat>('text')
   const [fileError, setFileError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [aiState, setAiState] = useState<'idle' | 'loading'>('idle')
@@ -54,7 +50,8 @@ export function Landing() {
   }
 
   const deferred = useDeferredValue(input)
-  const result = useMemo(() => parsePalace(deferred, format), [deferred, format])
+  // El formato se detecta solo: un JSON pegado (p. ej. un palacio exportado) se sigue aceptando.
+  const result = useMemo(() => parsePalace(deferred, detectFormat(deferred)), [deferred])
   const layout = useMemo(() => (result.ok ? buildLayout(result.palace) : null), [result])
   const conceptCount = result.ok ? result.palace.rooms.reduce((n, r) => n + r.pieces.length, 0) : 0
 
@@ -67,7 +64,6 @@ export function Landing() {
     }
     const text = await file.text()
     setInput(text)
-    setFormat(file.name.endsWith('.json') ? 'json' : file.name.endsWith('.csv') ? 'csv' : detectFormat(text))
   }
 
   return (
@@ -81,25 +77,15 @@ export function Landing() {
         </p>
 
         <div className="editor">
-          <div className="tabs" role="tablist">
-            {FORMATS.map((f) => (
-              <button
-                key={f.id}
-                role="tab"
-                aria-selected={format === f.id}
-                className={format === f.id ? 'tab active' : 'tab'}
-                onClick={() => setFormat(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="tabs">
+            <span className="tab active">Tus apuntes</span>
             <button className="tab tab-file" onClick={() => fileRef.current?.click()}>
               Subir archivo
             </button>
             <input
               ref={fileRef}
               type="file"
-              accept=".txt,.md,.json,.csv"
+              accept=".txt,.md"
               hidden
               onChange={(e) => onFile(e.target.files?.[0])}
             />
@@ -107,7 +93,7 @@ export function Landing() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={FORMATS.find((f) => f.id === format)!.placeholder}
+            placeholder={PLACEHOLDER}
             spellCheck={false}
             maxLength={MAX_INPUT_CHARS}
             aria-label="Apuntes"
@@ -135,7 +121,7 @@ export function Landing() {
           <button className="btn" disabled={!input.trim() || aiState === 'loading'} onClick={generateWithAi}>
             {aiState === 'loading' ? 'Levantando muros…' : 'Generar con IA'}
           </button>
-          <button className="btn btn-ghost" onClick={() => { setInput(EXAMPLE_TEXT); setFormat('text') }}>
+          <button className="btn btn-ghost" onClick={() => setInput(EXAMPLE_TEXT)}>
             Usar ejemplo: Biología celular
           </button>
           <button className="btn btn-ghost" onClick={() => enterPalace(dungeonDemoMuseum)}>
@@ -147,6 +133,7 @@ export function Landing() {
             </button>
           )}
         </div>
+        <FreeExploreToggleConnected />
       </section>
 
       <section className="landing-right" aria-label="Vista previa del palacio">
@@ -171,4 +158,10 @@ export function Landing() {
       </section>
     </main>
   )
+}
+
+function FreeExploreToggleConnected() {
+  const freeExplore = useStore((s) => s.freeExplore)
+  const setFreeExplore = useStore((s) => s.setFreeExplore)
+  return <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 }

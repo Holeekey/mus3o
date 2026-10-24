@@ -6,7 +6,7 @@ import { Vector3 } from 'three'
 import type { Piece } from '@mus3o/shared'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
-import { playerPose, useStore } from '../store'
+import { playerPose, useStore, isDoorOpen } from '../store'
 import { pointerLock } from './pointerLock'
 
 const EYE = 1.7
@@ -41,7 +41,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       keys.current[e.code] = true
       const s = useStore.getState()
       if (e.code === 'KeyE') {
-        if (s.focusedDoorId && !s.unlockedDoors[s.focusedDoorId]) {
+        if (s.focusedDoorId && !isDoorOpen(s, s.focusedDoorId)) {
           if (s.hasKey) {
             s.unlockDoor(s.focusedDoorId)
           }
@@ -101,7 +101,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
 
         // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
         const doorColliders = (layout.doors ?? [])
-          .filter((d) => !s.unlockedDoors[d.id])
+          .filter((d) => !isDoorOpen(s, d.id))
           .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
         const totalColliders = [...layout.colliders, ...doorColliders]
 
