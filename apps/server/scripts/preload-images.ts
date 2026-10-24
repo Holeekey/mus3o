@@ -2,7 +2,8 @@
  * Precarga lenta de las imágenes de la demo en la semilla commiteada (`apps/server/seed/images`).
  *
  *   npx tsx apps/server/scripts/preload-images.ts            (desde la raíz)
- *   npx tsx apps/server/scripts/preload-images.ts --force    (vuelve a pedir lo que ya está en la semilla)
+ *   npx tsx apps/server/scripts/preload-images.ts --force    (vuelve a pedir las imágenes que ya están en la semilla)
+ *   npx tsx apps/server/scripts/preload-images.ts --info-only (solo las fichas "Para saber más" de historia y medicina)
  *
  * Secuencial, ~1,5 s entre consultas, respetando 429 (ver images.ts). Es reanudable: lo ya sembrado se salta.
  * Variables: IMAGE_SEED_DIR (destino), IMAGE_PRELOAD_DELAY_MS, IMAGE_PRELOAD_MAX_BYTES (por imagen),
@@ -15,7 +16,8 @@ import { sampleMuseum, type ImageSearch, type Museum } from "@mus3o/shared";
 import { historiaMuseum } from "../../web/src/mocks/historia";
 import { medicinaMuseum } from "../../web/src/mocks/medicina";
 import { demoMuseum } from "../../web/src/mocks/index";
-import { seedDir, readSeedMeta, writeSeedFile, writeSeedMeta } from "../src/imageStore";
+import { seedDir, readSeedInfo, readSeedMeta, writeSeedFile, writeSeedInfo, writeSeedMeta } from "../src/imageStore";
+import { infoKey, resolveInfo } from "../src/info";
 import { UpstreamError, loadImageFile, queryKey, resolveImage } from "../src/images";
 
 // La caché de ejecución va a una carpeta temporal: la única salida persistente es la semilla.
@@ -124,7 +126,55 @@ async function main() {
   for (const m of missing) console.log(`  faltó: ${m}`);
 }
 
-main()
+/** Fichas "Para saber más" de los conceptos de las demos de historia y medicina (resúmenes de Wikipedia, JSON pequeño). */
+async function preloadInfo() {
+  const seen = new Set<string>();
+  const items: { label: string; q: { wiki: string; lang?: string; context?: string } }[] = [];
+  for (const m of [historiaMuseum, medicinaMuseum]) {
+    for (const room of m.rooms) {
+      for (const p of room.pieces) {
+        const s = p.imageSearch;
+        if (!s?.wikiTitle?.trim()) continue;
+        const q = { wiki: s.wikiTitle, lang: s.lang, context: s.context };
+        const key = infoKey(q);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({ label: `${m.title} / ${p.title}`, q });
+      }
+    }
+  }
+  console.log(`\nFichas informativas: ${items.length} consultas.`);
+  let ok = 0;
+  let none = 0;
+  let skipped = 0;
+  let first = true;
+  for (const { label, q } of items) {
+    if (!force && (await readSeedInfo(infoKey(q))) !== undefined) {
+      skipped++;
+      continue;
+    }
+    if (!first) await sleep(DELAY_MS);
+    first = false;
+    try {
+      const info = await resolveInfo(q);
+      await writeSeedInfo(infoKey(q), info);
+      if (info) {
+        ok++;
+        console.log(`+ ${label}: «${info.title}» (${info.extract.length} car.)`);
+      } else {
+        none++;
+        console.log(`- ${label}: sin artículo`);
+      }
+    } catch (err) {
+      if (!(err instanceof UpstreamError)) throw err;
+      console.log(`! ${label}: Wikipedia no disponible (${err.message}); se reintentará al volver a ejecutar`);
+    }
+  }
+  console.log(`Fichas: ${ok} nuevas, ${none} sin artículo, ${skipped} ya estaban.`);
+}
+
+(process.argv.includes("--info-only") ? Promise.resolve() : main())
+  .then(preloadInfo)
   .catch((err) => {
     console.error(err);
     process.exitCode = 1;

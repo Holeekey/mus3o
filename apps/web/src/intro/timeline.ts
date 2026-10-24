@@ -1,4 +1,4 @@
-import { roomAt, type PalaceLayout } from '../palace/layout'
+import { roomAt, type PalaceLayout, type RoomLayout } from '../palace/layout'
 
 /**
  * "El palacio se levanta": línea de tiempo pura y determinista de la entrada al palacio.
@@ -46,6 +46,59 @@ function corridorRooms(layout: PalaceLayout, index: number): string[] {
   return ids
 }
 
+const span = (t0: number, a: number, b: number): Span => ({ start: t0 + a, end: t0 + b })
+
+/** Cuándo se levanta cada elemento de una sala cuya construcción empieza en `t0` y dura `rd`. */
+export function roomSpans(room: RoomLayout, t0: number, rd: number): Record<string, Span> {
+  const id = room.id
+  const spans: Record<string, Span> = {
+    [floorKey(id)]: span(t0, 0, 0.3 * rd),
+    [wallsKey(id)]: span(t0, 0.1 * rd, 0.55 * rd),
+    [monumentKey(id)]: span(t0, 0.3 * rd, 0.65 * rd),
+    [paintingsKey(id)]: span(t0, 0.55 * rd, 0.95 * rd),
+    [titleKey(id)]: span(t0, 0.1 * rd, Math.min(0.1 * rd + 1.2, rd)),
+  }
+  const m = room.pedestals.length
+  const stagger = m > 1 ? (0.3 * rd) / (m - 1) : 0
+  room.pedestals.forEach((p, j) => {
+    const s = t0 + 0.3 * rd + j * stagger
+    spans[pedestalKey(p.concept.id)] = { start: s, end: s + 0.2 * rd }
+    spans[objectKey(p.concept.id)] = { start: s + 0.15 * rd, end: s + 0.35 * rd }
+  })
+  return spans
+}
+
+// ── Intro guiada por datos (palacio que se levanta mientras la IA lo escribe) ───────────────────────
+//
+// No hay reloj fijo: la sala empieza a levantarse cuando llega (`liveArrival`), la cámara sigue en el
+// aire mientras falten salas, y solo cuando llega `done` y termina la última sala se calcula el descenso.
+
+/** Duración de levantar una sala que llega en vivo (algo más pausada que en la intro fija). */
+export const LIVE_ROOM_DUR = 2
+export const DESCENT_DUR = DESCENT_END - DESCENT_START
+
+/** Línea de tiempo vacía y sin final: el descenso aún no está programado. */
+export function liveTimeline(): IntroTimeline {
+  return { order: [], spans: {}, total: Infinity, descentStart: Infinity }
+}
+
+/** Registra la llegada de una sala en el instante `t`: todo su levantamiento parte de ahí. Devuelve cuándo termina. */
+export function liveArrival(tl: IntroTimeline, room: RoomLayout, index: number, t: number): number {
+  const added = roomSpans(room, t, LIVE_ROOM_DUR)
+  // El pasillo que la une con la anterior sale a la vez que su suelo.
+  if (index > 0) added[corridorKey(index - 1)] = span(t, 0.05 * LIVE_ROOM_DUR, 0.05 * LIVE_ROOM_DUR + 0.6)
+  Object.assign(tl.spans, added)
+  tl.order.push(room.id)
+  return Math.max(...Object.values(added).map((s) => s.end))
+}
+
+/** Fin de las llegadas en el instante `t`: el descenso empieza al terminar lo que aún se está levantando. */
+export function liveFinish(tl: IntroTimeline, t: number): void {
+  const lastEnd = Math.max(t, ...Object.values(tl.spans).map((s) => s.end))
+  tl.descentStart = lastEnd
+  tl.total = lastEnd + DESCENT_DUR
+}
+
 export function introTimeline(layout: PalaceLayout): IntroTimeline {
   const rooms = layout.rooms
   const n = rooms.length
@@ -86,25 +139,13 @@ export function introTimeline(layout: PalaceLayout): IntroTimeline {
   const rd = Math.min(ROOM_DUR_MAX, window)
   const step = n > 1 ? (window - rd) / (n - 1) : 0
   const roomStart = new Map<string, number>()
-  const span = (t0: number, a: number, b: number): Span => ({ start: t0 + a, end: t0 + b })
 
   order.forEach((id, k) => {
     const room = rooms.find((r) => r.id === id)
     if (!room) return
     const t0 = BUILD_START + k * step
     roomStart.set(id, t0)
-    spans[floorKey(id)] = span(t0, 0, 0.3 * rd)
-    spans[wallsKey(id)] = span(t0, 0.1 * rd, 0.55 * rd)
-    spans[monumentKey(id)] = span(t0, 0.3 * rd, 0.65 * rd)
-    spans[paintingsKey(id)] = span(t0, 0.55 * rd, 0.95 * rd)
-    spans[titleKey(id)] = span(t0, 0.1 * rd, Math.min(0.1 * rd + 1.2, rd))
-    const m = room.pedestals.length
-    const stagger = m > 1 ? (0.3 * rd) / (m - 1) : 0
-    room.pedestals.forEach((p, j) => {
-      const s = t0 + 0.3 * rd + j * stagger
-      spans[pedestalKey(p.concept.id)] = { start: s, end: s + 0.2 * rd }
-      spans[objectKey(p.concept.id)] = { start: s + 0.15 * rd, end: s + 0.35 * rd }
-    })
+    Object.assign(spans, roomSpans(room, t0, rd))
   })
 
   // Un pasillo se levanta cuando su sala de origen ya está de pie y conecta con la siguiente.

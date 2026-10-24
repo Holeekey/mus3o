@@ -1,4 +1,4 @@
-import { MeshPortalMaterial, Text } from '@react-three/drei'
+import { Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -7,6 +7,8 @@ import { DioramaScene } from '../diorama/DioramaScene'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import type { Diorama } from '@mus3o/shared'
 import { warmDioramaModel } from '../diorama/model'
+import { capTextureSize } from '../lib/capTexture'
+import { LitePortal } from './LitePortal'
 
 const FONT_BODY = '/fonts/HankenGrotesk.ttf'
 
@@ -14,9 +16,20 @@ const FONT_BODY = '/fonts/HankenGrotesk.ttf'
 export const FADE_FAR = 6
 export const FADE_NEAR = 2
 export const ENTER_RANGE = 1.9
-const MOUNT_RANGE = 9 // más lejos que esto no se dibuja el diorama interior (el cuadro aún lo tapa)
+const MOUNT_RANGE = 10 // más cerca que esto se monta el diorama (aún tapado por el cuadro) para tenerlo listo
+const UNMOUNT_RANGE = 16 // histéresis: más lejos que esto se desmonta y libera memoria
 const PORTAL_VIEW_WIDTH = 14.6 // m de diorama visibles en el plano del cuadro
 const PORTAL_PLANE_Z = 5 // z del diorama que coincide con el plano del cuadro
+
+// Distancia de la cámara a cada cuadro-portal montado. Con un diorama por sala, solo el portal más
+// cercano monta su maqueta: así varias salas a la vez no multiplican el coste de dibujo.
+const portalDist = new Map<string, number>()
+const isNearestPortal = (id: string) => {
+  const mine = portalDist.get(id)
+  if (mine === undefined) return true
+  for (const [other, d] of portalDist) if (other !== id && (d < mine || (d === mine && other < id))) return false
+  return true
+}
 
 const smoothstep = (a: number, b: number, v: number) => {
   const t = Math.min(1, Math.max(0, (v - a) / (b - a)))
@@ -57,8 +70,9 @@ function usePaintingTexture(url: string | undefined, aspect: number) {
       url,
       (t) => {
         if (dead) return t.dispose()
+        capTextureSize(t)
         t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 8
+        t.anisotropy = 4
         // recorte tipo "cover" para no deformar la obra
         const img = t.image as { width: number; height: number }
         const ia = img.width / img.height
@@ -182,7 +196,10 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
   useEffect(() => {
     const st = useDioramaStore.getState()
     st.registerPortal({ id, diorama, center: position, rotationY, width, height, roomId })
-    return () => useDioramaStore.getState().unregisterPortal(id)
+    return () => {
+      portalDist.delete(id)
+      useDioramaStore.getState().unregisterPortal(id)
+    }
   }, [id, diorama, position, rotationY, width, height, roomId])
 
   const _c = useMemo(() => new THREE.Vector3(), [])
@@ -202,7 +219,8 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
       fogRef.current.near = dist + atmo.fogNear * 0.45 * unit
       fogRef.current.far = dist + atmo.fogFar * 1.0 * unit
     }
-    const wantNear = dist < MOUNT_RANGE && phase !== 'inside'
+    portalDist.set(id, dist)
+    const wantNear = dist < (near ? UNMOUNT_RANGE : MOUNT_RANGE) && phase !== 'inside' && isNearestPortal(id)
     if (wantNear !== near) setNear(wantNear)
 
     // ¿Se puede entrar? Cerca, de frente al cuadro y mirándolo.
@@ -225,19 +243,16 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
   return (
     <group ref={group} position={position} rotation={[0, rotationY, 0]}>
       <Frame w={width} h={height} trim={trim} bare={bare} />
-      {/* ventana */}
-      <mesh>
-        <planeGeometry args={[width, height]} />
-        <MeshPortalMaterial resolution={1024} blur={0}>
+      {/* ventana: el diorama solo se dibuja a menos de FADE_FAR (más lejos el cuadro opaco lo tapa) */}
+      {near && (
+        <LitePortal id={id} width={width} height={height} renderRange={FADE_FAR + 0.3}>
           <color attach="background" args={[atmo.skyHorizon]} />
           <fog ref={fogRef} attach="fog" args={[atmo.fog, 5, 30]} />
-          {near && (
-            <group position={[0, -height / 2 - 0.1, -PORTAL_PLANE_Z * unit]}>
-              <DioramaScene diorama={diorama} unit={unit} shadowMapSize={1024} clip={clip} />
-            </group>
-          )}
-        </MeshPortalMaterial>
-      </mesh>
+          <group position={[0, -height / 2 - 0.1, -PORTAL_PLANE_Z * unit]}>
+            <DioramaScene diorama={diorama} unit={unit} shadowMapSize={1024} clip={clip} staticShadows />
+          </group>
+        </LitePortal>
+      )}
       {/* el cuadro, por delante de la ventana */}
       <mesh position={[0, 0, 0.012]} renderOrder={2}>
         <planeGeometry args={[width, height]} />

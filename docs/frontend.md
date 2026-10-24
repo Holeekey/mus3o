@@ -25,7 +25,9 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 ## 2. Landing (`ui/Landing.tsx`)
 
-- Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
+- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los palacios destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
+- **Equipo:** `#equipo` muestra una página aparte (`ui/TeamSection.tsx`, elegida en `App.tsx` con `ui/useHash.ts`): galería vertical donde la tarjeta en el centro de la pantalla va a color y el resto en blanco y negro. Fotos en `public/team/<nombre>.jpg`.
+- Editor "Tus apuntes" (texto libre); el palacio se valida con el parser local (salas y conceptos en la barra de estado).
 - **"+ Fuentes"** abre y cierra una columna **dentro del recuadro del editor**, a la derecha del texto (debajo en pantallas ≤ 640 px) (`ui/SourcesPanel.tsx`); también se cierra con ✕ o Escape: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
 
 | Tipo | Cómo se lee |
@@ -101,13 +103,13 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 `buildLayout(palace)` convierte el `Museum` en geometría determinista (función pura, testeable):
 
 - Todo en metros, plano XZ; `Y` es la altura.
-- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`.
+- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`. Hasta 12 salas y grafos no lineales (ramas, convergencias): además del árbol de recorrido, toda arista entre salas vecinas en la grilla tiene puerta (bucles y atajos).
 - Tamaño de sala según el número de piezas (`sizes`). Muros con hueco de puerta; cada pared con puerta se divide en dos tramos.
 - **Puertas** (`DoorLayout`): `fromRoomId` determina qué llave abre cada puerta.
 - **Corredores** (`CorridorLayout`): piso y muros entre salas.
 - **Pedestales** (`PedestalLayout`): una pieza por pedestal, con forma `Glyph` (o modelo, en la escena).
 - **Cuadros** (`PaintingSlot`): huecos en muros interiores, fuera de las puertas. `SLOT_Y = 2.3`, `SLOT_GAP = 0.4`, `SLOT_DOOR_MARGIN = 0.6`, máx. 16 por sala.
-- **Colores de sala:** `ROOM_COLORS` (8 colores de neón) en orden de sala.
+- **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
 
@@ -122,14 +124,18 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `Player.tsx` | Controles FPS: **WASD** (o flechas), **Shift** correr, **mouse** mirar (pointer lock), colisiones, foco del concepto |
 | `ProceduralModel.tsx` | Dibuja modelos `procedural` con primitivas (cotas de tamaño) |
 | `Shapes.tsx` | Dibuja `glyph` (formas geométricas simples) |
+| `DynamicTotem.tsx` | Modelo `.glb` externo (`piece.dynamicAsset`, Poly Pizza): `useGLTF` + `scene.clone`, `Resize` 0,7 m + `Center bottom`, `ErrorBoundary` y `Suspense` con respaldo (el glifo o modelo procedural de siempre) |
 | `DungeonAssets.tsx` | Carga modelos de `catalog.json` (`type: "catalog"`) |
 | `Painting.tsx` | Cuadro con imagen real (`useResolvedImage`) |
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
-| `Preview.tsx` | Vista previa del palacio en la landing |
+| `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
+| `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
 | `pointerLock.ts` | Utilidad para bloquear el puntero |
+| `actions.ts` | Acciones del jugador (`interact`, `examine`, `toggleMemorize`, `openAris`, `enterDiorama`, `leaveDiorama`). Las usan el teclado (`Player.tsx`) y la pantalla táctil, así un botón nunca hace menos que su tecla |
+| `touchInput.ts` | Estado mutable del joystick y la mirada táctil; `markTouchDevice` marca el dispositivo como táctil (`<html data-touch>`) |
 
 ### Controles
 
@@ -138,19 +144,36 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `W A S D` / flechas | Moverse | `Player.tsx` |
 | `Shift` | Correr | `Hud.tsx` (ayuda) |
 | Mouse | Mirar (pointer lock) | `Player.tsx` |
-| `E` | Examinar concepto o abrir la ficha; usar llave en una puerta; entrar al diorama | `Player.tsx`, `dioramaStore.ts` |
-| `M` | Marcar o desmarcar memorizado (en modo explorar) | `Player.tsx` |
-| `T` | Hablar con Aris (abre el prompt) | `Player.tsx` |
-| `Q` | Salir del diorama | `dioramaStore.ts` |
+| `E` | Examinar concepto o abrir la ficha; recoger la llave; usar llave en una puerta; entrar al diorama | `scene/actions.ts` |
+| `M` | Marcar o desmarcar memorizado (en modo explorar) | `scene/actions.ts` |
+| `T` | Hablar con Aris (abre el prompt) | `scene/actions.ts` |
+| `Q` | Salir del diorama | `scene/actions.ts` |
+| `N` | Narrador | `ui/Narrator.tsx` |
+| `R` / `Y` | En el examen: reintentar el dictado / escribir la respuesta | `ui/ExamCard.tsx` |
 | `Esc` | Pausa | Ayuda del HUD |
 
 En el examen, responder exige escribir, así que se libera el puntero.
+
+### Controles táctiles (`ui/TouchControls.tsx`)
+
+Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/useIsTouch.ts`). Ninguna acción necesita teclado:
+
+| Gesto o botón | Equivale a |
+|---|---|
+| Joystick visible abajo a la izquierda (o arrastrar en cualquier punto de la mitad izquierda); empujar a fondo corre | `W A S D` + `Shift` |
+| Deslizar en la mitad derecha | Mouse |
+| 👁️ / ✓ / 🤖 | `E` / `M` / `T` |
+| Tocar el aviso ("Examinar concepto ›", "Entrar al cuadro ›", "Volver a la sala ›", "Usar llave…") | La tecla del aviso |
+| Botones en las fichas ("marcar como memorizado", ✕) y en el examen ("reintentar", "escribir") | `M`, `E`, `R`, `Y` |
+| Tocar "Narrador" | `N` |
+
+`ui/KeyHint.tsx` dibuja cada atajo: en escritorio `<kbd>E</kbd> Examinar`; en táctil un botón con la misma acción, o nada si la tecla no tiene equivalente. La primera vez se muestra la ayuda "Arrastra a la izquierda para moverte · desliza a la derecha para mirar" hasta el primer movimiento (`localStorage` `mus3o-touch-tip`).
 
 ## 6. HUD (`ui/Hud.tsx`) y otros componentes de `ui/`
 
 | Componente | Función |
 |---|---|
-| `Hud` | Panel de concepto (`ConceptCard`), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |
@@ -165,6 +188,9 @@ Asistente de estudio **sin IA**, por reglas:
 - Tolerancia a errores tipográficos con distancia de Levenshtein.
 - Saludos, presentación, orientación hacia la siguiente sala, conteo de conceptos pendientes, pistas.
 - `speakAris(text)` usa la síntesis de voz del navegador (sin librerías).
+- **Menos fallback:** además de las reglas de navegación, Aris reconoce conceptos y salas **por nombre** (tildes ignoradas y un typo de tolerancia) y responde con el texto o la asociación mnemotécnica de la pieza; lista los conceptos de la sala, cuenta salas, explica los controles y el método de Loci. Las coincidencias por subcadena o Levenshtein exigen palabras de 4+ letras (evita que "escolástica" salude). Preguntas sin letras reales (`??`) no llaman a Haiku.
+- **Límite de esfuerzo de la ayuda:** `askArisHelp` (`lib/api.ts`) responde con el respaldo, sin red, si ya hay una consulta en curso, si pasaron menos de 4 s desde la anterior o si se llegó a 10 por sesión; repite desde caché la misma pregunta en la misma sala.
+- **Ayuda de Haiku:** cuando ninguna regla coincide, `evaluateArisQuery` devuelve `needsHelp: true` y `askAris` (store) muestra "Déjame pensarlo…" y llama a `POST /api/aris-help` (`lib/api.ts` → `askArisHelp`) con la pregunta, el título del palacio, la sala actual y hasta 12 títulos de conceptos (nunca los apuntes). Si falla o no hay IA, se muestra el respaldo guiado de siempre. Si el jugador cierra el globo o pregunta otra cosa mientras tanto, la respuesta tardía se descarta.
 
 ## 8. Otras piezas
 

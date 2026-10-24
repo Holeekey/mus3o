@@ -43,7 +43,15 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `PORT` | No | `3001` |
 | `WEB_ORIGIN` | No | `http://localhost:5173` |
 | `MAX_DAILY_GENERATIONS` | No | `200` |
-| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt`) |
+| `MAX_DAILY_ARIS_HELP` | No | `150` |
+| `ANTHROPIC_ARIS_MODEL` | No | `claude-haiku-5-5` |
+| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt` y `/api/assets-review`) |
+| `POLY_PIZZA_API_KEY` | No | — (sin ella no se buscan modelos 3D; los pedestales usan glifos) |
+| `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
+| `MUSEUM_CACHE_DIR` | No | `.cache/museums` (museos generados, sobrevive a reinicios) |
+| `ANTHROPIC_FALLBACK_MODEL` | No | `claude-haiku-5-5` (respaldo creado de piezas sin asset) |
+| `ANTHROPIC_DIORAMA_MODEL` | No | el principal (Haiku se probó y se descartó: ver `servidor.md`) |
+| `FLOW_FORMAT` | No | `dsl` (`json` = formato anterior, más caro) |
 
 **Reglas:** `.env` está ignorado por git. Solo el servidor lee variables. Nunca uses `VITE_*` para secretos.
 
@@ -63,6 +71,13 @@ WEB_ORIGIN=http://localhost:5173
 MAX_DAILY_GENERATIONS=200
 # Solo depuración: habilita POST /api/improve-prompt (con "true"). Déjalo vacío en producción.
 ENABLE_DEBUG_ROUTES=
+# Modelos 3D (Poly Pizza), cachés y flujo: ver .env.example y servidor.md
+POLY_PIZZA_API_KEY=
+ASSET_CACHE_DIR=
+MUSEUM_CACHE_DIR=
+ANTHROPIC_FALLBACK_MODEL=claude-haiku-5-5
+ANTHROPIC_DIORAMA_MODEL=
+FLOW_FORMAT=dsl
 ```
 
 Si agregas una variable nueva, añádela aquí con un comentario y actualiza la tabla de arriba y [servidor.md](./servidor.md) §6.

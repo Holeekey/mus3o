@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ResolvedImageSchema, type ImageSearch, type Museum, type ResolvedImage } from '@mus3o/shared'
+import { ResolvedImageSchema, type ImageSearch, type Museum, type ResolvedImage, type Room } from '@mus3o/shared'
 
 const cache = new Map<string, Promise<ResolvedImage | null>>()
 // Resultados ya resueltos: se leen de forma sincrónica para no mostrar "cargando" ni un instante.
@@ -98,6 +98,43 @@ export async function prefetchPalaceImages(palace: Museum): Promise<void> {
     }
   }
   await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, queue.length) }, worker))
+}
+
+// Cupo compartido entre todas las salas que llegan en vivo: así 8 salas seguidas no piden 8 × 4 imágenes a la vez.
+let roomSlotsInUse = 0
+const roomSlotWaiters: Array<() => void> = []
+
+async function withRoomSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (roomSlotsInUse >= PREFETCH_CONCURRENCY) await new Promise<void>((resolve) => roomSlotWaiters.push(resolve))
+  roomSlotsInUse++
+  try {
+    return await task()
+  } finally {
+    roomSlotsInUse--
+    roomSlotWaiters.shift()?.()
+  }
+}
+
+/**
+ * Resuelve y precarga las imágenes de una sala recién llegada, el cuadro principal primero. Como mucho 4
+ * peticiones a la vez entre todas las salas, en orden de llegada. Las imágenes que otra petición ya trajo no se repiten.
+ */
+export function prefetchRoomImages(room: Room): Promise<void> {
+  const seen = new Set<string>()
+  const searches = [room.imageSearch, ...room.pieces.map((p) => p.imageSearch)].filter(hasSearch).filter((s) => {
+    const key = keyOf(s)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  return Promise.all(
+    searches.map((search) =>
+      withRoomSlot(async () => {
+        const image = await fetchResolvedImage(search)
+        if (image) await preload(image.src)
+      }),
+    ),
+  ).then(() => undefined)
 }
 
 /** `undefined` mientras carga, `null` si no hay imagen. */
