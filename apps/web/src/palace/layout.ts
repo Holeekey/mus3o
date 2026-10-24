@@ -1,4 +1,4 @@
-import { planRoomGrid, type Glyph, type ImageSearch, type Museum, type Piece } from '@mus3o/shared'
+import { planRoomGrid, type Diorama, type Glyph, type ImageSearch, type Museum, type Piece } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -37,6 +37,8 @@ export type RoomLayout = {
   paintingSlots: PaintingSlot[]
   /** Búsqueda del cuadro principal de la sala. */
   imageSearch?: ImageSearch
+  /** Diorama al que se entra desde el cuadro principal (si lo hay). */
+  diorama?: Diorama
 }
 
 export type CorridorLayout = { floor: Box; walls: Box[] }
@@ -244,6 +246,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       pedestals,
       paintingSlots: paintingSlots(x, z, w, d, doorsOf[i]),
       imageSearch: room.imageSearch,
+      diorama: room.diorama,
     }
   })
 
@@ -351,7 +354,7 @@ export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: n
   return { x: nx, z: nz }
 }
 
-export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string }
+export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string; roomId?: string; diorama?: Diorama }
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
 
@@ -364,7 +367,7 @@ export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
   if (main && hasSearch(room.imageSearch)) {
-    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}` })
+    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
     free.splice(free.indexOf(main), 1)
   }
   for (const p of room.pedestals) {

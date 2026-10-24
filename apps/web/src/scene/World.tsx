@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
@@ -7,6 +7,9 @@ import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { DecayField } from './Decay'
 import { Player } from './Player'
 import { Room } from './Room'
+
+// El mundo de los dioramas (entrar al cuadro) se descarga aparte y solo si alguna sala tiene uno.
+const DioramaRuntime = lazy(() => import('../diorama/DioramaRuntime').then((m) => ({ default: m.DioramaRuntime })))
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
@@ -49,6 +52,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
   )
+  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama && r.imageSearch), [layout])
   return (
     <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat>
       <color attach="background" args={[scene.background]} />
@@ -90,6 +94,11 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         )
       })}
       <Player layout={layout} />
+      {hasDiorama && (
+        <Suspense fallback={null}>
+          <DioramaRuntime layout={layout} theme={theme} />
+        </Suspense>
+      )}
     </Canvas>
   )
 }

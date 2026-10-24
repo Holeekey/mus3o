@@ -206,7 +206,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       ))}
       <Inscription room={room} palette={palette} />
       {paintings.map((a) => (
-        <Painting key={a.key} slot={a.slot} search={a.search} palette={palette} theme={theme} />
+        <Painting key={a.key} slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} />
       ))}
       <Monument room={room} theme={theme} />
       {room.pedestals.map((p) => (
