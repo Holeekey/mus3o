@@ -186,7 +186,7 @@ export function DecayWrap({ id, children }: { id: string; children: ReactNode })
   })
 
   return (
-    <group ref={group} position={[0, PEDESTAL_TOP, 0]}>
+    <group ref={group} position={[0, PEDESTAL_TOP, 0]} userData={{ noMerge: true }}>
       <group position={[0, -PEDESTAL_TOP, 0]}>{children}</group>
     </group>
   )

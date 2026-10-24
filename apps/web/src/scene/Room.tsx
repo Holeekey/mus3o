@@ -14,6 +14,7 @@ import { AssetWall } from './DungeonAssets'
 import { ProceduralMonument } from './Monument'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
+import { StaticMerge } from './StaticMerge'
 import { useIntro } from '../intro/store'
 import { Reveal } from '../intro/Reveal' // INTRO: aparición al entrar al palacio
 import { floorKey, monumentKey, objectKey, paintingsKey, pedestalKey, wallsKey } from '../intro/timeline'
@@ -91,6 +92,7 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
 // Modelos de la IA miden ~2 m; sobre el pedestal se escalan a ~0.9 m.
 const MODEL_SCALE = 0.45
 const PEDESTAL_TOP = 1.05
+const LABEL_CULL = 14 // m: más lejos la etiqueta del pedestal no se lee ni se ve (muros de por medio)
 // La etiqueta se apaga a medida que el recuerdo se debilita.
 const LABEL_OPACITY = { new: 0.85, intact: 0.85, cracked: 0.65, broken: 0.5, forgotten: 0.4 } as const
 
@@ -156,6 +158,7 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
               font={FONT_BODY}
               fontSize={0.17}
               maxWidth={2}
+              cullDistance={LABEL_CULL}
               surface={theme.ui.tokens.surface}
               ink={theme.ui.tokens.ink}
               opacity={focused ? 1 : Math.max(LABEL_OPACITY[level], 0.75)}
@@ -167,6 +170,7 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
                 <LabelPlate
                   font={FONT_BODY}
                   fontSize={0.1}
+                  cullDistance={LABEL_CULL}
                   surface={level === 'forgotten' ? theme.ui.tokens.danger : theme.ui.tokens.accent}
                   ink={level === 'forgotten' ? theme.ui.tokens['bg-ink'] : theme.ui.tokens.ink}
                 >
@@ -193,12 +197,15 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       </Reveal>
       <Reveal id={wallsKey(room.id)} mode="rise">
         <WallFlakes room={room} />
-        {room.walls.map((w, i) => (
-          <group key={i}>
-            <Wall box={w} color={palette.wall} />
-            <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
-          </group>
-        ))}
+        {/* Muros y molduras: estáticos, se unen en pocas mallas por sala (ver StaticMerge). */}
+        <StaticMerge>
+          {room.walls.map((w, i) => (
+            <group key={i}>
+              <Wall box={w} color={palette.wall} />
+              <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
+            </group>
+          ))}
+        </StaticMerge>
         <Inscription room={room} palette={palette} />
       </Reveal>
       {paintings.map((a) => (
@@ -217,11 +224,14 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       <Reveal id={monumentKey(room.id)} mode="sink">
         <ProceduralMonument room={room} theme={theme} />
       </Reveal>
-      {room.pedestals.map((p) => (
-        <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
-          <Pedestal p={p} palette={palette} theme={theme} />
-        </Reveal>
-      ))}
+      {/* Las bases de los pedestales son estáticas (el objeto que gira va en DecayWrap, que no se une). */}
+      <StaticMerge>
+        {room.pedestals.map((p) => (
+          <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
+            <Pedestal p={p} palette={palette} theme={theme} />
+          </Reveal>
+        ))}
+      </StaticMerge>
     </group>
   )
 }
