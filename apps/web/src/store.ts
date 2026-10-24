@@ -4,6 +4,8 @@ import { earnedRoomKeys } from './palace/keys'
 import { buildLayout, type PalaceLayout } from './palace/layout'
 import { evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
+import { dueIds, palaceKey, strengthOf } from './memory/model'
+import { nowMs, useMemory } from './memory/store'
 
 export type Screen = 'landing' | 'palace'
 export type Mode = 'explore' | 'exam'
@@ -16,9 +18,13 @@ type State = {
   screen: Screen
   mode: Mode
   palace: Museum | null
+  /** Apuntes del usuario (≤ 50 KB) para mostrar el contexto de cada fuente; se quedan en su dispositivo. */
+  sourceText: string | null
   layout: PalaceLayout | null
   memorized: Record<string, true>
   exam: Record<string, ExamResult>
+  /** Repaso: si no es null, el examen solo cubre estos conceptos (los pendientes). */
+  reviewIds: string[] | null
   currentRoomId: string | null
   focusedId: string | null
   focusedDoorId: string | null
@@ -35,10 +41,12 @@ type State = {
   arisMessage: string | null
   arisPromptOpen: boolean
 
-  enterPalace: (palace: Museum) => void
+  enterPalace: (palace: Museum, sourceText?: string | null) => void
   resume: () => void
   exitToLanding: () => void
   setMode: (mode: Mode) => void
+  /** Examen limitado a lo pendiente. Devuelve false si no hay nada que repasar. */
+  startReview: () => boolean
   toggleMemorized: (id: string) => void
   pickupKey: () => void
   unlockDoor: (doorId: string) => void
@@ -61,6 +69,12 @@ function withEarnedKeys(s: Progress, memorized: Record<string, true>, exam: Stat
   return { roomKeys: { ...s.roomKeys, ...earned }, lastKeyRoomId: fresh[fresh.length - 1] }
 }
 
+export const MAX_SOURCE_TEXT = 50_000
+
+/** Lo guardado puede estar manipulado: solo se acepta texto y dentro del tope. */
+export const capSourceText = (v: unknown): string | null =>
+  typeof v === 'string' && v.length > 0 ? v.slice(0, MAX_SOURCE_TEXT) : null
+
 const safeStorage = createJSONStorage(() => {
   try {
     return window.localStorage
@@ -71,13 +85,15 @@ const safeStorage = createJSONStorage(() => {
 
 export const useStore = create<State>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       screen: 'landing',
       mode: 'explore',
       palace: null,
+      sourceText: null,
       layout: null,
       memorized: {},
       exam: {},
+      reviewIds: null,
       currentRoomId: null,
       focusedId: null,
       focusedDoorId: null,
@@ -91,14 +107,16 @@ export const useStore = create<State>()(
       arisMessage: null,
       arisPromptOpen: false,
 
-      enterPalace: (palace) =>
+      enterPalace: (palace, sourceText) =>
         set({
           palace,
+          sourceText: capSourceText(sourceText),
           layout: buildLayout(palace),
           screen: 'palace',
           mode: 'explore',
-          memorized: {},
+          memorized: learnedMap(palace),
           exam: {},
+          reviewIds: null,
           openId: null,
           focusedId: null,
           focusedDoorId: null,
@@ -110,19 +128,39 @@ export const useStore = create<State>()(
         }),
       resume: () => set((s) => (s.palace ? { screen: 'palace', layout: s.layout ?? buildLayout(s.palace) } : {})),
       exitToLanding: () => set({ screen: 'landing', openId: null, focusedId: null, focusedDoorId: null }),
-      setMode: (mode) => set({ mode, openId: null, exam: {} }),
+      setMode: (mode) => set({ mode, openId: null, exam: {}, reviewIds: null }),
+      startReview: () => {
+        const { palace } = get()
+        if (!palace) return false
+        const mem = useMemory.getState().palaces[palaceKey(palace)] ?? {}
+        const ids = dueIds(mem, allConcepts(palace).map((c) => c.id), nowMs())
+        if (!ids.length) return false
+        set({ mode: 'exam', openId: null, exam: {}, reviewIds: ids })
+        return true
+      },
       pickupKey: () => set({ hasKey: true }),
       unlockDoor: (doorId) => set((s) => ({ unlockedDoors: { ...s.unlockedDoors, [doorId]: true } })),
       setFreeExplore: (freeExplore) => set({ freeExplore }),
       toggleMemorized: (id) =>
         set((s) => {
           const memorized = { ...s.memorized }
+          const key = s.palace ? palaceKey(s.palace) : null
+          const rec = key ? useMemory.getState().palaces[key]?.[id] : undefined
+          // Si ya estaba memorizado pero se olvidó, M es un repaso: restaura en vez de desmarcar.
+          if (memorized[id] && rec && strengthOf(rec, nowMs()) < 0.85) {
+            useMemory.getState().learn(key!, id)
+            return {}
+          }
           if (memorized[id]) delete memorized[id]
-          else memorized[id] = true
+          else {
+            memorized[id] = true
+            if (key) useMemory.getState().learn(key, id)
+          }
           return { memorized, ...withEarnedKeys(s, memorized, s.exam) }
         }),
       recordExam: (id, result) =>
         set((s) => {
+          if (s.palace) useMemory.getState().exam(palaceKey(s.palace), id, result === 'ok')
           const exam = { ...s.exam, [id]: result }
           return { exam, ...withEarnedKeys(s, s.memorized, exam) }
         }),
@@ -154,11 +192,12 @@ export const useStore = create<State>()(
         roomKeys: s.roomKeys,
         unlockedDoors: s.unlockedDoors,
         freeExplore: s.freeExplore,
+        sourceText: s.sourceText,
       }),
       // Lo guardado puede estar corrupto o venir de otra versión: se valida antes de usarlo.
       merge: (persisted, current) => {
         const p = persisted as
-          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown; freeExplore?: unknown }
+          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown; freeExplore?: unknown; sourceText?: unknown }
           | undefined
         const freeExplore = typeof p?.freeExplore === 'boolean' ? p.freeExplore : current.freeExplore
         const palace = MuseumSchema.safeParse(p?.palace)
@@ -168,7 +207,7 @@ export const useStore = create<State>()(
         const memorized = record(p?.memorized)
         // Las llaves guardadas se completan con las que corresponden al progreso guardado.
         const roomKeys = { ...record(p?.roomKeys), ...earnedRoomKeys(palace.data, memorized, {}) }
-        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore }
+        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore, sourceText: capSourceText(p?.sourceText) }
       },
     },
   ),
@@ -181,4 +220,17 @@ export function allConcepts(palace: Museum | null) {
 /** Una puerta está abierta si se desbloqueó con la llave o si se explora libremente. */
 export function isDoorOpen(s: { freeExplore: boolean; unlockedDoors: Record<string, true> }, doorId: string) {
   return s.freeExplore || !!s.unlockedDoors[doorId]
+}
+
+/** Conceptos con registro de memoria: se ven como memorizados (banda dorada) al volver a entrar. */
+function learnedMap(palace: Museum): Record<string, true> {
+  const mem = useMemory.getState().palaces[palaceKey(palace)] ?? {}
+  const out: Record<string, true> = {}
+  for (const c of allConcepts(palace)) if (mem[c.id]) out[c.id] = true
+  return out
+}
+
+/** ¿Este concepto se pregunta en el examen actual? (todo, o solo lo pendiente en un repaso) */
+export function inExamScope(s: Pick<State, 'mode' | 'reviewIds'>, id: string): boolean {
+  return s.mode === 'exam' && (!s.reviewIds || s.reviewIds.includes(id))
 }
