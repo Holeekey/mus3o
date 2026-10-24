@@ -1,21 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PalaceLayout } from '../palace/layout'
+import { pieceKind } from '../palace/pieceKind'
 import { playerPose, useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes } from '../theme'
 
 const COMPACT_SIZE = 180
 const EXPANDED_SIZE = 340
-
-type EntityKind = 'key' | 'chest' | 'trap' | 'door' | 'standard'
-
-function getEntityKind(id: string, title: string): EntityKind {
-  const s = `${id} ${title}`.toLowerCase()
-  if (s.includes('key') || s.includes('llave')) return 'key'
-  if (s.includes('chest') || s.includes('cofre')) return 'chest'
-  if (s.includes('trap') || s.includes('trampa')) return 'trap'
-  if (s.includes('door') || s.includes('compuerta')) return 'door'
-  return 'standard'
-}
 
 export function Minimap({ layout }: { layout: PalaceLayout }) {
   const [expanded, setExpanded] = useState(false)
@@ -70,7 +60,7 @@ export function Minimap({ layout }: { layout: PalaceLayout }) {
         // Elementos / Pedestales
         for (const p of r.pedestals) {
           const done = !!memorized[p.concept.id]
-          const kind = getEntityKind(p.concept.id, p.concept.title)
+          const kind = pieceKind(p.concept)
           const px = tx(p.x)
           const pz = tz(p.z)
 

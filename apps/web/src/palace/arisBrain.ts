@@ -11,6 +11,7 @@ type BrainContext = {
   memorized: Record<string, true>
   hasKey: boolean
   unlockedDoors: Record<string, true>
+  roomKeys?: Record<string, true>
   mode: 'explore' | 'exam'
 }
 
@@ -89,14 +90,16 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   }
 
   // 5. NAVEGACIÓN / LLAVE / COMPUERTA / PUERTA ("llave", "puerta", "reja", "bloquead")
+  const { roomKeys } = ctx
   if (matchesAny(rawTokens, ['llave', 'puerta', 'compuerta', 'reja', 'candado', 'bloquead', 'abrir', 'cerrad'])) {
-    if (!hasKey) {
+    const hasRoomKey = !!roomKeys?.[currentRoom.id]
+    if (hasKey || hasRoomKey) {
       return {
-        text: 'Aris: La compuerta de la mazmorra está bloqueada. Busca la Llave de Hierro dorada en el suelo de una de las cámaras para poder abrirla.',
+        text: `Aris: ¡Tienes acceso para abrir la compuerta! ${hasRoomKey ? 'Ganaste la llave de esta sala al memorizar sus piezas.' : 'Tienes la Llave de Hierro en tu inventario.'} Acércate a la puerta y presiona E para desbloquearla.`,
       }
     } else {
       return {
-        text: 'Aris: ¡Ya tienes la Llave de Hierro en tu inventario! Acércate a la compuerta enrejada y presiona la tecla E para abrir el pasaje.',
+        text: 'Aris: Para abrir la compuerta tienes dos caminos: memorizar todas las piezas de esta sala para ganar su llave de acceso, o encontrar la Llave de Hierro en el suelo.',
       }
     }
   }

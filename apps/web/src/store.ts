@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { earnedRoomKeys } from './palace/keys'
 import { buildLayout, type PalaceLayout } from './palace/layout'
 import { evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
@@ -25,6 +26,10 @@ type State = {
   locked: boolean
   hasKey: boolean
   unlockedDoors: Record<string, true>
+  /** Llave de cada sala ganada al memorizar todas sus piezas. No se pierde al desmarcar. */
+  roomKeys: Record<string, true>
+  /** Sala cuya llave se acaba de ganar, para avisarlo en el HUD. */
+  lastKeyRoomId: string | null
   arisMessage: string | null
   arisPromptOpen: boolean
 
@@ -39,7 +44,18 @@ type State = {
   askAris: (query: string) => void
   setArisPromptOpen: (open: boolean) => void
   closeArisDialog: () => void
-  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'arisMessage' | 'arisPromptOpen'>>) => void
+  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId' | 'arisMessage' | 'arisPromptOpen'>>) => void
+}
+
+type Progress = Pick<State, 'palace' | 'memorized' | 'exam' | 'roomKeys' | 'lastKeyRoomId'>
+
+// Suma las llaves recién ganadas a las que ya se tenían y avisa la última.
+function withEarnedKeys(s: Progress, memorized: Record<string, true>, exam: State['exam']) {
+  if (!s.palace) return {}
+  const earned = earnedRoomKeys(s.palace, memorized, exam)
+  const fresh = Object.keys(earned).filter((id) => !s.roomKeys[id])
+  if (fresh.length === 0) return {}
+  return { roomKeys: { ...s.roomKeys, ...earned }, lastKeyRoomId: fresh[fresh.length - 1] }
 }
 
 const safeStorage = createJSONStorage(() => {
@@ -66,6 +82,8 @@ export const useStore = create<State>()(
       locked: false,
       hasKey: false,
       unlockedDoors: {},
+      roomKeys: {},
+      lastKeyRoomId: null,
       arisMessage: null,
       arisPromptOpen: false,
 
@@ -82,6 +100,9 @@ export const useStore = create<State>()(
           focusedDoorId: null,
           hasKey: false,
           unlockedDoors: {},
+          // Las salas sin nada que memorizar ya tienen su llave.
+          roomKeys: earnedRoomKeys(palace, {}, {}),
+          lastKeyRoomId: null,
         }),
       resume: () => set((s) => (s.palace ? { screen: 'palace', layout: s.layout ?? buildLayout(s.palace) } : {})),
       exitToLanding: () => set({ screen: 'landing', openId: null, focusedId: null, focusedDoorId: null }),
@@ -93,9 +114,13 @@ export const useStore = create<State>()(
           const memorized = { ...s.memorized }
           if (memorized[id]) delete memorized[id]
           else memorized[id] = true
-          return { memorized }
+          return { memorized, ...withEarnedKeys(s, memorized, s.exam) }
         }),
-      recordExam: (id, result) => set((s) => ({ exam: { ...s.exam, [id]: result } })),
+      recordExam: (id, result) =>
+        set((s) => {
+          const exam = { ...s.exam, [id]: result }
+          return { exam, ...withEarnedKeys(s, s.memorized, exam) }
+        }),
       askAris: (query) =>
         set((s) => {
           const res = evaluateArisQuery(query, {
@@ -104,6 +129,7 @@ export const useStore = create<State>()(
             memorized: s.memorized,
             hasKey: s.hasKey,
             unlockedDoors: s.unlockedDoors,
+            roomKeys: s.roomKeys,
             mode: s.mode,
           })
           speakAris(res.text)
@@ -117,15 +143,21 @@ export const useStore = create<State>()(
       name: 'mus3o-v1',
       storage: safeStorage,
       // Solo el contenido y el progreso; el layout se recalcula.
-      partialize: (s) => ({ palace: s.palace, memorized: s.memorized }),
+      partialize: (s) => ({
+        palace: s.palace,
+        memorized: s.memorized,
+        roomKeys: s.roomKeys,
+      }),
       // Lo guardado puede estar corrupto o venir de otra versión: se valida antes de usarlo.
       merge: (persisted, current) => {
-        const p = persisted as { palace?: unknown; memorized?: unknown } | undefined
+        const p = persisted as { palace?: unknown; memorized?: unknown; roomKeys?: unknown } | undefined
         const palace = MuseumSchema.safeParse(p?.palace)
         if (!palace.success) return current
         const memorized =
           p?.memorized && typeof p.memorized === 'object' ? (p.memorized as Record<string, true>) : {}
-        return { ...current, palace: palace.data, memorized }
+        const roomKeys =
+          p?.roomKeys && typeof p.roomKeys === 'object' ? (p.roomKeys as Record<string, true>) : {}
+        return { ...current, palace: palace.data, memorized, roomKeys }
       },
     },
   ),

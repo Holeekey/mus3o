@@ -60,15 +60,18 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       {layout.corridors.map((c, i) => {
         const isHorizontal = c.floor.w > c.floor.d
         const rotY = isHorizontal ? Math.PI / 2 : 0
-        const doorPosA: [number, number, number] = isHorizontal
+        const endA: [number, number, number] = isHorizontal
           ? [c.floor.x - c.floor.w / 2, 0, c.floor.z]
           : [c.floor.x, 0, c.floor.z - c.floor.d / 2]
-        const doorPosB: [number, number, number] = isHorizontal
+        const endB: [number, number, number] = isHorizontal
           ? [c.floor.x + c.floor.w / 2, 0, c.floor.z]
           : [c.floor.x, 0, c.floor.z + c.floor.d / 2]
-
-        const doorId = `door-${i}-entrance`
-        const isOpen = !!unlockedDoors[doorId]
+        // La compuerta va en el extremo del pasillo que da a la sala de salida (donde está su collider).
+        const door = layout.doors.find((d) => d.corridorIndex === i)
+        const nearA = !door || Math.hypot(door.x - endA[0], door.z - endA[2]) <= Math.hypot(door.x - endB[0], door.z - endB[2])
+        const doorPosA = nearA ? endA : endB
+        const doorPosB = nearA ? endB : endA
+        const isOpen = door ? !!unlockedDoors[door.id] : true
 
         return (
           <group key={i}>
@@ -77,7 +80,8 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
               <AssetWall key={j} box={w} color={scene.corridor.wall} />
             ))}
             {/* Puerta interactiva con físicas y animación al inicio del pasillo */}
-            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} />
+            {/* Una sola luz por pasillo (en la compuerta) para no multiplicar el costo de iluminación */}
+            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} light />
             {/* Arco abierto al final del pasillo que conecta con la siguiente cámara */}
             <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isOpen={true} />
           </group>

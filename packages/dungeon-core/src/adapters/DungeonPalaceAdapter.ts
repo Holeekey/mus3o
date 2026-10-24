@@ -12,6 +12,7 @@ export class DungeonPalaceAdapter {
     title: string = "Mazmorra de la Memoria"
   ): Museum {
     const pieces: Piece[] = [];
+    const placed: { piece: Piece; x: number; y: number }[] = [];
     const matrix = grid.toMatrix();
 
     for (let y = 0; y < grid.height; y++) {
@@ -20,31 +21,31 @@ export class DungeonPalaceAdapter {
         const piece = this.tileToPiece(type, x, y, grid.tileSize);
         if (piece) {
           pieces.push(piece);
+          placed.push({ piece, x, y });
         }
       }
     }
 
-    // Divide en cámaras temáticas conectadas por pasillos y puertas
+    // Cámara 1: lo alcanzable desde el inicio sin cruzar compuertas. Cámara 2: lo que queda tras ellas.
+    const reachable = this.reachableFromStart(matrix);
+    const chamber1Pieces = placed.filter((p) => reachable.has(`${p.x},${p.y}`)).map((p) => p.piece);
+    const chamber2Pieces = placed.filter((p) => !reachable.has(`${p.x},${p.y}`)).map((p) => p.piece);
+
     const rooms: Room[] = [];
-    const doorIndex = pieces.findIndex((p) => p.id.startsWith("door"));
 
-    if (doorIndex !== -1 && pieces.length > 2) {
-      // Divide por compuerta: Cámara 1 (Entrada y Llave) y Cámara 2 (Santuario del Cofre)
-      const chamber1Pieces = pieces.slice(0, doorIndex);
-      const chamber2Pieces = pieces.slice(doorIndex);
-
+    if (chamber1Pieces.length > 0 && chamber2Pieces.length > 0) {
       rooms.push({
         id: "chamber-1",
         name: "Cámara 1: Entrada y Llave",
         description: "Primera sección de la mazmorra. Explora el entorno y recupera la llave.",
-        pieces: chamber1Pieces.length > 0 ? chamber1Pieces : [pieces[0]],
+        pieces: chamber1Pieces,
       });
 
       rooms.push({
         id: "chamber-2",
         name: "Cámara 2: Santuario del Cofre",
         description: "Cámara sellada tras la compuerta que resguarda el cofre del conocimiento.",
-        pieces: chamber2Pieces.length > 0 ? chamber2Pieces : pieces.slice(1),
+        pieces: chamber2Pieces,
       });
     } else {
       const chunkSize = Math.max(1, Math.ceil(pieces.length / 2));
@@ -80,6 +81,37 @@ export class DungeonPalaceAdapter {
       },
       rooms: rooms.slice(0, 8),
     };
+  }
+
+  /**
+   * Flood fill desde la primera celda transitable (orden fila-mayor), sin cruzar muros
+   * ni compuertas cerradas. Devuelve las coordenadas "x,y" alcanzables.
+   */
+  private static reachableFromStart(matrix: TileType[][]): Set<string> {
+    const passable = (t: TileType) => t !== "WALL" && t !== "DOOR_LOCKED";
+    const reached = new Set<string>();
+
+    let start: [number, number] | null = null;
+    for (let y = 0; y < matrix.length && !start; y++) {
+      for (let x = 0; x < matrix[y].length && !start; x++) {
+        if (passable(matrix[y][x])) start = [x, y];
+      }
+    }
+    if (!start) return reached;
+
+    const queue: [number, number][] = [start];
+    reached.add(`${start[0]},${start[1]}`);
+    while (queue.length > 0) {
+      const [x, y] = queue.shift()!;
+      for (const [nx, ny] of [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]]) {
+        const key = `${nx},${ny}`;
+        if (ny < 0 || ny >= matrix.length || nx < 0 || nx >= matrix[ny].length) continue;
+        if (reached.has(key) || !passable(matrix[ny][nx])) continue;
+        reached.add(key);
+        queue.push([nx, ny]);
+      }
+    }
+    return reached;
   }
 
   private static tileToPiece(

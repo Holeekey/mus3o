@@ -188,6 +188,34 @@ describe('buildLayout con grafo', () => {
   })
 })
 
+describe('búsqueda de imágenes sin IA', () => {
+  it('cada tema y cada concepto buscan su imagen en Wikipedia por su título', () => {
+    const { palace } = ok('# Sistema solar\n- Júpiter\n- Saturno: tiene anillos\n\n# Volcanes\n- Magma')
+    expect(palace.rooms.map((r) => r.imageSearch)).toEqual([
+      { wikiTitle: 'Sistema solar', lang: 'es' },
+      { wikiTitle: 'Volcanes', lang: 'es' },
+    ])
+    expect(palace.rooms[0].pieces.map((p) => p.imageSearch)).toEqual([
+      { wikiTitle: 'Júpiter', lang: 'es' },
+      { wikiTitle: 'Saturno', lang: 'es' },
+    ])
+  })
+
+  it('también en CSV', () => {
+    const { palace } = ok('sala,concepto\nPlanetas,Marte', 'csv')
+    expect(palace.rooms[0].imageSearch).toEqual({ wikiTitle: 'Planetas', lang: 'es' })
+    expect(palace.rooms[0].pieces[0].imageSearch).toEqual({ wikiTitle: 'Marte', lang: 'es' })
+  })
+
+  it('un museo completo de la IA conserva sus propias búsquedas', () => {
+    const museum = {
+      title: 'IA',
+      rooms: [{ id: 'a', name: 'Roma', description: '', imageSearch: { wikiTitle: 'Antigua Roma', commonsQuery: 'ancient rome', lang: 'es' }, pieces: [] }],
+    }
+    expect(ok(JSON.stringify(museum), 'json').palace.rooms[0].imageSearch).toEqual(museum.rooms[0].imageSearch)
+  })
+})
+
 describe('isCorrectAnswer', () => {
   it('tolera tildes, mayúsculas y typos menores', () => {
     expect(isCorrectAnswer('bicapa lipidica', 'Bicapa lipídica')).toBe(true)

@@ -140,11 +140,11 @@ export class AutonomousDungeonAgent implements IAgent {
       return "WAIT";
     }
 
-    // Recompute path if target changed or no path planned
+    // Recompute path if target changed or the planned path is no longer valid
     if (
       !this.currentGoalTarget ||
       !this.isSamePos(this.currentGoalTarget, target) ||
-      this.plannedPath.length === 0
+      !this.isPlannedPathValid()
     ) {
       this.currentGoalTarget = target;
       this.plannedPath = this.computePathTo(target) ?? [];
@@ -289,6 +289,27 @@ export class AutonomousDungeonAgent implements IAgent {
 
     const navigator = new AStarNavigator(costProvider);
     return navigator.findPath(this.currentPosition, goal, this.hasKeyFlag);
+  }
+
+  /**
+   * Un path planeado sigue siendo válido si el siguiente paso es adyacente a la posición actual
+   * y ninguna celda del trayecto se conoce ahora como pared o puerta cerrada sin llave.
+   * Así un movimiento fallido o una pared descubierta al acercarse fuerzan a replanificar.
+   */
+  private isPlannedPathValid(): boolean {
+    if (this.plannedPath.length === 0) return false;
+
+    const next = this.isSamePos(this.plannedPath[0], this.currentPosition)
+      ? this.plannedPath[1]
+      : this.plannedPath[0];
+    if (!next || !this.isAdjacent(this.currentPosition, next)) return false;
+
+    return this.plannedPath.every((pos) => {
+      const tile = this.exploredMemory.get(this.toKey(pos));
+      if (tile === "WALL") return false;
+      if (tile === "DOOR_LOCKED" && !this.hasKeyFlag) return false;
+      return true;
+    });
   }
 
   private directionToAction(from: Position2D, to: Position2D): AgentAction {

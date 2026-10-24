@@ -64,18 +64,23 @@ if [ -d "$TEXTURES_DIR" ]; then
   echo "  ✓ Textures copied"
 fi
 
-# Update apps/web/public/models/catalog.json
+# Merge de las entradas dungeon_* en apps/web/public/models/catalog.json.
+# Conserva las entradas que ya existan (no sobrescribe el archivo completo).
 CATALOG_FILE="$ROOT_DIR/apps/web/public/models/catalog.json"
-cat > "$CATALOG_FILE" << 'EOF'
-{
+DUNGEON_CATALOG='{
   "dungeon_wall": "/models/dungeon/wall.gltf",
   "dungeon_floor": "/models/dungeon/floor_tile_large.gltf",
   "dungeon_door": "/models/dungeon/wall_gated.gltf",
   "dungeon_key": "/models/dungeon/key.gltf",
   "dungeon_chest": "/models/dungeon/chest.gltf",
   "dungeon_spikes": "/models/dungeon/floor_tile_big_spikes.gltf"
-}
-EOF
-echo "  ✓ Updated apps/web/public/models/catalog.json"
+}'
+node -e '
+  const fs = require("fs")
+  const [file, add] = process.argv.slice(1)
+  const current = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {}
+  fs.writeFileSync(file, JSON.stringify({ ...current, ...JSON.parse(add) }, null, 2) + "\n")
+' "$CATALOG_FILE" "$DUNGEON_CATALOG"
+echo "  ✓ Merged dungeon entries into apps/web/public/models/catalog.json"
 
 echo "✅ Assets setup and adaptation completed!"
