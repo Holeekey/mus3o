@@ -4,6 +4,8 @@ import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 
 import * as THREE from 'three'
 import type { Atmosphere } from './atmosphere'
 import type { Diorama } from '@mus3o/shared'
+import { LabelPlate } from '../scene/LabelPlate'
+import { DEFAULT_THEME } from '../theme'
 import { Builder, darken, lighten, mat } from './geo'
 import { makeDioramaMaterials, type TimeUniform } from './material'
 import { getDioramaModel, type DioramaModel, type PropGroup } from './model'
@@ -229,26 +231,26 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
   )
 }
 
+const LABEL_SURFACE = DEFAULT_THEME.ui.tokens.surface
+const LABEL_INK = DEFAULT_THEME.ui.tokens.ink
+
 // --- Enlaces con conceptos: anillo en el suelo y etiqueta flotante ---
 function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][number]; focused: boolean }) {
   const group = useRef<THREE.Group>(null)
   const tag = useRef<THREE.Group>(null)
-  const text = useRef<{ fillOpacity: number; outlineOpacity: number } | null>(null)
   const camera = useThree((s) => s.camera)
   useFrame(() => {
     const g = group.current
     if (!g) return
-    const wp = g.getWorldPosition(_p)
-    const dist = wp.distanceTo(camera.position)
-    // Con la escala del grupo padre la distancia ya viene en metros reales.
-    const o = Math.min(1, Math.max(0, (26 - dist) / 8))
+    // Distancia a la propia etiqueta (no al origen del grupo), en metros reales del diorama.
+    const wp = g.localToWorld(_p.set(link.x, link.labelY, link.z))
+    g.getWorldScale(_s)
+    const dist = wp.distanceTo(camera.position) / (_s.x || 1)
+    const o = Math.min(1, Math.max(0, (34 - dist) / 8))
     g.visible = o > 0.02
-    // El rótulo crece con la distancia (se lee de lejos) pero no se come la pantalla de cerca.
-    tag.current?.scale.setScalar(Math.min(1.5, Math.max(0.5, dist / 9)))
-    if (text.current) {
-      text.current.fillOpacity = o
-      text.current.outlineOpacity = o
-    }
+    // La placa mantiene un tamaño casi constante en pantalla (crece con la distancia, se encoge de cerca)
+    // y aparece creciendo desde cero al acercarse (sin tocar su opacidad: así siempre se lee).
+    tag.current?.scale.setScalar(Math.min(2.4, Math.max(0.55, dist / 13)) * Math.min(1, o * 2))
   })
   return (
     <group ref={group}>
@@ -259,23 +261,19 @@ function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][
       {link.label && (
         <Suspense fallback={null}>
           <Billboard ref={tag} position={[link.x, link.labelY, link.z]}>
-            <Text
-              ref={text as never}
-              font={FONT_BODY}
-              fontSize={focused ? 0.46 : 0.36}
-              color="#f6efe8"
-              outlineWidth={0.04}
-              outlineColor="#1f1411"
-              anchorY="bottom"
-              maxWidth={7}
-              textAlign="center"
-              depthOffset={-1}
-              renderOrder={20}
-              material-depthTest={false}
-              material-depthWrite={false}
-            >
-              {link.label}
-            </Text>
+            {/* Misma placa de yeso que las del palacio: se lee sobre cualquier fondo. */}
+            <group position={[0, focused ? 0.62 : 0.55, 0]}>
+              <LabelPlate
+                font={FONT_BODY}
+                fontSize={focused ? 0.42 : 0.34}
+                maxWidth={5.5}
+                surface={LABEL_SURFACE}
+                ink={LABEL_INK}
+                onTop
+              >
+                {link.label}
+              </LabelPlate>
+            </group>
           </Billboard>
         </Suspense>
       )}
