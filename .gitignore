@@ -2,5 +2,8 @@
 .claude/*
 !.claude/skills/
 .claude/skills/*
-!.claude/skills/locigen-*/
+!.claude/skills/token-budget/
+!.claude/skills/assets/
+!.claude/skills/architecture/
+!.claude/skills/3d-validation/
 CLAUDE.local.md

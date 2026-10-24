@@ -1,9 +1,9 @@
 ---
-name: locigen-assets
-description: Reglas para reutilizar assets y código prehechos en LociGen en vez de construir desde cero. Usar al agregar o modificar modelos 3D, props, texturas, HDRI, audio o un fork de galería, y cuando el usuario diga "agrega un pedestal", "busca un modelo", "textura", "licencia", "optimiza el GLB", "ASSETS.md" o "fork de galería".
+name: assets
+description: Reglas para reutilizar assets y código prehechos en el proyecto en vez de construir desde cero. Usar al agregar o modificar modelos 3D, props, texturas, HDRI, audio o un fork de galería, y cuando el usuario diga "agrega un pedestal", "busca un modelo", "textura", "licencia", "optimiza el GLB", "ASSETS.md" o "fork de galería".
 ---
 
-# LociGen: assets prehechos
+# Assets prehechos
 
 Principio rector: reutilizar y modificar; construir desde cero solo lo que no existe.
 
@@ -41,7 +41,7 @@ Nunca generar modelos 3D con IA en el MVP (USD 0.20–0.60 cada uno, más normal
 3. Copiar a `public/models`.
 4. Generar el componente tipado con `npx gltfjsx out.glb --types`.
 5. Instanciar con `Instances` de drei los objetos repetidos.
-6. Medir draw calls (ver `locigen-3d-validation`). Si pasan el presupuesto, volver al paso 2.
+6. Medir draw calls (ver `3d-validation`). Si pasan el presupuesto, volver al paso 2.
 
 ## Paso 5: evaluar forks de galería (primera hora)
 

@@ -1,9 +1,9 @@
 ---
-name: locigen-token-budget
-description: Disciplina de costo y tokens para desarrollar LociGen con USD 50 de créditos de API en 24 h. Usar al iniciar una tarea, al elegir modelo (Haiku vs Sonnet), al decidir si delegar a un subagente, antes de leer archivos grandes, cuando el contexto crece, o cuando el usuario diga "ahorra tokens", "qué modelo uso", "cuánto llevamos gastado", "presupuesto" o "low cost".
+name: token-budget
+description: Disciplina de costo y tokens para desarrollar el proyecto con USD 50 de créditos de API en 24 h. Usar al iniciar una tarea, al elegir modelo (Haiku vs Sonnet), al decidir si delegar a un subagente, antes de leer archivos grandes, cuando el contexto crece, o cuando el usuario diga "ahorra tokens", "qué modelo uso", "cuánto llevamos gastado", "presupuesto" o "low cost".
 ---
 
-# LociGen: presupuesto de tokens
+# Presupuesto de tokens
 
 Meta: terminar en 24 h sin pasar de USD 50 de créditos de API de Claude.
 Gasto esperado ~USD 14–20 *(est.)*, peor caso ~USD 43 *(est.)*, reserva USD 5. Alerta de gasto a USD 35.
@@ -12,7 +12,7 @@ Gasto esperado ~USD 14–20 *(est.)*, peor caso ~USD 43 *(est.)*, reserva USD 5.
 
 | Tarea | Modelo |
 |---|---|
-| Algoritmo de layout, colisiones, arquitectura del Worker | Sonnet 5.5 |
+| Algoritmo de layout, colisiones, arquitectura del servidor Express | Sonnet 5.5 |
 | Bug que Haiku no resolvió en 2 intentos | Sonnet 5.5 |
 | Todo lo demás: UI, boilerplate, optimizar assets, `ASSETS.md`, tests simples, docs, commits | Haiku 5.5 |
 
@@ -44,12 +44,12 @@ Fuera de alcance por defecto: soporte móvil. La demo es solo en escritorio; el 
 
 | Horas | Bloque | Modelo |
 |---|---|---|
-| 0–1.5 | Evaluar forks (go/no-go), Cloudflare, repo, `ASSETS.md` | Haiku |
-| 1.5–4 | Kit de assets (usar `locigen-assets`) | Haiku |
+| 0–1.5 | Evaluar forks (go/no-go), repo, `ASSETS.md` | Haiku |
+| 1.5–4 | Kit de assets (usar `assets`) | Haiku |
 | 4–10 | Layout con tests, salas, movimiento, colisiones | Sonnet |
-| 10–15 | Worker: estructura, imágenes, caché R2 | Sonnet |
+| 10–15 | Servidor Express: estructura, caché, imágenes si aplican | Sonnet |
 | 15–18 | Interfaz: pegar/subir texto, carga, minimapa | Haiku |
-| 18–21 | Look-dev y validación (usar `locigen-3d-validation`) | Mixto |
+| 18–21 | Look-dev y validación (usar `3d-validation`) | Mixto |
 | 21–24 | Pre-generar demo, desplegar, ensayar, margen | Humano |
 
 ## Reporte al cerrar un bloque (formato fijo)

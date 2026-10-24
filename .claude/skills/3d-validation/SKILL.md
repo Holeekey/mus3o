@@ -1,9 +1,9 @@
 ---
-name: locigen-3d-validation
-description: Validación del museo 3D de LociGen en cuatro capas (lógica, rendimiento, visual, humana) y checklist previo a la demo. Usar al probar el generador de salas, medir draw calls o FPS, tomar capturas, revisar la escena antes de desplegar, y cuando el usuario diga "valida el 3D", "draw calls", "rendimiento", "captura", "tests del layout" o "listo para la demo".
+name: 3d-validation
+description: Validación del museo 3D en cuatro capas (lógica, rendimiento, visual, humana) y checklist previo a la demo. Usar al probar el generador de salas, medir draw calls o FPS, tomar capturas, revisar la escena antes de desplegar, y cuando el usuario diga "valida el 3D", "draw calls", "rendimiento", "captura", "tests del layout" o "listo para la demo".
 ---
 
-# LociGen: validación del 3D
+# Validación del 3D
 
 Ejecutar las capas en orden; cada una es más cara que la anterior.
 
@@ -47,9 +47,9 @@ Herramientas: `gl.info`, `Stats`, r3f-perf. El WebGL sin cabeza de Playwright no
 
 ## Checklist previo a la demo
 
-- [ ] Palacios demo pre-generados y en caché de R2.
+- [ ] Palacios demo pre-generados y en la caché del servidor.
 - [ ] Placeholder procedural verificado (simular cuota agotada).
-- [ ] Desplegado en Cloudflare Pages y Worker; assets autoalojados.
+- [ ] Frontend y servidor Express desplegados; assets autoalojados.
 - [ ] Capas A y B en verde; capa C revisada.
 - [ ] Ensayo completo del recorrido.
 

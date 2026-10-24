@@ -39,7 +39,7 @@ Pasar `dev` → `main` solo cuando `dev` esté estable. Sugerencia para 24-48h:
 
 ## Setup local (una vez por dev)
 
-El toolkit (`dev-ai-toolkit/`) es un submódulo y `.claude/` está ignorado salvo las skills `locigen-*`, así que cada dev instala lo suyo:
+El toolkit (`dev-ai-toolkit/`) es un submódulo y `.claude/` está ignorado salvo las skills del proyecto, así que cada dev instala lo suyo:
 
 ```bash
 git submodule update --init            # o clonar con --recurse-submodules
@@ -50,7 +50,7 @@ done
 ln -sfn "$PWD/dev-ai-toolkit/adapters/claude-code/agents/test-runner.md" .claude/agents/test-runner.md
 ```
 
-Las skills del proyecto (`.claude/skills/locigen-*`) ya vienen en el repo: `locigen-token-budget`, `locigen-assets`, `locigen-architecture` y `locigen-3d-validation`. Alcance de la demo: solo escritorio.
+Las skills del proyecto (`.claude/skills/`) ya vienen en el repo: `token-budget`, `assets`, `architecture` y `3d-validation`. Alcance de la demo: solo escritorio.
 
 ## Commits
 
