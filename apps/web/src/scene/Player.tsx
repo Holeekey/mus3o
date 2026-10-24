@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
 import { Vector3 } from 'three'
 
+import { canListen } from '../lib/voice'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { playerPose, useStore } from '../store'
 import { pointerLock } from './pointerLock'
@@ -40,8 +41,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
         if (s.openId) s.set({ openId: null })
         else if (s.focusedId) {
           s.set({ openId: s.focusedId })
-          // En el examen hay que escribir, así que se libera el puntero.
-          if (s.mode === 'exam' && !s.exam[s.focusedId]) controls.current?.unlock()
+          // Con dictado el puntero sigue bloqueado y se responde en voz alta; sin él hay que escribir.
+          if (s.mode === 'exam' && !s.exam[s.focusedId] && !canListen()) controls.current?.unlock()
         }
       }
       if (e.code === 'KeyM' && s.mode === 'explore') {
