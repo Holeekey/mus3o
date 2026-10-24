@@ -47,3 +47,12 @@ code to a personal repo:
 Your commits stay mirrored here for judging, while the deploy runs from the repo you control.
 
 Have fun! 🚀
+
+## Mus3o 3D (desarrollo)
+
+Monorepo npm workspaces: `apps/web` (Vite + R3F), `apps/server` (Express + Claude), `packages/shared` (schema Zod).
+
+```
+cp .env.example .env   # añade ANTHROPIC_API_KEY (sin ella el servidor devuelve un mus3o mock)
+npm install && npm run dev   # web :5173, server :3001
+```
