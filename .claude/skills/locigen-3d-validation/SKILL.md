@@ -15,11 +15,13 @@ Tests sobre el generador de layout, sin GPU:
 - No hay solapes entre salas.
 - Las puertas están alineadas.
 - N conceptos producen N cuadros.
+- Ningún cuadro queda sobre el hueco de una puerta (margen libre alrededor de cada puerta).
+- Ningún par de cuadros se solapa, incluida la sala de ancho mínimo (6 m) con 2 conceptos o más.
 - Misma entrada y semilla producen el mismo layout.
 
 ## Capa B: rendimiento (USD 0)
 
-Presupuestos: menos de 100 draw calls en móvil y menos de 300 en escritorio. Geometrías y texturas estables en el tiempo (sin fugas al cambiar de sala).
+Alcance: la demo es solo en escritorio. Presupuesto: menos de 300 draw calls. El presupuesto móvil (menos de 100) solo aplica si el equipo decide soportar móvil. Geometrías y texturas estables en el tiempo (sin fugas al cambiar de sala).
 
 ```ts
 const { render, memory } = gl.info;
@@ -41,7 +43,7 @@ Herramientas: `gl.info`, `Stats`, r3f-perf. El WebGL sin cabeza de Playwright no
 - El texto se lee a 2 m.
 - Hay estado de carga mientras llegan las imágenes.
 - Probar en una laptop con GPU integrada.
-- Presentar en escritorio; el control con ratón no es fiable en móviles.
+- Presentar en escritorio; el control con ratón no es fiable en móviles y móvil está fuera de alcance.
 
 ## Checklist previo a la demo
 

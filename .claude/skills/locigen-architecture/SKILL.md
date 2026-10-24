@@ -14,12 +14,20 @@ Flujo: frontend React + R3F (Cloudflare Pages) extrae texto en el navegador, lla
 3. Caché indexada por hash: `sha256(texto)` para estructuras; `hash(concepto normalizado + estilo)` para imágenes.
 4. Toda imagen tiene cadena de respaldo: caché, generación, placeholder procedural.
 5. No usar KV como caché de imágenes (1.000 escrituras diarias gratis). Usar R2.
-6. Rate limit por IP y tope diario de generación en el Worker.
+6. Rate limit por IP y tope diario de generación en el Worker (detalle en "Tope diario" abajo).
+7. Las claves de caché nunca usan los ids de sala o concepto (`r1`, `c1`): solo hashes de contenido.
 
 ## Endpoints
 
 - `POST /api/structure`: recibe el texto y su hash. Si hay estructura en R2, la devuelve; si no, llama a Claude con bloques menores a 100k tokens, guarda y devuelve.
 - `GET /api/image`: por concepto. Caché en R2; si falla y hay cuota, FLUX a 512×512 y 4 pasos con sufijo de estilo fijo; si no hay cuota, placeholder procedural.
+
+## Tope diario y normalización (propuestas, ajustar con pruebas)
+
+- **Normalización del concepto** (la hace el Worker, una sola vez): `trim`, minúsculas, quitar tildes (NFD), colapsar espacios. Clave de imagen: `sha256(normalizado + "|" + STYLE_VERSION)`. El cliente envía la etiqueta tal cual.
+- **Tope diario:** 150 imágenes nuevas por día (UTC), por debajo de las ~230 que cubre la cuota gratuita a 512² *(est.)*. Contador por día (`imgcount:YYYY-MM-DD`) en KV: 150 escrituras al día entra en el límite gratuito de 1.000 y la consistencia eventual es aceptable para un tope aproximado.
+- **Al superar el tope:** el Worker responde `429` con `{"fallback":"placeholder"}` y el frontend dibuja el placeholder procedural. Las imágenes ya en caché se siguen sirviendo.
+- Verificar en el panel de Cloudflare que la cuenta está en el plan gratuito de Workers AI; en un plan de pago el tope propio es la única protección de gasto.
 
 ## Contrato de estructura
 
@@ -36,6 +44,8 @@ Flujo: frontend React + R3F (Cloudflare Pages) extrae texto en el navegador, lla
 ```
 
 Reglas de salida (la salida cuesta 5× la entrada): 30–50 conceptos como máximo, un resumen de una línea por concepto. El detalle se pide al hacer clic.
+
+Validación antes de guardar en R2: JSON válido, al menos una sala, máximo 50 conceptos en total, campos obligatorios presentes y `color` hex. Los ids son únicos en todo el palacio (`r1`, `r1-c1`, `r1-c2`…). Si falla, reintentar una vez; si vuelve a fallar, devolver error y no guardar nada.
 
 ## Generador de layout
 

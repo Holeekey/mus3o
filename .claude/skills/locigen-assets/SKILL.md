@@ -19,8 +19,10 @@ Nunca generar modelos 3D con IA en el MVP (USD 0.20–0.60 cada uno, más normal
 ## Paso 2: reglas de estilo y peso
 
 - Un solo estilo: **low-poly estilizado + neón**. No mezclar texturas fotorrealistas con modelos estilizados.
+- Paredes, suelo y techo: usar color plano o texturas PBR de 512 con tinte, de modo que se lean estilizadas. Si una textura se ve fotorrealista junto a los props, cambiarla por color plano.
 - Máximo 8–12 props únicos (pedestal, banco, planta, columna, lámpara, marco).
-- Presupuesto *(est.)*: ≤ 300 KB por prop optimizado y ≤ 5 MB de assets estáticos en total. Texturas a 512–1K.
+- Presupuesto *(est.)*: ≤ 300 KB por prop optimizado y ≤ 5 MB de assets estáticos en total, contando texturas y HDRI (HDRI a 1K como máximo).
+- Prioridad si hay conflicto: peso (5 MB) primero, luego estilo único, luego variedad de props.
 - Recolorear materiales y normalizar escala en vez de buscar otro modelo.
 - Autoalojar HDRI, fuentes y texturas en el proyecto; ninguna CDN externa durante la demo.
 

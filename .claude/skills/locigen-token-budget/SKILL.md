@@ -17,11 +17,12 @@ Gasto esperado ~USD 14–20 *(est.)*, peor caso ~USD 43 *(est.)*, reserva USD 5.
 | Todo lo demás: UI, boilerplate, optimizar assets, `ASSETS.md`, tests simples, docs, commits | Haiku 5.5 |
 
 Precios por millón de tokens (entrada/salida): Haiku USD 0.10 / 0.50, Sonnet USD 2 / 10. Sonnet cuesta ~20× más.
+Fuente: documento de costos del proyecto, verificado el 23-oct-2026 contra la página de precios de Anthropic. Confirmar en la consola antes de decidir con estos números; si difieren, mandan los de la consola.
 
 ## Paso 2: acotar el contexto antes de actuar
 
 1. Buscar con grep o leer con rango (`offset`/`limit`) antes de abrir un archivo entero.
-2. Tareas ruidosas (tests, builds, logs largos): delegar a `test-runner` (Haiku) y recibir solo el resumen.
+2. Tareas ruidosas (tests, builds, logs largos): delegar a `test-runner` (Haiku) si está instalado (ver setup en `CLAUDE.md`). Si no, correr el comando con la salida acotada (`| tail -n 40`) y resumir solo lo que falla.
 3. Al cerrar cada bloque del plan, reiniciar el contexto y dejar el estado en `TODO.md`.
 4. Mantener cada prompt de Haiku bajo 100.000 tokens (por encima la tarifa sube a USD 0.50 / 2.50).
 5. Una pausa de más de 5 min reconstruye la caché del contexto: agrupar el trabajo y evitar sesiones largas inactivas.
@@ -30,7 +31,9 @@ Precios por millón de tokens (entrada/salida): Haiku USD 0.10 / 0.50, Sonnet US
 
 ## Paso 3: recortes ante retraso (en este orden)
 
-1. Logros. 2. Pedestales con modelos. 3. Carga de CSV. 4. Chat con fuentes. 5. Soporte móvil.
+1. Logros. 2. Pedestales con modelos. 3. Carga de CSV. 4. Chat con fuentes.
+
+Fuera de alcance por defecto: soporte móvil. La demo es solo en escritorio; el joystick virtual es un extra si sobra tiempo.
 
 ## Paso 4: control
 
