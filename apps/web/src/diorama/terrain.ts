@@ -16,7 +16,7 @@ export type HeightField = {
 }
 
 const riverZ = (x: number) => -1.5 + 3.4 * Math.sin(x * 0.2) + 1.4 * Math.sin(x * 0.53 + 1.1)
-const shoreZ = (x: number) => -11 + 2.2 * Math.sin(x * 0.17) + 1.1 * Math.sin(x * 0.41 + 2)
+export const shoreZ = (x: number) => -11 + 2.2 * Math.sin(x * 0.17) + 1.1 * Math.sin(x * 0.41 + 2)
 
 export function heightField(terrain: DioramaTerrain, seed: number): HeightField {
   if (isScienceTerrain(terrain)) return scienceHeightField(terrain, seed) // science-kit
