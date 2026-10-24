@@ -24,6 +24,7 @@ import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
 import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
+import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
 
 function wallVars(p: RoomPalette) {
@@ -315,6 +316,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                 {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
+              <VrButton />
             </div>
             <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 

@@ -8,6 +8,7 @@ import { useDioramaStore } from '../diorama/dioramaStore'
 import type { Diorama } from '@mus3o/shared'
 import { warmDioramaModel } from '../diorama/model'
 import { capTextureSize } from '../lib/capTexture'
+import { vrRuntime } from '../vr/runtime'
 import { LitePortal } from './LitePortal'
 
 const FONT_BODY = '/fonts/HankenGrotesk.ttf'
@@ -210,7 +211,8 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
     const rel = _c.set(camera.position.x - position[0], camera.position.y - position[1], camera.position.z - position[2])
     const dist = rel.length()
     if (paint.current) {
-      const o = phase === 'room' || phase === 'entering' ? smoothstep(FADE_NEAR, FADE_FAR, dist) : 1
+      // En VR el cuadro no se disuelve en la ventana viva (esa ventana se muestrea en pantalla, no por ojo): se queda opaco.
+      const o = (phase === 'room' || phase === 'entering') && !vrRuntime.active ? smoothstep(FADE_NEAR, FADE_FAR, dist) : 1
       paint.current.opacity = o
       paint.current.visible = o > 0.003
     }
@@ -220,7 +222,7 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
       fogRef.current.far = dist + atmo.fogFar * 1.0 * unit
     }
     portalDist.set(id, dist)
-    const wantNear = dist < (near ? UNMOUNT_RANGE : MOUNT_RANGE) && phase !== 'inside' && isNearestPortal(id)
+    const wantNear = dist < (near ? UNMOUNT_RANGE : MOUNT_RANGE) && phase !== 'inside' && isNearestPortal(id) && !vrRuntime.active
     if (wantNear !== near) setNear(wantNear)
 
     // ¿Se puede entrar? Cerca, de frente al cuadro y mirándolo.

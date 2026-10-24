@@ -1,0 +1,63 @@
+/* Modo VR (cardboard). Reglas nuevas, aisladas de index.css. */
+
+/* Mientras dura la VR solo se ve el lienzo: el HUD y sus capas no caben en un visor. */
+html.vr-on .palace > :not(:first-child) {
+  display: none !important;
+}
+html.vr-on,
+html.vr-on body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.vr-entry-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+.vr-exit {
+  position: fixed;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  z-index: 100000;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.vr-rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #000;
+  color: #fff;
+  text-align: center;
+  font-size: 1.1rem;
+}
+.vr-note {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 8px;
+  z-index: 99998;
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 0.8rem;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+}

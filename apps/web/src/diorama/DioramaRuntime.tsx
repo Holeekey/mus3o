@@ -11,6 +11,7 @@ import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
 import { applyTouchLook, moveAxes } from '../scene/moveInput'
+import { vrRuntime } from '../vr/runtime'
 
 // El mundo del diorama vive muy lejos del palacio, en el mismo Canvas: así el cambio de
 // mundo es solo mover la cámara y no hay segundo renderer ni recarga.
@@ -28,7 +29,8 @@ const ENTER_SECS = 1.05
 const LEAVE_SECS = 0.8
 const FADE_IN_SECS = 0.85
 
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// En VR las transiciones son cortas (sin travelling): el movimiento de cámara ajeno a la cabeza marea.
+const reducedMotion = () => vrRuntime.active || (typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 const easeOut = (u: number) => 1 - Math.pow(1 - u, 3)
 const easeIn = (u: number) => u * u
 const smooth = (a: number, b: number, v: number) => {
@@ -71,9 +73,14 @@ function ReturnGate({ layout, theme, roomId, center, rotationY }: { layout: Pala
       </mesh>
       <mesh position={[0, H / 2 + 0.12, 0]}>
         <planeGeometry args={[W, H]} />
-        <MeshPortalMaterial resolution={768} blur={0}>
-          <RoomEcho room={room} palette={palette} theme={theme} wall={[center[0], center[2]]} rotationY={rotationY} />
-        </MeshPortalMaterial>
+        {vrRuntime.active ? (
+          // En VR la ventana se muestrea en coordenadas de pantalla y no de cada ojo: placa lisa con el color de la sala.
+          <meshBasicMaterial color={palette.wall} />
+        ) : (
+          <MeshPortalMaterial resolution={768} blur={0}>
+            <RoomEcho room={room} palette={palette} theme={theme} wall={[center[0], center[2]]} rotationY={rotationY} />
+          </MeshPortalMaterial>
+        )}
       </mesh>
       <Suspense fallback={null}>
         <Text position={[0, H + 0.2, 0.52]} font="/fonts/Gloock.ttf" fontSize={0.26} color={palette.ink} anchorY="middle" letterSpacing={0.04}>

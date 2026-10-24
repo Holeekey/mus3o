@@ -19,6 +19,7 @@ npm run dev                          # web http://localhost:5173 · server http:
 |---|---|
 | `npm run dev` | Server (tsx watch) y web (Vite) en paralelo |
 | `npm run dev:web` / `npm run dev:server` | Uno solo |
+| `npm run dev:https` / `npm run dev:tunnel` | Web por HTTPS en la red local / aceptando un túnel de cloudflared, para probar la VR en el teléfono. Ver [vr.md](./vr.md) §4 |
 | `npm run build` | Compila `shared` → `server` (tsup) → `web` (`tsc --noEmit` + `vite build`) |
 | `npm run typecheck` | `tsc --noEmit` en todos los workspaces |
 | `npm test -w @mus3o/shared` | Vitest de contratos y verificación de citas |
@@ -174,6 +175,7 @@ Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`
 | Un palacio guardado no carga | No pasa `MuseumSchema` tras un cambio de contrato | `merge` lo descarta a propósito. Borra `mus3o-v1` en `localStorage` o regenera el palacio |
 | Cuadros sin imagen | Wikimedia con límite de tasa o artículo sin imagen | Reintenta en un minuto; sin artículo no hay cuadro (es lo esperado) |
 | Pointer lock no se activa | El navegador exige un clic del usuario | Haz clic en el palacio antes de moverte |
+| En el teléfono no aparece "Ver en VR" o los sensores no responden | La página no está en HTTPS (WebXR y sensores lo exigen) | `npm run dev:https` o el túnel de [vr.md](./vr.md) §4 |
 
 ## 10. Cómo mantener esta documentación al día
 
@@ -187,6 +189,7 @@ correspondiente en el mismo PR:
 | Pantallas, estado, controles, HUD, Aris, layout | [frontend.md](./frontend.md) |
 | Curva de olvido, llaves, examen | [memoria-y-examen.md](./memoria-y-examen.md) |
 | Diorama o props | [diorama.md](./diorama.md) |
+| Modo VR (`apps/web/src/vr/`), HTTPS para el teléfono | [vr.md](./vr.md) |
 | Citas o imágenes | [fuentes-e-imagenes.md](./fuentes-e-imagenes.md) |
 | Algo que pasa de "pendiente" a "hecho" (o al revés) | [estado-y-pendientes.md](./estado-y-pendientes.md) |
 | Comandos, variables de entorno, flujo | Este archivo |
