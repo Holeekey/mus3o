@@ -96,7 +96,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
     const hasRoomKey = !!roomKeys?.[currentRoom.id]
     if (hasKey || hasRoomKey) {
       return {
-        text: `Aris: ¡Tienes acceso para abrir la compuerta! ${hasRoomKey ? 'Ganaste la llave de esta sala al memorizar sus piezas.' : 'Tienes la Llave de Hierro en tu inventario.'} Acércate a la puerta y presiona E para desbloquearla.`,
+        text: `Aris: ¡Tienes acceso para abrir la compuerta! ${hasRoomKey ? 'Ganaste la llave de esta sala al memorizar sus piezas.' : 'Tienes la Llave de Hierro en tu inventario.'} Acércate a la puerta y presiona E (o toca 👁️) para desbloquearla.`,
       }
     } else {
       return {
@@ -110,7 +110,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
     if (unmemorizedInRoom.length > 0) {
       const nextPiece = unmemorizedInRoom[0]
       return {
-        text: `Aris: En esta sala aún te falta dominar "${nextPiece.title}". Acércate a su pedestal y presiona la tecla M cuando lo hayas fijado en tu memoria.`,
+        text: `Aris: En esta sala aún te falta dominar "${nextPiece.title}". Acércate a su pedestal y márcalo con la tecla M (o el botón ✓) cuando lo hayas fijado en tu memoria.`,
       }
     } else {
       const remainingGlobal = allPieces.filter((p) => !memorized[p.id])

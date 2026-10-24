@@ -3,6 +3,7 @@ import { useDioramaStore } from '../diorama/dioramaStore'
 import { canSpeak, speak, stopSpeaking } from '../lib/voice'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
+import { KeyHint } from './KeyHint'
 
 const KEY = 'mus3o-narrator'
 
@@ -105,7 +106,7 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
   if (!supported || mode !== 'explore') return null
   return (
     <button type="button" className="narrator" aria-pressed={on} onClick={toggle}>
-      Narrador: {on ? 'activado' : 'desactivado'} <kbd>N</kbd>
+      Narrador: {on ? 'activado' : 'desactivado'} <KeyHint k="N" />
     </button>
   )
 }
