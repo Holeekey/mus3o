@@ -1,7 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { countSources, LIMITS, type Museum, type Source } from '@mus3o/shared'
 import { generateMuseum, generateMuseumFromFiles, type FilesStage } from '../lib/api'
-import { fileKindOf, readImageAttachment, readTextAttachment, type ImageAttachment } from '../lib/files'
+import { fileKindOf, readImageAttachment, readTextAttachment } from '../lib/files'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { PRESET_PALACES } from '../palace/presets'
@@ -11,6 +11,7 @@ import { dueCountFor } from '../memory/hooks'
 import { dueLabel } from '../memory/dueLabel'
 import { useStore } from '../store'
 import { FreeExploreToggle } from './FreeExploreToggle'
+import { SourcesPanel, type Attachment } from './SourcesPanel'
 
 // La maqueta 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
 const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.Preview })))
@@ -21,9 +22,7 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024
 // Lo que acepta el prompt maestro: hasta 10 archivos de texto y 100.000 caracteres cada uno.
 const MAX_TEXT_FILES = 10
 const MAX_TEXT_FILE_CHARS = 100_000
-const ACCEPT = '.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.png,.jpg,.jpeg,.webp'
-
-type Attachment = { id: string; kind: 'text'; source: Source } | { id: string; kind: 'image'; image: ImageAttachment }
+const FILES_PLACEHOLDER = '¿Qué quieres aprender de estos archivos? (opcional)'
 
 const nextImageId = (list: Attachment[]) => {
   const used = new Set(list.map((a) => a.id))
@@ -48,7 +47,7 @@ export function Landing() {
   const dueText = dueLabel(dueCountFor(saved))
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [sourcesOpen, setSourcesOpen] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [aiStage, setAiStage] = useState<FilesStage>('generating')
   const [aiState, setAiState] = useState<'idle' | 'loading'>('idle')
@@ -110,12 +109,12 @@ export function Landing() {
   const layout = useMemo(() => (result.ok ? buildLayout(result.palace) : null), [result])
   const conceptCount = result.ok ? result.palace.rooms.reduce((n, r) => n + r.pieces.length, 0) : 0
 
-  const onFiles = async (files: FileList | null) => {
+  const onFiles = async (files: File[]) => {
     setFileError(null)
     setAiResult(null)
     const errors: string[] = []
     let list = attachments
-    for (const file of Array.from(files ?? [])) {
+    for (const file of files) {
       try {
         if (file.size > MAX_FILE_BYTES) throw new Error(`"${file.name}" pesa más de 15 MB.`)
         if (fileKindOf(file.name) === 'image') {
@@ -143,8 +142,9 @@ export function Landing() {
     }
     setAttachments(list)
     if (errors.length) setFileError(errors.join(' '))
-    if (fileRef.current) fileRef.current.value = ''
   }
+
+  const closeSources = useCallback(() => setSourcesOpen(false), [])
 
   const removeAttachment = (id: string) => {
     setAttachments((list) => list.filter((a) => a.id !== id))
@@ -191,38 +191,17 @@ export function Landing() {
             <span className="tab active">Tus apuntes</span>
             <button
               className="tab tab-file"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => setSourcesOpen(true)}
               title="Word, Excel, CSV, texto, JSON o imágenes"
-              aria-label="Adjuntar archivos"
+              aria-haspopup="dialog"
             >
-              + Adjuntar
+              + Fuentes{attachments.length > 0 && ` (${attachments.length})`}
             </button>
-            <input ref={fileRef} type="file" accept={ACCEPT} multiple hidden onChange={(e) => onFiles(e.target.files)} />
           </div>
-          {attachments.length > 0 && (
-            <ul className="attachments" aria-label="Archivos adjuntos">
-              {attachments.map((a) => (
-                <li key={a.id} className="attachment">
-                  {a.kind === 'image' ? (
-                    <img src={a.image.previewUrl} alt="" className="attachment-thumb" />
-                  ) : (
-                    <span className="attachment-kind">{a.source.kind}</span>
-                  )}
-                  <span className="attachment-name">{a.kind === 'image' ? a.image.image.name : a.source.name}</span>
-                  {a.kind === 'text' && (
-                    <span className="attachment-meta">{a.source.text.length.toLocaleString('es')} car.</span>
-                  )}
-                  <button className="attachment-remove" onClick={() => removeAttachment(a.id)} aria-label="Quitar archivo">
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
           <textarea
             value={input}
             onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
-            placeholder={PLACEHOLDER}
+            placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
             spellCheck={false}
             maxLength={MAX_INPUT_CHARS}
             aria-label="Apuntes"
@@ -230,8 +209,6 @@ export function Landing() {
           <div className="editor-status">
             {aiError ? (
               <span className="error">{aiError}</span>
-            ) : fileError ? (
-              <span className="error">{fileError}</span>
             ) : attachments.length > 0 && !aiResult ? (
               <span>
                 {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
@@ -285,6 +262,15 @@ export function Landing() {
         </div>
         <FreeExploreToggleConnected />
       </section>
+
+      <SourcesPanel
+        open={sourcesOpen}
+        onClose={closeSources}
+        attachments={attachments}
+        onAdd={onFiles}
+        onRemove={removeAttachment}
+        error={fileError}
+      />
 
       <section className="landing-right" aria-label="Vista previa del palacio">
         <div className="preview-frame">

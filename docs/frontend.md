@@ -26,7 +26,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 ## 2. Landing (`ui/Landing.tsx`)
 
 - Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
-- **"+ Adjuntar"** (`lib/files.ts`): varios archivos a la vez, cada uno ≤ 15 MB, con chips que se pueden quitar. Todo se lee en el navegador, sin IA:
+- **"+ Fuentes"** abre un panel lateral (`ui/SourcesPanel.tsx`) que se cierra con ✕, Escape o clic afuera: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
 
 | Tipo | Cómo se lee |
 |---|---|
