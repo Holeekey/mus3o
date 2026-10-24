@@ -49,9 +49,10 @@ export async function ensureAsset(id: string, downloadUrl: string, signal?: Abor
   if (!isValidAssetId(id)) return false;
   if (await exists(id)) return true;
   if (!isAllowedDownload(downloadUrl)) return false;
-  const res = await fetch(downloadUrl, { signal, redirect: "error" });
+  const res = await fetch(downloadUrl, { signal, redirect: "follow" });
   if (res.status === 403 || res.status === 429 || res.status === 503) throw new DownloadBlockedError(`HTTP ${res.status}`);
   if (!res.ok || !res.body) return false;
+  if (!isAllowedDownload(res.url)) return false;
   if ((res.headers.get("content-type") ?? "").includes("text/html")) throw new DownloadBlockedError("respuesta HTML");
   const declared = Number(res.headers.get("content-length"));
   if (declared > MAX_ASSET_BYTES) return false;
@@ -60,7 +61,12 @@ export async function ensureAsset(id: string, downloadUrl: string, signal?: Abor
   let total = 0;
   for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
     total += chunk.length;
-    if (total > MAX_ASSET_BYTES) return false;
+    if (total > MAX_ASSET_BYTES) {
+      if ("cancel" in res.body && typeof (res.body as any).cancel === "function") {
+        await (res.body as any).cancel().catch(() => {});
+      }
+      return false;
+    }
     chunks.push(Buffer.from(chunk));
   }
   const body = Buffer.concat(chunks);
