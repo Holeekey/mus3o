@@ -4,6 +4,7 @@ import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
+import { interact, toggleMemorize } from '../scene/actions'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
@@ -20,8 +21,10 @@ import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
+import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
 import { VrButton } from '../vr/VrButton'
+import { useIsTouch } from './useIsTouch'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -41,6 +44,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
   const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
   const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
   const close = () => useStore.getState().set({ openId: null })
+  const touch = useIsTouch()
   return (
     <aside className="card" style={wallVars(palette)}>
       <div className="card-header-bar">
@@ -81,7 +85,15 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
-            <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+            {touch ? (
+              <button type="button" className="btn btn-ghost" onClick={toggleMemorize}>
+                {memorized ? 'desmarcar' : 'marcar como memorizado'}
+              </button>
+            ) : (
+              <>
+                <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -91,6 +103,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
 
 export function Hud({ layout }: { layout: PalaceLayout }) {
   const palace = useStore((s) => s.palace)
+  const buildSummary = useStore((s) => s.build.summary) // palacio generado con IA: "N de M verificados"
   // Precarga las imágenes de todo el palacio para que las fichas se abran al instante.
   useEffect(() => {
     if (palace) void prefetchPalaceImages(palace)
@@ -117,6 +130,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const reviewIds = useStore((s) => s.reviewIds)
   const startReview = useStore((s) => s.startReview)
   const exitToLanding = useStore((s) => s.exitToLanding)
+  const touch = useIsTouch()
 
   const room = layout.rooms.find((r) => r.id === currentRoomId) ?? layout.rooms[0]
   const conceptCount = conceptIdList(palace).length
@@ -188,9 +202,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       {locked && doorLocked && !lastKeyRoomId && (
         <p className={`hint ${doorOpenable ? 'hint-gold' : 'hint-warn'}`}>
           {doorOpenable ? (
-            <>
-              <kbd>E</kbd> Usar llave para abrir compuerta
-            </>
+            <KeyHint k="E" onTap={() => interact(layout)}>
+              Usar llave para abrir compuerta
+            </KeyHint>
           ) : (
             <>
               🔒 Compuerta bloqueada: memoriza {doorMissing} {doorMissing === 1 ? 'pieza más' : 'piezas más'} de{' '}
@@ -201,14 +215,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       )}
       {locked && (!focusedDoorId || doorOpen(focusedDoorId)) && focusedId && !openId && (
         <p className="hint">
-          <kbd>E</kbd>{' '}
-          {focusedKind === 'key'
-            ? hasKey
-              ? 'Examinar Llave de Hierro'
-              : 'Recoger Llave de Hierro'
-            : inExamScope({ mode, reviewIds }, focusedId) && !exam[focusedId]
-              ? 'Responder'
-              : 'Examinar concepto'}
+          <KeyHint k="E" onTap={() => interact(layout)}>
+            {focusedKind === 'key'
+              ? hasKey
+                ? 'Examinar Llave de Hierro'
+                : 'Recoger Llave de Hierro'
+              : inExamScope({ mode, reviewIds }, focusedId) && !exam[focusedId]
+                ? 'Responder'
+                : 'Examinar concepto'}
+          </KeyHint>
         </p>
       )}
 
@@ -248,6 +263,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         <div className="pause">
           <div className="pause-panel">
             <p className="pause-sub">{palace?.title}</p>
+            {buildSummary && <p className="pause-sub">{buildSummary}</p>}
             <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu palacio está levantado'}</h1>
             <p className="muted">
               {mode === 'exam'
@@ -256,15 +272,27 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                   : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
                 : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
             </p>
-            <p className="pause-keys">
-              <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
-              {mode === 'exam' && (
-                <>
-                  <br />
-                  Responde en voz alta · <kbd>Y</kbd> para escribir
-                </>
-              )}
-            </p>
+            {touch ? (
+              <p className="pause-keys">
+                Arrastra a la izquierda para moverte y desliza a la derecha para mirar · 👁️ examinar · ✓ memorizar · 🤖 Aris
+                {mode === 'exam' && (
+                  <>
+                    <br />
+                    Responde en voz alta o toca «Escribir»
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="pause-keys">
+                <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
+                {mode === 'exam' && (
+                  <>
+                    <br />
+                    Responde en voz alta · <kbd>Y</kbd> para escribir
+                  </>
+                )}
+              </p>
+            )}
             <div className="pause-actions">
               <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
                 {mode === 'exam' ? 'Empezar examen' : 'Entrar al palacio'}
@@ -288,7 +316,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               >
                 Repasar lo pendiente{due > 0 ? ` (${due})` : ''}
               </button>
-              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con M para que el palacio los recuerde.</p>}
+              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el palacio los recuerde.</p>}
               <fieldset className="time-machine">
                 <legend>Simular el paso del tiempo</legend>
                 <div className="time-steps" role="group" aria-label="Días simulados">

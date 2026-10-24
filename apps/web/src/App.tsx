@@ -36,6 +36,7 @@ if (demo !== null) {
 import { DioramaOverlay } from './diorama/DioramaOverlay'
 import { IntroOverlay } from './intro/IntroOverlay'
 import { useIntro } from './intro/store'
+import { BuildNotice } from './ui/BuildNotice'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
 import { VrOverlay } from './vr/VrOverlay'
@@ -49,16 +50,20 @@ export default function App() {
 
   const introOn = useIntro((s) => s.phase === 'idle' || (s.phase === 'playing' && !s.reduced)) // intro: oculta el HUD hasta que el vuelo termina
 
+  // Palacio que se levanta en vivo: el HUD espera a que el usuario salte o a que termine el vuelo.
+  const waitingForBuild = useStore((s) => s.build.status === 'building' && (introOn || (s.palace?.rooms.length ?? 0) === 0))
+
   if (screen === 'palace' && layout) {
     return (
       <div className={introOn ? 'palace intro-on' : 'palace'}>
         <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: DEFAULT_THEME.scene.background }} />}>
           <World layout={layout} />
         </Suspense>
-        <Hud layout={layout} />
+        {!waitingForBuild && <Hud layout={layout} />}
         <DioramaOverlay />
         <IntroOverlay />
         <VrOverlay />
+        <BuildNotice />
       </div>
     )
   }

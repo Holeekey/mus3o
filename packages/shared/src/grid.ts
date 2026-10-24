@@ -128,3 +128,91 @@ export function planRoomGrid(museum: Museum): RoomGridPlan {
   normalize(cells);
   return { start: graph.start, cells, links };
 }
+
+// ── Colocación incremental (palacio que se levanta sala a sala mientras la IA lo escribe) ─────────────────
+//
+// Misma regla que `planRoomGrid` (seguir derecho, si no hay lugar al lado va junto a la sala ubicada más
+// cercana con lugar), pero en el orden en que llegan las salas y sin mirar las que aún no existen: la celda
+// de una sala solo depende de las anteriores y de sus aristas con ellas, así que una sala ya ubicada nunca se
+// mueve (tampoco se normaliza el origen: la primera sala queda en 0,0).
+
+export type IncrementalGrid = {
+  ids: string[];
+  /** Celda de cada sala, por índice de llegada. */
+  cells: GridCell[];
+  headings: Array<GridCell | undefined>;
+  /** Puertas del árbol de colocación `[anfitriona, nueva]` (índices), en orden de llegada. */
+  links: Array<[number, number]>;
+};
+
+export const emptyGrid = (): IncrementalGrid => ({ ids: [], cells: [], headings: [], links: [] });
+
+/**
+ * Ubica la sala `id` junto a su vecina anterior mejor enlazada (tipo de arista y luego orden de llegada).
+ * `edges` son las aristas de la sala con las anteriores; sin ninguna, cuelga de la última. Pura.
+ */
+export function placeRoom(grid: IncrementalGrid, id: string, edges: GraphEdge[]): IncrementalGrid {
+  const i = grid.ids.length;
+  if (i === 0) return { ids: [id], cells: [{ row: 0, col: 0 }], headings: [undefined], links: [] };
+
+  const index = new Map(grid.ids.map((roomId, k) => [roomId, k]));
+  let parent = i - 1;
+  let best = Infinity;
+  for (const { from, to, kind } of edges) {
+    const other = index.get(from === id ? to : from);
+    if (other === undefined || (from !== id && to !== id)) continue;
+    const score = EDGE_PRIORITY[kind] * 100 + other;
+    if (score < best) {
+      best = score;
+      parent = other;
+    }
+  }
+
+  const taken = new Set(grid.cells.map(keyOf));
+  const freeSide = (k: number) => {
+    const preferred = grid.headings[k];
+    const dirs = preferred ? [preferred, ...DIRECTIONS.filter((d) => d !== preferred)] : DIRECTIONS;
+    return dirs.find((d) => !taken.has(keyOf(step(grid.cells[k], d))));
+  };
+
+  let host = parent;
+  let dir = freeSide(parent);
+  if (!dir) {
+    const distance = (k: number) => Math.abs(grid.cells[k].row - grid.cells[parent].row) + Math.abs(grid.cells[k].col - grid.cells[parent].col);
+    host = grid.cells
+      .map((_, k) => k)
+      .filter((k) => freeSide(k))
+      .sort((a, b) => distance(a) - distance(b))[0];
+    dir = freeSide(host)!;
+  }
+  return {
+    ids: [...grid.ids, id],
+    cells: [...grid.cells, step(grid.cells[host], dir)],
+    headings: [...grid.headings, dir],
+    links: [...grid.links, [host, i]],
+  };
+}
+
+/**
+ * Puertas extra del grafo final: las aristas fuera del árbol de colocación (bucles, convergencias, cruces)
+ * cuyas salas quedaron vecinas, como en `planRoomGrid`. No cambia ninguna posición.
+ */
+export function extraGridLinks(grid: IncrementalGrid, edges: GraphEdge[]): Array<[number, number]> {
+  const index = new Map(grid.ids.map((id, k) => [id, k]));
+  const linked = new Set(grid.links.map(([a, b]) => [a, b].sort().join("|")));
+  const extra: Array<[number, number]> = [];
+  for (const { from, to } of edges) {
+    const a = index.get(from);
+    const b = index.get(to);
+    if (a === undefined || b === undefined) continue;
+    const pair = [a, b].sort().join("|");
+    if (linked.has(pair)) continue;
+    const p = grid.cells[a];
+    const q = grid.cells[b];
+    if (Math.abs(p.row - q.row) + Math.abs(p.col - q.col) === 1) {
+      linked.add(pair);
+      extra.push([a, b]);
+    }
+  }
+  return extra;
+}

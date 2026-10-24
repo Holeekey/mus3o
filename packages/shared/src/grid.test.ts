@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { planRoomGrid, type RoomGridPlan } from "./grid";
-import type { Graph, Museum } from "./schema";
+import { emptyGrid, extraGridLinks, placeRoom, planRoomGrid, type GridCell, type RoomGridPlan } from "./grid";
+import type { Graph, GraphEdge, Museum } from "./schema";
 
 function museum(ids: string[], graph?: Graph): Museum {
   return {
@@ -180,5 +180,61 @@ describe("grafos no lineales", () => {
     expect(plan.links.length).toBeGreaterThanOrEqual(3);
     const pairs = plan.links.map((l) => [l.from, l.to].sort().join(""));
     if (adjacent(plan, "c", "d")) expect(pairs).toContain("cd");
+  });
+});
+
+describe("colocación incremental", () => {
+  const edge = (from: string, to: string, kind: GraphEdge["kind"] = "related"): GraphEdge => ({ from, to, kind });
+
+  it("una sala ya ubicada no se mueve cuando llegan las siguientes", () => {
+    const rooms = ids(8);
+    // Árbol: r0 → r1, r2, r3; r1 → r4; r2 → r5 …
+    const parentOf: Record<string, string> = { r1: "r0", r2: "r0", r3: "r0", r4: "r1", r5: "r2", r6: "r0", r7: "r3" };
+    let grid = emptyGrid();
+    const history: GridCell[][] = [];
+    for (const id of rooms) {
+      grid = placeRoom(grid, id, parentOf[id] ? [edge(parentOf[id], id)] : []);
+      history.push(grid.cells.map((c) => ({ ...c })));
+    }
+    history.forEach((cells, k) => {
+      if (k === 0) return;
+      expect(cells.slice(0, k)).toEqual(history[k - 1]);
+    });
+    // Una sala por celda y cada puerta une salas vecinas.
+    expect(new Set(grid.cells.map((c) => `${c.row},${c.col}`)).size).toBe(rooms.length);
+    for (const [a, b] of grid.links) expect(Math.abs(grid.cells[a].row - grid.cells[b].row) + Math.abs(grid.cells[a].col - grid.cells[b].col)).toBe(1);
+    expect(grid.links).toHaveLength(rooms.length - 1);
+  });
+
+  it("cuelga cada sala de su vecina anterior mejor enlazada y, sin aristas, de la última", () => {
+    let grid = emptyGrid();
+    for (const id of ["a", "b", "c"]) grid = placeRoom(grid, id, []);
+    expect(grid.links).toEqual([[0, 1], [1, 2]]);
+    // d exige a y c: gana la de menor orden entre las del mismo tipo.
+    grid = placeRoom(grid, "d", [edge("c", "d", "prerequisite"), edge("a", "d", "prerequisite")]);
+    expect(grid.links[2]).toEqual([0, 3]);
+    // Una arista "next" gana a un prerrequisito.
+    grid = placeRoom(grid, "e", [edge("a", "e", "prerequisite"), edge("d", "e", "next")]);
+    expect(grid.links[3]).toEqual([3, 4]);
+  });
+
+  it("si la anfitriona no tiene lado libre, va junto a la sala ubicada más cercana con lugar", () => {
+    let grid = emptyGrid();
+    grid = placeRoom(grid, "hub", []);
+    for (const id of ["n", "e", "s", "w"]) grid = placeRoom(grid, id, [edge("hub", id)]);
+    grid = placeRoom(grid, "x", [edge("hub", "x")]);
+    const x = grid.cells[5];
+    expect(grid.cells.filter((c) => c.row === x.row && c.col === x.col)).toHaveLength(1);
+    expect(grid.links[4][0]).not.toBe(0);
+  });
+
+  it("extraGridLinks agrega solo las aristas fuera del árbol entre salas vecinas", () => {
+    let grid = emptyGrid();
+    for (const id of ["a", "b", "c", "d"]) grid = placeRoom(grid, id, []);
+    const extra = extraGridLinks(grid, [edge("a", "b"), edge("b", "c"), edge("c", "d"), edge("a", "d"), edge("a", "zzz")]);
+    for (const [p, q] of extra) {
+      expect(Math.abs(grid.cells[p].row - grid.cells[q].row) + Math.abs(grid.cells[p].col - grid.cells[q].col)).toBe(1);
+      expect(grid.links.some(([x, y]) => (x === p && y === q) || (x === q && y === p))).toBe(false);
+    }
   });
 });

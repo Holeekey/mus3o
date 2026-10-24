@@ -9,6 +9,7 @@ import { palaceKey } from '../memory/model'
 import { IntroCamera } from '../intro/IntroCamera'
 import { HideDuringIntro, Reveal } from '../intro/Reveal'
 import { beginIntro, introState } from '../intro/store'
+import { BuildSite } from '../intro/BuildSite'
 import { corridorKey } from '../intro/timeline'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { ArisCompanion } from './ArisCompanion'
@@ -43,9 +44,9 @@ function AdaptiveQuality() {
 }
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
-function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
+function Sun({ bounds, theme }: { bounds: PalaceLayout['bounds']; theme: Theme }) {
   const { sun, shadows } = theme.scene
-  const { minX, maxX, minZ, maxZ } = layout.bounds
+  const { minX, maxX, minZ, maxZ } = bounds
   const cx = (minX + maxX) / 2
   const cz = (minZ + maxZ) / 2
   const half = Math.hypot(maxX - minX, maxZ - minZ) / 2 + 4
@@ -91,6 +92,8 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 
 // ?intro=0 la desactiva, ?intro=1 la fuerza; ?introAt=<s> congela el reloj (capturas).
 function startIntro(layout: PalaceLayout) {
+  // Un palacio que se levanta en vivo ya arrancó su propia intro (beginBuildingPalace); cada sala nueva cambia el layout.
+  if (introState.mode === 'build' && useStore.getState().build.status !== 'idle') return
   const q = new URLSearchParams(window.location.search)
   const flag = q.get('intro')
   const at = Number(q.get('introAt'))
@@ -106,6 +109,7 @@ function startIntro(layout: PalaceLayout) {
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
   useMemo(() => startIntro(layout), [layout]) // INTRO: debe decidirse antes del primer frame
+  const building = useStore((s) => s.build.status !== 'idle') // palacio levantado en vivo (también una vez terminado)
   const unlockedDoors = useStore((s) => s.unlockedDoors)
   const freeExplore = useStore((s) => s.freeExplore)
   const palettes = useMemo(
@@ -127,7 +131,8 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       <color attach="background" args={[scene.background]} />
       <fog attach="fog" args={[scene.fog.color, scene.fog.near, scene.fog.far]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />
-      <Sun layout={layout} theme={theme} />
+      <Sun bounds={layout.bounds} theme={theme} />
+      {building && <BuildSite />}
       <AtmosphereController layout={layout} theme={theme} />
       <DecayField layout={layout} theme={theme} />
       {layout.rooms.map((r, i) => (

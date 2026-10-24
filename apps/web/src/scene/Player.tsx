@@ -3,16 +3,13 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
 import { Vector3 } from 'three'
 
-import type { Piece } from '@mus3o/shared'
-import { canOpenDoor } from '../palace/keys'
 import { handleDioramaKey, isDioramaActive, useDioramaStore } from '../diorama/dioramaStore'
-import { allowedKeys, findDoor } from '../palace/inputKeys'
-import { canListen } from '../lib/voice'
+import { allowedKeys } from '../palace/inputKeys'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
-import { pieceKind } from '../palace/pieceKind'
-import { inExamScope, isDoorOpen, playerPose, useStore } from '../store'
+import { isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
+import { examine, openAris, toggleMemorize } from './actions'
 import { consumeTouchLook, touchInput } from './touchInput'
 
 const EYE = 1.7
@@ -30,8 +27,6 @@ export function Player({ layout }: { layout: PalaceLayout }) {
   const controls = useRef<ComponentRef<typeof PointerLockControls>>(null)
   const keys = useRef<Record<string, boolean>>({})
   const forward = useRef(new Vector3())
-  // Concepto enfocado, para que el handler de teclas conozca su tipo sin depender de su texto.
-  const focusedConcept = useRef<Piece | null>(null)
   // El handler de teclas se registra una vez: lee el layout vigente desde esta ref, no el del primer render.
   const layoutRef = useRef(layout)
   layoutRef.current = layout
@@ -52,7 +47,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       }
       controls.current?.unlock()
     }
-  }, [camera, layout])
+    // Solo cuando cambia el punto de entrada: un palacio que se levanta en vivo cambia de layout con cada sala.
+  }, [camera, layout.spawn.x, layout.spawn.z, layout.spawn.yaw]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -67,31 +63,9 @@ export function Player({ layout }: { layout: PalaceLayout }) {
         hasConcept: !!(s.openId ?? s.focusedId),
       })
       if (!allowed.has(e.code)) return
-      if (e.code === 'KeyE') {
-        if (s.focusedDoorId && !isDoorOpen(s, s.focusedDoorId)) {
-          const door = findDoor(layoutRef.current, s.focusedDoorId)
-          if (door && canOpenDoor(door, s.hasKey, s.roomKeys)) s.unlockDoor(door.id)
-          return
-        }
-        if (s.openId) s.set({ openId: null })
-        else if (s.focusedId) {
-          if (focusedConcept.current && pieceKind(focusedConcept.current) === 'key') {
-            s.pickupKey()
-          }
-          s.set({ openId: s.focusedId })
-          // Con dictado el puntero sigue bloqueado y se responde en voz alta; sin él hay que escribir.
-          if (inExamScope(s, s.focusedId) && !s.exam[s.focusedId] && !canListen()) controls.current?.unlock()
-        }
-      }
-      if (e.code === 'KeyM' && s.mode === 'explore') {
-        const id = s.openId ?? s.focusedId
-        if (id) s.toggleMemorized(id)
-      }
-      // Con la tarjeta de examen abierta no se consulta a Aris (T ya no se usa ahí; escribir es Y).
-      if (e.code === 'KeyT' && !s.arisPromptOpen && !(s.openId && inExamScope(s, s.openId))) {
-        s.setArisPromptOpen(true)
-        controls.current?.unlock()
-      }
+      if (e.code === 'KeyE') examine(layoutRef.current)
+      if (e.code === 'KeyM') toggleMemorize()
+      if (e.code === 'KeyT') openAris()
     }
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false
@@ -203,7 +177,6 @@ export function Player({ layout }: { layout: PalaceLayout }) {
 
     // Pedestal al que se está mirando y que está al alcance.
     let best: string | null = null
-    let bestConcept: Piece | null = null
     let bestDist = REACH
     for (const p of room?.pedestals ?? []) {
       const vx = p.x - camera.position.x
@@ -212,10 +185,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       if (dist > bestDist || dist < 0.01) continue
       if ((vx * f.x + vz * f.z) / dist < 0.8) continue
       best = p.concept.id
-      bestConcept = p.concept
       bestDist = dist
     }
-    focusedConcept.current = bestConcept
     if (best !== s.focusedId) {
       // Al alejarse, la tarjeta de exploración se cierra sola.
       const closeCard = s.openId && s.mode === 'explore' && s.openId !== best

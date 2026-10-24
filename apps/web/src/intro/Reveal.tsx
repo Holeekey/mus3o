@@ -19,7 +19,7 @@ const MIN = 0.001
 
 /** Avance 0..1 del elemento en este instante; 1 si no hay intro. Sin estado de React. */
 export function currentReveal(id: string): number {
-  return introState.active ? revealProgress(introState.timeline, id, introState.t) : 1
+  return introState.active || introState.popin ? revealProgress(introState.timeline, id, introState.t) : 1
 }
 
 /** Oculta a sus hijos mientras vuela la intro (p. ej. Aris, que sigue a la cámara). */

@@ -135,6 +135,8 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
 | `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
 | `pointerLock.ts` | Utilidad para bloquear el puntero |
+| `actions.ts` | Acciones del jugador (`interact`, `examine`, `toggleMemorize`, `openAris`, `enterDiorama`, `leaveDiorama`). Las usan el teclado (`Player.tsx`) y la pantalla táctil, así un botón nunca hace menos que su tecla |
+| `touchInput.ts` | Estado mutable del joystick y la mirada táctil; `markTouchDevice` marca el dispositivo como táctil (`<html data-touch>`) |
 
 ### Controles
 
@@ -143,13 +145,30 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `W A S D` / flechas | Moverse | `Player.tsx` |
 | `Shift` | Correr | `Hud.tsx` (ayuda) |
 | Mouse | Mirar (pointer lock) | `Player.tsx` |
-| `E` | Examinar concepto o abrir la ficha; usar llave en una puerta; entrar al diorama | `Player.tsx`, `dioramaStore.ts` |
-| `M` | Marcar o desmarcar memorizado (en modo explorar) | `Player.tsx` |
-| `T` | Hablar con Aris (abre el prompt) | `Player.tsx` |
-| `Q` | Salir del diorama | `dioramaStore.ts` |
+| `E` | Examinar concepto o abrir la ficha; recoger la llave; usar llave en una puerta; entrar al diorama | `scene/actions.ts` |
+| `M` | Marcar o desmarcar memorizado (en modo explorar) | `scene/actions.ts` |
+| `T` | Hablar con Aris (abre el prompt) | `scene/actions.ts` |
+| `Q` | Salir del diorama | `scene/actions.ts` |
+| `N` | Narrador | `ui/Narrator.tsx` |
+| `R` / `Y` | En el examen: reintentar el dictado / escribir la respuesta | `ui/ExamCard.tsx` |
 | `Esc` | Pausa | Ayuda del HUD |
 
 En el examen, responder exige escribir, así que se libera el puntero.
+
+### Controles táctiles (`ui/TouchControls.tsx`)
+
+Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/useIsTouch.ts`). Ninguna acción necesita teclado:
+
+| Gesto o botón | Equivale a |
+|---|---|
+| Joystick visible abajo a la izquierda (o arrastrar en cualquier punto de la mitad izquierda); empujar a fondo corre | `W A S D` + `Shift` |
+| Deslizar en la mitad derecha | Mouse |
+| 👁️ / ✓ / 🤖 | `E` / `M` / `T` |
+| Tocar el aviso ("Examinar concepto ›", "Entrar al cuadro ›", "Volver a la sala ›", "Usar llave…") | La tecla del aviso |
+| Botones en las fichas ("marcar como memorizado", ✕) y en el examen ("reintentar", "escribir") | `M`, `E`, `R`, `Y` |
+| Tocar "Narrador" | `N` |
+
+`ui/KeyHint.tsx` dibuja cada atajo: en escritorio `<kbd>E</kbd> Examinar`; en táctil un botón con la misma acción, o nada si la tecla no tiene equivalente. La primera vez se muestra la ayuda "Arrastra a la izquierda para moverte · desliza a la derecha para mirar" hasta el primer movimiento (`localStorage` `mus3o-touch-tip`).
 
 ## 6. HUD (`ui/Hud.tsx`) y otros componentes de `ui/`
 

@@ -188,6 +188,39 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
   return resolveModels(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));
 }
 
+/** Fuente de texto en streaming: trozos de la respuesta del modelo según llegan. */
+export type TextStreamer = (params: {
+  system: string | Anthropic.TextBlockParam[];
+  content: Anthropic.MessageParam["content"];
+  maxTokens: number;
+  signal: AbortSignal;
+}) => AsyncIterable<string>;
+
+/** Streaming real contra la API de Anthropic. Si el consumidor deja de leer o se aborta, se corta la conexión. */
+export const anthropicTextStreamer: TextStreamer = async function* ({ system, content, maxTokens, signal }) {
+  const stream = getClient().messages.stream(
+    { model: MODEL(), max_tokens: maxTokens, system, messages: [{ role: "user", content }] },
+    { signal },
+  );
+  try {
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") yield event.delta.text;
+    }
+  } finally {
+    stream.abort();
+  }
+};
+
+let streamerOverride: TextStreamer | null = null;
+/** Solo pruebas: sustituye al cliente de Anthropic por uno falso. */
+export function setTextStreamerForTests(streamer: TextStreamer | null) {
+  streamerOverride = streamer;
+}
+export const currentTextStreamer = (): TextStreamer => streamerOverride ?? anthropicTextStreamer;
+
+/** Tokens máximos de la respuesta DSL de tema/apuntes (los mismos que la generación sin streaming). */
+export const dslMaxTokens = (input: GenerateInput) => ("notes" in input ? 3500 : 2000);
+
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
 export function buildFlowContent(request: GenerateMuseumRequest, format: "json" | "dsl" = "json"): Anthropic.ContentBlockParam[] {
   const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => {
@@ -263,17 +296,36 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
  * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas, en paralelo.
  */
 async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Museum> {
-  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: FLOW_DSL_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
+  const { system, content, maxTokens } = flowDslCall(request);
   let dioramaRooms: string[] = [];
-  const museum = await askForJson(
-    { system, content: buildFlowContent(request, "dsl"), maxTokens: flowMaxTokens(roomPlan(request), request.mode) },
-    (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)),
-  );
-  const enriched = enrichMuseum(museum, flowNotesText(request));
+  const museum = await askForJson({ system, content, maxTokens }, (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)));
+  return completeMuseum(enrichMuseum(museum, flowNotesText(request)), dioramaRooms);
+}
+
+/** Lo que se le pide al modelo en el flujo completo por DSL (compartido por la generación con y sin streaming). */
+export function flowDslCall(request: GenerateMuseumRequest) {
+  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: FLOW_DSL_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
+  return { system, content: buildFlowContent(request, "dsl"), maxTokens: flowMaxTokens(roomPlan(request), request.mode) };
+}
+
+/** El flujo completo usa DSL salvo que FLOW_FORMAT=json (formato anterior, que no se puede leer por partes). */
+export const flowStreamable = () => flowFormat() === "dsl";
+
+/**
+ * Cierre de la generación DSL ya enriquecida: modelos 3D (búsqueda + respaldo) y, en paralelo, los dioramas de
+ * las salas marcadas. Lo usan tanto la generación completa como el final del streaming.
+ */
+export async function completeMuseum(enriched: Museum, dioramaRooms: string[] = []): Promise<Museum> {
   const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms)]);
   // Cada tarea devuelve el museo completo: se combinan por sala/pieza.
   const dioramaByRoom = new Map(withDioramas.rooms.map((r) => [r.id, r.diorama]));
   return { ...withModels, rooms: withModels.rooms.map((r) => (dioramaByRoom.get(r.id) ? { ...r, diorama: dioramaByRoom.get(r.id) } : r)) };
+}
+
+/** Comprueba que la IA solo use imágenes del request (la misma regla que `parseFlowDsl`, sobre un museo ya armado). */
+export function checkFlowImages(museum: Museum, request: GenerateMuseumRequest): void {
+  const issues = findImageAssignmentIssues(museum, request.images.map((i) => i.id));
+  if (issues.length > 0) throw new Error(issues.join("; "));
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {

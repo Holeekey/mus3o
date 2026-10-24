@@ -1086,6 +1086,12 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .palace.intro-on .hud { visibility: hidden; }
 .intro-skip { position: fixed; right: 24px; bottom: 24px; z-index: 50; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .intro-skip kbd { margin-left: 8px; font: inherit; font-size: 0.8em; color: var(--ink-muted); }
+/* Avisos del palacio que se levanta en vivo (BuildNotice): una línea discreta arriba al centro. */
+.build-note { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; align-items: center; gap: 10px; max-width: min(92vw, 560px); padding: 8px 16px; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-weight: 600; font-size: 0.9rem; pointer-events: none; }
+.build-note-live::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: build-pulse 1.1s ease-in-out infinite; }
+.build-note-close { pointer-events: auto; flex: none; border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: 1.2rem; line-height: 1; cursor: pointer; }
+@keyframes build-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .build-note-live::before { animation: none; } }
 @keyframes intro-fade { from { opacity: 1; } to { opacity: 0; } }
 
 /* ---------- Responsive Layout (Mobile / Tablet) ---------- */
@@ -1318,3 +1324,48 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   background: var(--accent);
   border-color: var(--ink);
 }
+/* Joystick en reposo: siempre visible abajo a la izquierda para que se note que ahí se mueve. */
+.touch-joystick-base.is-idle {
+  top: auto;
+  bottom: 28px;
+  left: 28px;
+  opacity: 0.6;
+}
+.touch-tip {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  max-width: 90vw;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 3px 3px 0 var(--shadow);
+  pointer-events: none;
+}
+
+/* Avisos del HUD que en táctil son botones (KeyHint): por encima de la capa de toques. */
+.key-hint-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.key-hint-btn::after { content: ' ›'; }
+.hint:has(> .key-hint-btn) { z-index: 36; pointer-events: auto; }
+
+/* En táctil el botón 🤖 de la botonera reemplaza al de escritorio, y el narrador sube sobre el joystick. */
+:root[data-touch] .aris-trigger-btn { display: none; }
+:root[data-touch] .narrator { left: 16px; bottom: 150px; z-index: 36; }
+:root[data-touch] .hud-legend { display: none; }
+/* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
+:root[data-touch] .hint { bottom: 30% !important; }
