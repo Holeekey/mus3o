@@ -1375,6 +1375,35 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 /* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
 :root[data-touch] .hint { bottom: 30% !important; }
 
+/* Fichas largas: el contenido se desplaza (también con la rueda y el puntero bloqueado, ver ui/cardScroll.ts),
+   se desvanece abajo mientras queda texto y el pie con el estado queda fijo. */
+.card-inner.has-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+}
+.card-footer {
+  flex-shrink: 0;
+  padding: 0 20px 14px;
+  border-top: 2px solid var(--line);
+  background: var(--surface);
+}
+.card-footer .card-actions { margin-top: 10px; }
+.card-more-hint {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 0 0;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-align: center;
+}
+.card-more-hint:hover { color: var(--ink); }
+
 /* Teléfono horizontal: queda poca altura, así que el HUD se reduce a lo esencial y no compite con la escena. */
 @media (max-height: 520px) {
   .plaque { top: 8px; left: 8px; padding: 5px 10px; box-shadow: 2px 2px 0 var(--shadow); }
