@@ -2,6 +2,7 @@ import { DIORAMA_HALF, type Diorama, type DioramaKind, type DioramaProp } from '
 import { hashStr, mulberry32 } from './random'
 import type { HeightField } from './terrain'
 import { variantsFor } from './props'
+import { SCIENCE_COLLIDER, SCIENCE_HEIGHT } from './props/science' // science-kit
 
 // Colocación determinista de los props: formaciones para tropas, dispersión para el resto.
 // Función pura (sin GL) para poder probarla y para que la escena y el jugador compartan datos.
@@ -14,9 +15,11 @@ export type DioramaLayout = { placed: Placed[]; colliders: Circle[]; linked: Lin
 
 const COLLIDER: Partial<Record<DioramaKind, number>> = {
   tree: 0.4, rock: 0.75, cannon: 1.0, tent: 1.8, house: 3.3, church: 5, ship: 2.4, column: 0.6, campfire: 0.75, custom: 0.6, flag: 0.15,
+  ...SCIENCE_COLLIDER, // science-kit
 }
 export const HEIGHT: Record<DioramaKind, number> = {
   figure: 1.9, rider: 2.9, horse: 2.1, flag: 4.0, cannon: 1.5, tree: 5.5, rock: 1, tent: 2.4, house: 4.5, church: 11, ship: 9, column: 4.5, arch: 7, campfire: 1.4, custom: 2,
+  ...SCIENCE_HEIGHT, // science-kit
 }
 const TROOP: DioramaKind[] = ['figure', 'rider', 'horse']
 
@@ -78,7 +81,7 @@ export function layoutDiorama(d: Diorama, field: HeightField): DioramaLayout {
 
     const instances: Inst[] = spots.map((p, i) => {
       const ground = field.heightAt(p.x, p.z)
-      const y = prop.kind === 'ship' ? (field.waterLevel ?? 0) : ground
+      const y = (prop.kind === 'ship' ? (field.waterLevel ?? 0) : ground) + prop.y // science-kit: prop.y = elevación
       return { x: p.x, y, z: p.z, rotY: p.rot, scale: s * (n > 1 && !TROOP.includes(prop.kind) ? 0.85 + rnd() * 0.3 : 1), phase: rnd() * Math.PI * 2, variant: i % variants }
     })
     placed.push({ index, prop, variants, instances })

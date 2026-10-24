@@ -1,13 +1,16 @@
 import { Billboard, Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Atmosphere } from './atmosphere'
 import type { Diorama } from '@mus3o/shared'
+import { LabelPlate } from '../scene/LabelPlate'
+import { DEFAULT_THEME } from '../theme'
 import { Builder, darken, lighten, mat } from './geo'
 import { makeDioramaMaterials, type TimeUniform } from './material'
 import { getDioramaModel, type DioramaModel, type PropGroup } from './model'
 import { buildGrassTuft } from './props/nature'
+import { ScienceAmbient, ScienceOverlay, useScienceMaterials } from './props/science/ScienceOverlay' // science-kit
 import { mulberry32, range } from './random'
 import { TERRAIN_EXTENT } from './terrain'
 
@@ -123,7 +126,7 @@ function Clouds({ atmo, clipping }: { atmo: Atmosphere; clipping: THREE.Plane[] 
 // --- Hierba: mechones instanciados que se balancean con el viento ---
 function Grass({ model, material }: { model: DioramaModel; material: THREE.Material }) {
   const { diorama, field, layout } = model
-  const density = { plain: 2600, hills: 2600, forest: 3000, river: 2200, coast: 1500, mountains: 900, desert: 500, city: 0, interior: 0, abstract: 0 }[diorama.terrain]
+  const density = ({ plain: 2600, hills: 2600, forest: 3000, river: 2200, coast: 1500, mountains: 900, desert: 500, city: 0, interior: 0, abstract: 0 } as Record<string, number>)[diorama.terrain] ?? 0 // science-kit: ?? 0
   const geo = useMemo(() => buildGrassTuft(lighten(diorama.palette.ground, 0.06)), [diorama.palette.ground])
   const mesh = useRef<THREE.InstancedMesh>(null)
   const count = density
@@ -177,7 +180,16 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
       let roll = 0
       let ox = 0
       let oz = 0
-      if (motion === 'gallop') {
+      let yaw = 0
+      if (motion === 'drift') {
+        // science-kit: moléculas y orgánulos que flotan a la deriva
+        y += Math.sin(t * 0.55 + i.phase) * 0.45
+        ox = Math.cos(t * 0.23 + i.phase * 1.7) * 0.55
+        oz = Math.sin(t * 0.19 + i.phase) * 0.55
+        roll = Math.sin(t * 0.4 + i.phase) * 0.12
+        pitch = Math.cos(t * 0.33 + i.phase * 2) * 0.08
+        yaw = t * 0.12 + i.phase
+      } else if (motion === 'gallop') {
         const w = t * 6.2 + i.phase
         y += Math.abs(Math.sin(w)) * 0.13 * i.scale
         pitch = Math.sin(w + 0.7) * 0.045
@@ -192,7 +204,7 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
         roll = Math.sin(t * 0.6 + i.phase) * 0.025
         pitch = Math.sin(t * 0.5 + i.phase * 2) * 0.012
       }
-      _e.set(pitch, i.rotY, roll, 'YXZ')
+      _e.set(pitch, i.rotY + yaw, roll, 'YXZ')
       _q.setFromEuler(_e)
       _p.set(i.x + ox, y, i.z + oz)
       _s.setScalar(i.scale)
@@ -219,26 +231,26 @@ function PropMesh({ group, material, depth, time }: { group: PropGroup; material
   )
 }
 
+const LABEL_SURFACE = DEFAULT_THEME.ui.tokens.surface
+const LABEL_INK = DEFAULT_THEME.ui.tokens.ink
+
 // --- Enlaces con conceptos: anillo en el suelo y etiqueta flotante ---
 function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][number]; focused: boolean }) {
   const group = useRef<THREE.Group>(null)
   const tag = useRef<THREE.Group>(null)
-  const text = useRef<{ fillOpacity: number; outlineOpacity: number } | null>(null)
   const camera = useThree((s) => s.camera)
   useFrame(() => {
     const g = group.current
     if (!g) return
-    const wp = g.getWorldPosition(_p)
-    const dist = wp.distanceTo(camera.position)
-    // Con la escala del grupo padre la distancia ya viene en metros reales.
-    const o = Math.min(1, Math.max(0, (26 - dist) / 8))
+    // Distancia a la propia etiqueta (no al origen del grupo), en metros reales del diorama.
+    const wp = g.localToWorld(_p.set(link.x, link.labelY, link.z))
+    g.getWorldScale(_s)
+    const dist = wp.distanceTo(camera.position) / (_s.x || 1)
+    const o = Math.min(1, Math.max(0, (34 - dist) / 8))
     g.visible = o > 0.02
-    // El rótulo crece con la distancia (se lee de lejos) pero no se come la pantalla de cerca.
-    tag.current?.scale.setScalar(Math.min(1.5, Math.max(0.5, dist / 9)))
-    if (text.current) {
-      text.current.fillOpacity = o
-      text.current.outlineOpacity = o
-    }
+    // La placa mantiene un tamaño casi constante en pantalla (crece con la distancia, se encoge de cerca)
+    // y aparece creciendo desde cero al acercarse (sin tocar su opacidad: así siempre se lee).
+    tag.current?.scale.setScalar(Math.min(2.4, Math.max(0.55, dist / 13)) * Math.min(1, o * 2))
   })
   return (
     <group ref={group}>
@@ -249,23 +261,19 @@ function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][
       {link.label && (
         <Suspense fallback={null}>
           <Billboard ref={tag} position={[link.x, link.labelY, link.z]}>
-            <Text
-              ref={text as never}
-              font={FONT_BODY}
-              fontSize={focused ? 0.46 : 0.36}
-              color="#f6efe8"
-              outlineWidth={0.04}
-              outlineColor="#1f1411"
-              anchorY="bottom"
-              maxWidth={7}
-              textAlign="center"
-              depthOffset={-1}
-              renderOrder={20}
-              material-depthTest={false}
-              material-depthWrite={false}
-            >
-              {link.label}
-            </Text>
+            {/* Misma placa de yeso que las del palacio: se lee sobre cualquier fondo. */}
+            <group position={[0, focused ? 0.62 : 0.55, 0]}>
+              <LabelPlate
+                font={FONT_BODY}
+                fontSize={focused ? 0.42 : 0.34}
+                maxWidth={5.5}
+                surface={LABEL_SURFACE}
+                ink={LABEL_INK}
+                onTop
+              >
+                {link.label}
+              </LabelPlate>
+            </group>
           </Billboard>
         </Suspense>
       )}
@@ -298,6 +306,7 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
     material.clippingPlanes = clipping
     material.needsUpdate = true
   }, [material, clipping])
+  const sci = useScienceMaterials(time, clipping) // science-kit
 
   // prefers-reduced-motion: la maqueta queda quieta (sin viento ni oleaje de telas).
   const still = useMemo(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
@@ -362,8 +371,12 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
           </mesh>
         )}
         <Grass model={model} material={material} />
+        <ScienceAmbient model={model} time={time} clipping={clipping} />
         {model.groups.map((g) => (
-          <PropMesh key={`${g.index}-${g.variant}`} group={g} material={material} depth={depth} time={time} />
+          <Fragment key={`${g.index}-${g.variant}`}>
+            {!g.built.science?.dynamicOnly && <PropMesh group={g} material={g.built.science?.shader ? sci.material : material} depth={g.built.science?.shader ? sci.depth : depth} time={time} />}
+            {g.built.science && <ScienceOverlay group={g} material={material} depth={depth} time={time} clipping={clipping} />}
+          </Fragment>
         ))}
         {labels && model.layout.linked.map((l) => <LinkedMark key={l.pieceId} link={l} focused={focusedPieceId === l.pieceId} />)}
         {fires.map((g) =>

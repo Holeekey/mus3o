@@ -14,14 +14,18 @@ type Props = {
   /** Opacidad de toda la placa: permite atenuar lo olvidado sin perder legibilidad. */
   opacity?: number
   padding?: number
+  /** Se dibuja siempre encima de la escena (rótulos de dioramas, que no deben taparse con los props). */
+  onTop?: boolean
 }
 
 // Placa legible sobre cualquier pared: el fondo se ajusta al tamaño real del texto
 // (medido por troika al componer) y lleva borde y sombra dura, como las fichas de la UI.
-export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, opacity = 1, padding }: Props) {
+export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, opacity = 1, padding, onTop = false }: Props) {
   const [bounds, setBounds] = useState<Bounds | null>(null)
   const pad = padding ?? fontSize * 0.45
-  const transparent = opacity < 1
+  const transparent = opacity < 1 || onTop
+  const ro = onTop ? 100 : 0
+  const depthTest = !onTop
 
   // Hasta que troika mida el texto, se estima su caja para que el fondo exista desde el primer frame.
   const text = typeof children === 'string' ? children : String(children ?? '')
@@ -42,19 +46,19 @@ export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, o
     plate = (
       <group position={[cx, cy, 0]}>
         {/* Sombra dura desplazada, sin desenfoque */}
-        <mesh position={[shadow, -shadow, -0.006]} renderOrder={1}>
+        <mesh position={[shadow, -shadow, -0.006]} renderOrder={ro + 1}>
           <planeGeometry args={[w + border * 2, h + border * 2]} />
-          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity * 0.9} depthWrite={false} />
+          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity * 0.9} depthWrite={false} depthTest={depthTest} />
         </mesh>
         {/* Borde de tinta */}
-        <mesh position={[0, 0, -0.004]} renderOrder={2}>
+        <mesh position={[0, 0, -0.004]} renderOrder={ro + 2}>
           <planeGeometry args={[w + border * 2, h + border * 2]} />
-          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity} depthWrite={false} />
+          <meshBasicMaterial color={ink} transparent={transparent} opacity={opacity} depthWrite={false} depthTest={depthTest} />
         </mesh>
         {/* Yeso */}
-        <mesh position={[0, 0, -0.002]} renderOrder={3}>
+        <mesh position={[0, 0, -0.002]} renderOrder={ro + 3}>
           <planeGeometry args={[w, h]} />
-          <meshBasicMaterial color={surface} transparent={transparent} opacity={opacity} depthWrite={false} />
+          <meshBasicMaterial color={surface} transparent={transparent} opacity={opacity} depthWrite={false} depthTest={depthTest} />
         </mesh>
       </group>
     )
@@ -72,7 +76,8 @@ export function LabelPlate({ children, font, fontSize, maxWidth, surface, ink, o
         anchorY="middle"
         color={ink}
         fillOpacity={opacity}
-        renderOrder={4}
+        renderOrder={ro + 4}
+        material-depthTest={depthTest}
         onSync={(troika: { textRenderInfo?: { blockBounds?: number[] } }) => {
           const b = troika.textRenderInfo?.blockBounds
           if (b && b.length === 4) {
