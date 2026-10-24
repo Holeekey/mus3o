@@ -19,6 +19,7 @@ import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
+import { TouchControls } from './TouchControls'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -37,9 +38,15 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
   const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
   const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
   const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
+  const close = () => useStore.getState().set({ openId: null })
   return (
     <aside className="card" style={wallVars(palette)}>
-      <p className="card-tag">{roomName}</p>
+      <div className="card-header-bar">
+        <p className="card-tag">{roomName}</p>
+        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+          ✕
+        </button>
+      </div>
       <div className="card-inner">
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
@@ -223,6 +230,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <ArisDialog />
       <ArisPrompt />
+
+      <TouchControls layout={layout} />
 
       {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
         <div className="pause">
