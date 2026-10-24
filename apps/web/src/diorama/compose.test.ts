@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_PROPS, parseDiorama, type Museum, type Room } from '@mus3o/shared'
-import { attachComposedDioramas, classifyRoom, composeDiorama, ENTRY_Z, MAX_LINKED, MIN_LINK_SPACING, type Archetype } from './compose'
+import { attachComposedDioramas, classifyRoom, composeDiorama, ENTRY_Z, MAX_LINKED, MIN_LINK_SPACING, type Archetype, flagsFor } from './compose'
 import { historiaMuseum } from '../mocks/historia'
 import { medicinaMuseum } from '../mocks/medicina'
 import { attachLibraryDioramas } from './library'
@@ -169,5 +169,17 @@ describe('attachComposedDioramas', () => {
       expect(main?.diorama).toBeDefined()
       expect(main?.search).toBeUndefined()
     }
+  })
+})
+
+describe('flagsFor', () => {
+  it('usa la tricolor francesa en temas de Francia y la venezolana en la Independencia', () => {
+    expect(flagsFor('Revolución francesa Toma de la Bastilla', '#c9963a').a).toMatchObject({ pattern: 'vertical', color: '#1f3fa0', secondary: '#c8102e' })
+    expect(flagsFor('Independencia de Venezuela Batalla de Carabobo', '#c9963a').b).toMatchObject({ pattern: 'saltire' })
+  })
+  it('sin contexto reconocible usa estandartes neutros, nunca una bandera nacional', () => {
+    const f = flagsFor('Guerras médicas Maratón', '#8e2a1e')
+    expect(f.a).toMatchObject({ pattern: 'vertical', color: '#8e2a1e', secondary: '#8e2a1e' })
+    expect(f.a.color).not.toBe('#f2c200')
   })
 })

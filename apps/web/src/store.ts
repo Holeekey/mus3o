@@ -25,6 +25,8 @@ type State = {
   palace: Museum | null
   /** Apuntes del usuario (≤ 50 KB) para mostrar el contexto de cada fuente; se quedan en su dispositivo. */
   sourceText: string | null
+  /** Imágenes que subió el usuario, por `imageId` (data URL). Solo en memoria: pesan demasiado para localStorage. */
+  userImages: Record<string, string>
   layout: PalaceLayout | null
   memorized: Record<string, true>
   exam: Record<string, ExamResult>
@@ -47,7 +49,7 @@ type State = {
   arisPromptOpen: boolean
   arisMuted: boolean
 
-  enterPalace: (palace: Museum, sourceText?: string | null) => void
+  enterPalace: (palace: Museum, sourceText?: string | null, userImages?: Record<string, string>) => void
   resume: () => void
   exitToLanding: () => void
   setMode: (mode: Mode) => void
@@ -97,6 +99,7 @@ export const useStore = create<State>()(
       mode: 'explore',
       palace: null,
       sourceText: null,
+      userImages: {},
       layout: null,
       memorized: {},
       exam: {},
@@ -115,7 +118,7 @@ export const useStore = create<State>()(
       arisPromptOpen: false,
       arisMuted: false,
 
-      enterPalace: (rawPalace, sourceText) => {
+      enterPalace: (rawPalace, sourceText, userImages = {}) => {
         // Los museos generados por IA no traen dioramas: se recuperan de la biblioteca si encajan.
         // Las salas que aún no tienen diorama reciben uno compuesto (sin IA) con el pigmento de su fresco.
         const library = attachLibraryDioramas(rawPalace)
@@ -124,6 +127,7 @@ export const useStore = create<State>()(
         set({
           palace,
           sourceText: capSourceText(sourceText),
+          userImages,
           layout: buildLayout(palace),
           screen: 'palace',
           mode: 'explore',

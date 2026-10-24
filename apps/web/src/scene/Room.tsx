@@ -184,7 +184,8 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
 
 export function Room({ room, palette, theme }: { room: RoomLayout; palette: RoomPalette; theme: Theme }) {
   const { cornice, plinth } = theme.scene.architecture
-  const paintings = useMemo(() => assignPaintings(room), [room])
+  const userImages = useStore((s) => s.userImages)
+  const paintings = useMemo(() => assignPaintings(room, userImages), [room, userImages])
   return (
     <group>
       <Reveal id={floorKey(room.id)} mode="pop" origin={[room.x, 0, room.z]}>
@@ -202,7 +203,16 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       </Reveal>
       {paintings.map((a) => (
         <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
-          <Painting slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} title={room.title} />
+          <Painting
+            slot={a.slot}
+            search={a.search}
+            userImage={a.userImage}
+            palette={palette}
+            theme={theme}
+            diorama={a.diorama}
+            roomId={a.roomId}
+            title={room.title}
+          />
         </Reveal>
       ))}
       <Reveal id={monumentKey(room.id)} mode="sink">

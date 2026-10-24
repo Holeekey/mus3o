@@ -26,6 +26,8 @@ Tests: `schema.test.ts`, `sources.test.ts`, `diorama.test.ts`, `grid.test.ts`.
 | `maxText` | 400 | Descripciones, `text` y `fact` |
 | `maxImages` | 6 | Imágenes subidas por el usuario en una generación |
 | `maxQuote` | 240 | Cita de fuente |
+| `maxDigestInputChars` | 200 000 | Texto total que acepta `/api/digest-sources` |
+| `maxDigestChars` | 15 000 | Largo máximo del temario base (prompt + temario < 20 000) |
 
 Otros límites: `DIORAMA_HALF = 14` (los props viven en [-14, 14] m), `MAX_PROPS = 24`.
 Coordenadas de piezas acotadas a ±5 y rotaciones a ±7 para que una salida descuidada no rompa la escena.
@@ -136,7 +138,7 @@ Detalle en [diorama.md](./diorama.md).
 ## 5. Fuentes (`SourceSchema`) y request de generación
 
 ```ts
-Source = { name (≤120), kind: docx|xlsx|csv|txt, text (≤20 000) }   // texto ya extraído en el navegador
+Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json, text (≤20 000) }   // texto ya extraído en el navegador
 
 GenerateMuseumRequest = {
   mode: MuseumMode (default "exploration"),
@@ -148,6 +150,18 @@ GenerateMuseumRequest = {
 
 `ImprovePromptRequestSchema` es lo mismo sin imágenes. Solo se usa en la ruta de depuración.
 
+`SourceKindSchema` es el enum de `kind`, compartido con el digest.
+
+### Temario base (`/api/digest-sources`)
+
+```ts
+DigestSourcesRequest = { sources: { name (1..120), kind: SourceKind, text (1..100 000) }[] (1..10) }
+                       // total de texto ≤ LIMITS.maxDigestInputChars (200 000)
+DigestSourcesResponse = { digest: string (1..LIMITS.maxDigestChars) }
+```
+
+El navegador lo pide solo cuando el texto extraído supera `LIMITS.maxNotesChars`; el `digest` pasa a ser la única fuente del request de generación.
+
 Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..200 car.) o `{ notes }`.
 
 ## 6. Cómo se usan los esquemas
@@ -156,6 +170,8 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 |---|---|---|
 | `apps/server/src/claude.ts` | `MuseumSchema` sobre la salida de Claude | Reintenta una vez con el error |
 | `apps/server/src/app.ts` | `GenerateMuseumRequestSchema` / formato legacy | HTTP 400 |
+| `apps/server/src/app.ts` | `DigestSourcesRequestSchema` | HTTP 400 |
+| `apps/server/src/claude.ts` | `DigestSourcesResponseSchema` sobre el temario | HTTP 502 |
 | `apps/web/src/lib/api.ts` | `MuseumSchema` sobre la respuesta | Error "La IA devolvió un palacio inválido" |
 | `apps/web/src/store.ts` (`merge`) | `MuseumSchema` sobre lo guardado en `localStorage` | Se descarta el palacio guardado |
 | `apps/web/src/palace/parse.ts` | `MuseumSchema` sobre el parser local | Error con mensaje para el usuario |
@@ -165,7 +181,7 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 `MuseumMode`, `Museum`, `Room`, `Piece`, `Model`, `Part`, `Glyph`, `Quiz`, `ImageSearch`, `ResolvedImage`,
 `PieceSource`, `Graph`, `GraphEdge`, `Diorama`, `DioramaProp`, `DioramaKind`, `DioramaPose`,
 `DioramaTerrain`, `DioramaTime`, `FlagPattern`, `Source`, `InputImage`, `GenerateMuseumRequest`,
-`ImprovePromptRequest`, `ImprovePromptResponse`.
+`ImprovePromptRequest`, `ImprovePromptResponse`, `SourceKind`, `DigestSourcesRequest`, `DigestSourcesResponse`.
 
 ## 8. Cómo cambiar el contrato sin romper nada
 

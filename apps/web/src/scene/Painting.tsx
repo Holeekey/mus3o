@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
-import { creditLine, useResolvedImage } from '../lib/images'
+import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { useIntro } from '../intro/store'
 import { LabelPlate } from './LabelPlate'
-import type { PaintingSlot } from '../palace/layout'
+import type { PaintingSlot, UserImage } from '../palace/layout'
 import type { RoomPalette, Theme } from '../theme'
 
 // El cuadro-portal arrastra el código del diorama (geometría procedural, terreno): solo se
@@ -93,6 +93,7 @@ function usePlasterCanvas(enabled: boolean, title: string, plaster: string, trim
 export function Painting({
   slot,
   search,
+  userImage,
   palette,
   theme,
   diorama,
@@ -101,6 +102,8 @@ export function Painting({
 }: {
   slot: PaintingSlot
   search?: ImageSearch
+  /** Imagen subida por el usuario: tiene prioridad sobre la búsqueda. */
+  userImage?: UserImage
   palette: RoomPalette
   theme: Theme
   /** Si lo hay, el cuadro es un portal: al acercarse se disuelve en este diorama. */
@@ -109,7 +112,8 @@ export function Painting({
   /** Título de la sala: rotula el lienzo de yeso cuando el cuadro aún no tiene imagen. */
   title?: string
 }) {
-  const image = useResolvedImage(search)
+  const resolved = useResolvedImage(userImage ? undefined : search)
+  const image = userImage ? userImageAsResolved(userImage.src, userImage.title) : resolved
   const texture = useTexture(image?.src)
   const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const activeTexture = isIntroPlaying ? null : texture
@@ -148,10 +152,12 @@ export function Painting({
   const flat = (
     <mesh position={[0, 0, WALL_Z + 0.0505]} receiveShadow>
       <planeGeometry args={[w, h]} />
+      {/* key distinta por variante: three.js compila el shader sin textura si se reutiliza el
+          material del placeholder y solo se le asigna `map` después (el lienzo queda negro). */}
       {hasTexture && activeTexture ? (
-        <meshStandardMaterial map={activeTexture} roughness={1} />
+        <meshStandardMaterial key={activeTexture.uuid} map={activeTexture} roughness={1} />
       ) : (
-        <meshStandardMaterial color={matColor} roughness={0.95} />
+        <meshStandardMaterial key="placeholder" color={matColor} roughness={0.95} />
       )}
     </mesh>
   )

@@ -204,14 +204,15 @@ const ARC_CZ = 4
 /** Hasta 6 piezas en un arco; de 7 a 12, en dos arcos concéntricos. Ordenadas de izquierda a derecha. */
 export function arcSlots(n: number): Slot[] {
   const pts: { a: number; r: number; row: number }[] = []
-  const row = (count: number, r: number, maxSpan: number, rowIdx = 0) => {
+  const row = (count: number, r: number, maxSpan: number, rowIdx = 0, phase = 0) => {
     const step = count > 1 ? Math.min(0.62, maxSpan / (count - 1)) : 0
-    for (let i = 0; i < count; i++) pts.push({ a: (i - (count - 1) / 2) * step, r, row: rowIdx })
+    for (let i = 0; i < count; i++) pts.push({ a: (i - (count - 1) / 2 + phase) * step, r, row: rowIdx })
   }
   if (n <= 6) row(n, 8.5, 2.6)
   else {
     row(Math.ceil(n / 2), 6.8, 2.7)
-    row(Math.floor(n / 2), 10.8, 2.7, 1)
+    // La fila de atrás va medio paso corrida: cada rótulo queda entre dos de adelante, no encima.
+    row(Math.floor(n / 2), 10.8, 2.7, 1, n % 2 === 0 ? 0.5 : 0)
   }
   pts.sort((p, q) => p.a - q.a || p.r - q.r)
   return pts.map(({ a, r, row: rowIdx }) => ({ x: r * Math.sin(a), z: ARC_CZ - r * Math.cos(a), rotY: -a, row: rowIdx }))
@@ -332,7 +333,7 @@ const SCIENCE_FALLBACK: Record<'cell' | 'organ' | 'neural', ((i: number) => Raw)
   ],
 }
 
-function linkedKind(arch: Archetype, info: Info, i: number, accent: string, offset: number): Raw {
+function linkedKind(arch: Archetype, info: Info, i: number, accent: string, offset: number, flags: Flags): Raw {
   const c = COSTUMES[(i + offset) % COSTUMES.length]
   if (info.person) {
     if (arch === 'battle') {
@@ -354,7 +355,7 @@ function linkedKind(arch: Archetype, info: Info, i: number, accent: string, offs
     case 'battle': {
       const k = n % 3
       if (k === 0) return { kind: 'cannon', scale: 1.1 }
-      if (k === 1) return { kind: 'flag', color: '#f2c200', secondary: '#1f3fa0', scale: 1.1, ...(n % 2 ? { pattern: 'saltire', color: PAPER, secondary: '#b3262d' } : {}) }
+      if (k === 1) return { kind: 'flag', ...(n % 2 ? flags.b : flags.a), scale: 1.1 }
       return { kind: 'tent', color: PAPER, scale: 0.8 }
     }
     case 'assembly': {
@@ -395,7 +396,21 @@ function linkedKind(arch: Archetype, info: Info, i: number, accent: string, offs
 // Ambiente por arquetipo
 // ---------------------------------------------------------------------------------------------
 
-type Ctx = { waterUsed: number; rng: Rng; accent: string; ground: string; hasKey: (re: RegExp) => boolean; terrain: Diorama['terrain'] }
+type Ctx = { waterUsed: number; rng: Rng; accent: string; ground: string; hasKey: (re: RegExp) => boolean; terrain: Diorama['terrain']; flags: Flags }
+
+type Flags = { a: Raw; b: Raw }
+/**
+ * Banderas según el contexto histórico del museo y la sala: nunca se pone una bandera nacional
+ * fuera de su historia. Sin contexto reconocible, estandartes neutros con el color de la sala.
+ */
+export function flagsFor(text: string, accent: string): Flags {
+  const t = fold(text)
+  if (/\b(francia|frances|francesa|bastilla|paris|napoleon|robespierre|girondin|jacobin|versalles|luis xvi|maria antonieta|revolucion francesa)/.test(t))
+    return { a: { pattern: 'vertical', color: '#1f3fa0', secondary: '#c8102e' }, b: { pattern: 'vertical', color: PAPER, secondary: PAPER } }
+  if (/\b(venezuela|venezolan|gran colombia|bolivar|carabobo|boyaca|angostura|bolivarian|nueva granada)/.test(t))
+    return { a: { color: '#f2c200', secondary: '#1f3fa0' }, b: { pattern: 'saltire', color: PAPER, secondary: '#b3262d' } }
+  return { a: { pattern: 'vertical', color: accent, secondary: accent }, b: { pattern: 'vertical', color: '#3b3b3b', secondary: '#3b3b3b' } }
+}
 
 /** Coloca un prop de ambiente cuidando que no invada la zona de entrada. */
 const amb = (kind: string, x: number, z: number, extra: Raw = {}): Raw => {
@@ -411,8 +426,8 @@ function ambientFor(arch: Archetype, ctx: Ctx): Raw[] {
       return [
         amb('rider', -9 + j(1), -12, { pose: 'charging', color: '#2b4c94', secondary: PAPER, rotY: 1.05, scale: 1, count: 5, spread: 2.6 }),
         amb('figure', 9 + j(1), -12.4, { pose: 'standing', color: '#a8322d', secondary: PAPER, rotY: -1.1, count: 12, spread: 3 }),
-        amb('flag', -11.5, -9, { color: '#f2c200', secondary: '#1f3fa0', rotY: 0.2, scale: 1.2 }),
-        amb('flag', 12, -9, { pattern: 'saltire', color: PAPER, secondary: '#b3262d', rotY: 2.8, scale: 1.2 }),
+        amb('flag', -11.5, -9, { ...ctx.flags.a, rotY: 0.2, scale: 1.2 }),
+        amb('flag', 12, -9, { ...ctx.flags.b, rotY: 2.8, scale: 1.2 }),
         amb('figure', 0, -12.5, { pose: 'fallen', color: '#a8322d', secondary: PAPER, count: 5, spread: 2.2 }),
         amb('cannon', 13, -5, { rotY: -1.9, scale: 1.1 }),
         amb('cannon', -13, -4.5, { rotY: 1.9, scale: 1.1 }),
@@ -595,9 +610,10 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
     }))
 
     const costumeOffset = base % COSTUMES.length
+    const flags = flagsFor(`${museumTitle} ${hay}`, accent)
     const linked: Raw[] = []
     const place = (info: Info, i: number, slot: Slot, forceKind?: Raw) => {
-      const k = forceKind ?? linkedKind(arch, info, i, accent, costumeOffset)
+      const k = forceKind ?? linkedKind(arch, info, i, accent, costumeOffset, flags)
       const grow = slot.row === 1 && typeof k.scale === 'number' ? { scale: round(Math.min(3, k.scale * 1.45)) } : slot.row === 1 ? { scale: 1.45 } : {}
       linked.push({
         rotY: round(slot.rotY),
@@ -617,7 +633,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
         if (!info.person && w < water.length) place(info, i, water[w++])
         else if (b < beach.length) {
           const slot = beach[b++]
-          place(info, i, slot, info.person ? undefined : linkedKind('nature', info, i, accent, costumeOffset))
+          place(info, i, slot, info.person ? undefined : linkedKind('nature', info, i, accent, costumeOffset, flags))
         }
       })
     } else {
@@ -626,7 +642,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
     }
 
     // El ambiente se recorta para respetar el tope de props del esquema.
-    const ctx: Ctx = { waterUsed: w, rng, accent, ground, terrain, hasKey: (re) => infos.some((i) => re.test(i.key)) }
+    const ctx: Ctx = { waterUsed: w, rng, accent, ground, terrain, flags, hasKey: (re) => infos.some((i) => re.test(i.key)) }
     const ambient = ambientFor(arch, ctx).slice(0, Math.max(0, MAX_PROPS - linked.length))
 
     return parseDiorama({

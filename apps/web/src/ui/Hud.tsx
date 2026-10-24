@@ -3,7 +3,7 @@ import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
-import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
+import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
@@ -19,6 +19,7 @@ import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
+import { TouchControls } from './TouchControls'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -34,10 +35,18 @@ function findConcept(layout: PalaceLayout, id: string | null) {
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
-  const image = useResolvedImage(concept.imageSearch)
+  const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
+  const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
+  const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
+  const close = () => useStore.getState().set({ openId: null })
   return (
     <aside className="card" style={wallVars(palette)}>
-      <p className="card-tag">{roomName}</p>
+      <div className="card-header-bar">
+        <p className="card-tag">{roomName}</p>
+        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+          ✕
+        </button>
+      </div>
       <div className="card-inner">
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
@@ -221,6 +230,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <ArisDialog />
       <ArisPrompt />
+
+      <TouchControls layout={layout} />
 
       {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
         <div className="pause">

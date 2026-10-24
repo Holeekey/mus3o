@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sampleMuseum } from "./mock";
 import {
+  DigestSourcesRequestSchema,
+  DigestSourcesResponseSchema,
   GenerateMuseumRequestSchema,
   ImageSearchSchema,
   ResolvedImageSchema,
@@ -263,5 +265,36 @@ describe("image search contract", () => {
     };
     expect(ResolvedImageSchema.safeParse(ok).success).toBe(true);
     expect(ResolvedImageSchema.safeParse({ ...ok, kind: "video" }).success).toBe(false);
+  });
+});
+
+describe("digest sources contract", () => {
+  const src = (text: string, kind = "txt") => ({ name: "apuntes.txt", kind, text });
+
+  it("accepts md and json source kinds", () => {
+    expect(DigestSourcesRequestSchema.safeParse({ sources: [src("# Tema", "md"), src('{"a":1}', "json")] }).success).toBe(true);
+    expect(GenerateMuseumRequestSchema.safeParse({ prompt: "x", sources: [src("# Tema", "md")] }).success).toBe(true);
+  });
+
+  it("rejects more than 10 sources", () => {
+    const sources = Array.from({ length: 11 }, () => src("texto"));
+    expect(DigestSourcesRequestSchema.safeParse({ sources }).success).toBe(false);
+    expect(DigestSourcesRequestSchema.safeParse({ sources: sources.slice(0, 10) }).success).toBe(true);
+  });
+
+  it("rejects a total text over LIMITS.maxDigestInputChars", () => {
+    const sources = [src("a".repeat(100_000)), src("b".repeat(100_000))];
+    expect(DigestSourcesRequestSchema.safeParse({ sources }).success).toBe(true);
+    const over = [...sources, src("c")];
+    const result = DigestSourcesRequestSchema.safeParse({ sources: over });
+    expect(result.success).toBe(false);
+    expect(LIMITS.maxDigestInputChars).toBe(200_000);
+  });
+
+  it("bounds the digest length by LIMITS.maxDigestChars", () => {
+    expect(DigestSourcesResponseSchema.safeParse({ digest: "x".repeat(LIMITS.maxDigestChars) }).success).toBe(true);
+    expect(DigestSourcesResponseSchema.safeParse({ digest: "x".repeat(LIMITS.maxDigestChars + 1) }).success).toBe(false);
+    expect(DigestSourcesResponseSchema.safeParse({ digest: "" }).success).toBe(false);
+    expect(LIMITS.maxDigestChars).toBe(15_000);
   });
 });
