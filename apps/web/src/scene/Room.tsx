@@ -12,7 +12,7 @@ import { LabelPlate } from './LabelPlate'
 import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import { AssetWall } from './DungeonAssets'
-import { ProceduralMonument } from './Monument'
+import { Centerpiece } from './Centerpiece'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 import { StaticMerge } from './StaticMerge'
@@ -237,7 +237,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
         </Reveal>
       ))}
       <Reveal id={monumentKey(room.id)} mode="sink">
-        <ProceduralMonument room={room} theme={theme} />
+        <Centerpiece room={room} theme={theme} />
       </Reveal>
       {/* Las bases de los pedestales son estáticas (el objeto que gira va en DecayWrap, que no se une). */}
       <StaticMerge>
