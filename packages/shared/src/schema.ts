@@ -13,7 +13,8 @@ const rot3 = z.tuple([
 /** Límites de contenido compartidos por el server, los parsers y el layout. */
 export const LIMITS = {
   maxNotesChars: 20_000,
-  maxRooms: 8,
+  /** 3 a 12 salas según el volumen de contenido (ver roomPlan en el servidor); 12 solo con mucha documentación. */
+  maxRooms: 12,
   maxPiecesPerRoom: 12,
   maxTitle: 80,
   maxText: 400,
@@ -27,6 +28,9 @@ export const LIMITS = {
 
 /** ~1,5 MB por imagen en base64 (las del cliente van a <= 1024 px). */
 export const MAX_IMAGE_BASE64_CHARS = 2_000_000;
+
+/** Con hasta 12 salas caben el árbol de recorrido (11 aristas) y varias conexiones transversales. */
+export const MAX_EDGES = 28;
 
 export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "education"]);
 
@@ -272,7 +276,7 @@ export const GraphEdgeSchema = z.object({
 export const MuseumGraphSchema = z.object({
   /** Sala donde aparece el jugador. */
   start: z.string().min(1),
-  edges: z.array(GraphEdgeSchema).max(16),
+  edges: z.array(GraphEdgeSchema).max(MAX_EDGES),
 });
 
 const MuseumObjectSchema = z.object({
@@ -339,6 +343,39 @@ function isNextPathCoveringAll(graph: MuseumGraph, roomIds: string[]): boolean {
   return current === undefined && visited.size === roomIds.length;
 }
 
+/** Aristas dirigidas (next y prerequisite) sin ciclos que alcanzan todas las salas desde `start`. */
+function isForwardDagCoveringAll(graph: MuseumGraph, roomIds: string[]): boolean {
+  const forward = graph.edges.filter((e) => e.kind !== "related");
+  const out = new Map<string, string[]>();
+  const indegree = new Map(roomIds.map((id) => [id, 0]));
+  for (const { from, to } of forward) {
+    out.set(from, [...(out.get(from) ?? []), to]);
+    indegree.set(to, (indegree.get(to) ?? 0) + 1);
+  }
+  // Sin ciclos (orden topológico completo) y todas alcanzables desde start.
+  const queue = roomIds.filter((id) => indegree.get(id) === 0);
+  let sorted = 0;
+  while (queue.length > 0) {
+    sorted++;
+    for (const next of out.get(queue.shift()!) ?? []) {
+      indegree.set(next, (indegree.get(next) ?? 0) - 1);
+      if (indegree.get(next) === 0) queue.push(next);
+    }
+  }
+  if (sorted !== roomIds.length) return false;
+  const seen = new Set([graph.start]);
+  const stack = [graph.start];
+  while (stack.length > 0) {
+    for (const next of out.get(stack.pop()!) ?? []) {
+      if (!seen.has(next)) {
+        seen.add(next);
+        stack.push(next);
+      }
+    }
+  }
+  return seen.size === roomIds.length;
+}
+
 function checkGraph(museum: MuseumShape, ctx: z.RefinementCtx): boolean {
   const graph = museum.graph!;
   const roomIds = new Set(museum.rooms.map((r) => r.id));
@@ -372,12 +409,14 @@ function checkModeGraph(museum: MuseumShape, ctx: z.RefinementCtx) {
 
   switch (museum.mode) {
     case "exploration":
-      // Conexo (ya validado) y con n-1 aristas: es un árbol.
-      if (graph.edges.length !== roomIds.length - 1) {
-        fail("modo exploration: el grafo debe ser un árbol desde graph.start");
-      }
+      // Conexo (ya validado). Puede ser un árbol con conexiones transversales: no hace falta ser lineal.
       break;
     case "education":
+      // Un camino `next` por todas las salas, O un DAG de prerrequisitos (ramas y convergencias) alcanzable desde start.
+      if (!isNextPathCoveringAll(graph, roomIds) && !isForwardDagCoveringAll(graph, roomIds)) {
+        fail("modo education: usa un camino next por todas las salas o prerrequisitos (sin ciclos) alcanzables desde graph.start");
+      }
+      break;
     case "biography":
       if (!isNextPathCoveringAll(graph, roomIds)) fail(linearPathMessage(museum.mode));
       break;

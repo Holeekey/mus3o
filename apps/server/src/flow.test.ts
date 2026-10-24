@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
 import { addDioramas, buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
-import { FLOW_STATIC_RULES, flowDslPrompt, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
+import { FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -235,5 +235,35 @@ PIECE: Senado | box | cue | column | Órgano de gobierno`;
   it("sin salas marcadas no se hace llamada de dioramas", async () => {
     const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
     expect(await addDioramas(m, [])).toBe(m);
+  });
+});
+
+describe("roomPlan: salas según el volumen de contenido", () => {
+  const plan = (chars: number) => roomPlan({ prompt: "x".repeat(chars), sources: [] });
+
+  it("escala de 3-5 salas a 9-12 con mucha documentación", () => {
+    expect(plan(100)).toMatchObject({ minRooms: 4, maxRooms: 5 });
+    expect(plan(500)).toMatchObject({ minRooms: 3, maxRooms: 5 });
+    expect(plan(3_000)).toMatchObject({ minRooms: 4, maxRooms: 6 });
+    expect(plan(9_000)).toMatchObject({ minRooms: 6, maxRooms: 8 });
+    expect(plan(20_000)).toMatchObject({ minRooms: 9, maxRooms: 12 });
+  });
+
+  it("suma el texto de las fuentes y nunca pasa de LIMITS.maxRooms ni baja de 3", () => {
+    const big = roomPlan({ prompt: "tema", sources: [{ text: "y".repeat(15_000) }] });
+    expect(big.maxRooms).toBe(12);
+    for (const n of [10, 700, 2_000, 8_000, 19_000]) {
+      const p = plan(n);
+      expect(p.minRooms).toBeGreaterThanOrEqual(3);
+      expect(p.maxRooms).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it("el prompt incluye el rango y pide una estructura lógica; max_tokens crece con el plan y tiene tope", () => {
+    const text = flowDslPrompt(request({ mode: "education", prompt: "x".repeat(20_000) }));
+    expect(text).toContain("entre 9 y 12 salas");
+    expect(text).toContain("GRAFO DE PRERREQUISITOS");
+    expect(flowMaxTokens(plan(100), "education")).toBeLessThan(flowMaxTokens(plan(20_000), "education"));
+    expect(flowMaxTokens(plan(20_000), "quiz")).toBeLessThanOrEqual(16_000);
   });
 });

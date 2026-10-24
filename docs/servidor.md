@@ -257,3 +257,13 @@ Hallazgo de la medición: sin la instrucción explícita de marcar salas con `di
 - **Descarga del `.glb`: bloqueada.** `static.poly.pizza` responde 403 con una página de desafío anti-bots de Cloudflare ("Just a moment...") a las peticiones del servidor. Resultado en una generación real: 0 de 18 piezas con asset; todas usaron el respaldo creado / glifo.
 - **Cortacircuito** (`DownloadBlockedError`, `polyBlocked`): ante 403/429/503 o una respuesta HTML se dejan de buscar y descargar durante 10 min, para no sumar ~2,5 s de espera por generación mientras dure el bloqueo.
 - **Pendiente (decisión de producto):** no se intentó saltar el desafío (falsear navegador/Referer). Opciones legítimas: pedir a Poly Pizza que habilite descargas desde servidor para la clave, o que el **navegador** descargue el `.glb` directamente desde `static.poly.pizza` (el cliente ya recibe la URL) en vez de pasar por el proxy del servidor.
+
+### Salas según el contenido y grafo no lineal (2026-10-24)
+
+`roomPlan` (`prompts.ts`) elige el rango de salas por el volumen de texto (prompt + fuentes): ≤150 car. → 4-5 salas; ≤800 → 3-5; ≤4 000 → 4-6; ≤12 000 → 6-8;
+más → 9-12 (máx. `LIMITS.maxRooms` = 12). El prompt lo indica junto con las piezas por sala (3-5 hasta 4-7) y `max_tokens` crece con el plan (`flowMaxTokens`, tope 16 000).
+Estructura: `ROOM` lleva `<requires>` (prerrequisitos, solo salas **anteriores**, por eso no hay ciclos) y un 9.º campo `<related>` (conexiones transversales).
+`buildGraph` (shared/`dsl.ts`) deriva por modo: education → DAG de prerrequisitos (ramas y convergencias); exploration/quiz → árbol + cruces; biography → cadena + cruces.
+En el cliente, `planRoomGrid` también abre puerta entre las salas vecinas unidas por una arista fuera del árbol (bucles y atajos), de modo que el recorrido no es una cadena de puertas.
+
+Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequisitos + 7 cruces, 1 convergencia; 24 558 caracteres de apuntes → **12 salas**, 48 piezas, 13 prerrequisitos + 11 cruces, 2 convergencias, 5 046 tokens de salida (entrada 7 993), sin reintentos.

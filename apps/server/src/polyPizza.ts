@@ -9,7 +9,7 @@ import { isRejected, recordAssignment } from "./assetReview";
 const API = "https://api.poly.pizza/v1.1";
 export const POLY_TIMEOUT_MS = 2500;
 /** Tope de piezas que se hidratan por museo (cada una es una búsqueda + una descarga). */
-const MAX_HYDRATED = 24;
+const MAX_HYDRATED = 48;
 
 export type PolyResult = {
   ID?: string;

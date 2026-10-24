@@ -59,7 +59,7 @@ function normalize(cells: Record<string, GridCell>) {
  * Ubica las salas en una grilla siguiendo el grafo: recorre en anchura desde `graph.start`
  * y pone cada sala junto a la que la descubrió, siguiendo derecho cuando se puede.
  * Si no queda lugar al lado, la sala va junto a la sala ubicada más cercana que tenga lugar.
- * Solo las aristas del árbol de recorrido se convierten en puertas.
+ * Las aristas del árbol de recorrido se convierten en puertas, y también las demás aristas cuyas salas quedaron vecinas.
  * Sin grafo devuelve la serpiente en el orden de `rooms`.
  */
 export function planRoomGrid(museum: Museum): RoomGridPlan {
@@ -109,6 +109,20 @@ export function planRoomGrid(museum: Museum): RoomGridPlan {
   // El schema exige que todo sea alcanzable; esto solo cubre museos que no pasaron por él.
   for (const room of museum.rooms) {
     if (!cells[room.id]) place(placed[placed.length - 1], room.id);
+  }
+
+  // Conexiones lógicas fuera del árbol de recorrido (bucles, convergencias, cruces): si las dos salas quedaron
+  // vecinas en la grilla, también tienen puerta. Así el grafo no es una cadena de puertas: se puede atajar.
+  const linked = new Set(links.map((l) => [l.from, l.to].sort().join("|")));
+  for (const { from, to } of graph.edges) {
+    const a = cells[from];
+    const b = cells[to];
+    const pair = [from, to].sort().join("|");
+    if (!a || !b || linked.has(pair)) continue;
+    if (Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1) {
+      linked.add(pair);
+      links.push({ from, to });
+    }
   }
 
   normalize(cells);

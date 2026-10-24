@@ -110,14 +110,12 @@ describe("MuseumSchema mode rules", () => {
     expect(MuseumSchema.safeParse(withMode("exploration", { graph })).success).toBe(true);
   });
 
-  it("exploration rejects a graph that is not a tree", () => {
+  it("exploration accepts cross links on top of the tree (not only a strict tree)", () => {
     const graph = {
       start: "a",
       edges: [...chain.edges, { from: "a", to: "c", kind: "related" as const }],
     };
-    expect(issues(withMode("exploration", { graph }))).toContain(
-      "modo exploration: el grafo debe ser un árbol desde graph.start",
-    );
+    expect(MuseumSchema.safeParse(withMode("exploration", { graph })).success).toBe(true);
   });
 
   it("education accepts an ordered next path with optional prerequisites", () => {
@@ -125,17 +123,35 @@ describe("MuseumSchema mode rules", () => {
     expect(MuseumSchema.safeParse(withMode("education", { graph })).success).toBe(true);
   });
 
-  it("education rejects a next chain that does not cover every room", () => {
+  it("education accepts a prerequisite DAG with branches and merges", () => {
     const graph = {
+      start: "a",
+      edges: [
+        { from: "a", to: "b", kind: "prerequisite" as const },
+        { from: "a", to: "c", kind: "prerequisite" as const },
+      ],
+    };
+    expect(MuseumSchema.safeParse(withMode("education", { graph })).success).toBe(true);
+  });
+
+  it("education rejects when the directed edges do not reach every room or contain a cycle", () => {
+    const unreachable = {
       start: "a",
       edges: [
         { from: "a", to: "b", kind: "next" as const },
         { from: "a", to: "c", kind: "related" as const },
       ],
     };
-    expect(issues(withMode("education", { graph }))).toContain(
-      "modo education: las aristas next deben formar un único camino desde graph.start que recorra todas las salas",
-    );
+    expect(issues(withMode("education", { graph: unreachable }))[0]).toContain("modo education");
+    const cycle = {
+      start: "a",
+      edges: [
+        { from: "a", to: "b", kind: "prerequisite" as const },
+        { from: "b", to: "c", kind: "prerequisite" as const },
+        { from: "c", to: "b", kind: "prerequisite" as const },
+      ],
+    };
+    expect(issues(withMode("education", { graph: cycle }))[0]).toContain("modo education");
   });
 
   it("biography requires a period in every room", () => {

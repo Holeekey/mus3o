@@ -132,7 +132,7 @@ PIECE: Y | box | c | key | e`);
   });
 
   it("recorta a LIMITS.maxRooms y maxPiecesPerRoom sin lanzar ni mezclar piezas", () => {
-    const rooms = Array.from({ length: 10 }, (_, i) => `ROOM: r${i} | Sala ${i} | ancient | #112233 | #000000 | torus |\n` + Array.from({ length: 14 }, (_, j) => `PIECE: P${i}-${j} | box | c | key | e`).join("\n")).join("\n");
+    const rooms = Array.from({ length: 15 }, (_, i) => `ROOM: r${i} | Sala ${i} | ancient | #112233 | #000000 | torus |\n` + Array.from({ length: 14 }, (_, j) => `PIECE: P${i}-${j} | box | c | key | e`).join("\n")).join("\n");
     const m = parseMus3oDSL(rooms);
     expect(m.rooms).toHaveLength(LIMITS.maxRooms);
     expect(m.rooms.every((r) => r.pieces.length === LIMITS.maxPiecesPerRoom)).toBe(true);
@@ -157,9 +157,34 @@ PIECE: Augusto | box | cue | statue | Primer emperador`;
     ]);
   });
 
-  it("education: cadena next por todas las salas más prerrequisitos", () => {
+  it("education: DAG de prerrequisitos (ramas y convergencias) alcanzable desde la primera sala", () => {
     const m = parseMus3oDSL(rooms(), { mode: "education" });
-    expect(m.graph?.edges.filter((e) => e.kind === "next")).toHaveLength(2);
+    expect(m.graph?.edges).toEqual([
+      { from: "a", to: "b", kind: "prerequisite" },
+      { from: "a", to: "c", kind: "prerequisite" },
+    ]);
+  });
+
+  it("education: converge con varios prerrequisitos y descarta los que apuntan hacia adelante (sin ciclos)", () => {
+    const raw = `ROOM: a | A | ancient | #112233 | #000000 | torus |
+PIECE: x | box | c | key | e
+ROOM: b | B | ancient | #112233 | #000000 | torus | a
+PIECE: x | box | c | key | e
+ROOM: c | C | ancient | #112233 | #000000 | torus | a
+PIECE: x | box | c | key | e
+ROOM: d | D | ancient | #112233 | #000000 | torus | b, c, e
+PIECE: x | box | c | key | e
+ROOM: e | E | ancient | #112233 | #000000 | torus |
+PIECE: x | box | c | key | e`;
+    const m = parseMus3oDSL(raw, { mode: "education" });
+    const intoD = m.graph!.edges.filter((e) => e.to === "d").map((e) => e.from);
+    expect(intoD).toEqual(["b", "c"]);
+  });
+
+  it("related: agrega conexiones transversales sin romper el modo", () => {
+    const raw = rooms().replace("| torus | a\nPIECE: Augusto", "| torus | a | | b\nPIECE: Augusto");
+    const m = parseMus3oDSL(raw, { mode: "exploration" });
+    expect(m.graph!.edges.some((e) => e.kind === "related" && [e.from, e.to].sort().join() === "b,c")).toBe(true);
   });
 
   it("biography: exige PERIOD en cada sala", () => {

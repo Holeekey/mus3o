@@ -6,7 +6,7 @@ import { fallbackModelPrompt } from "./prompts";
  * Respaldo creado: primero se busca el asset (Poly Pizza); solo las piezas que quedaron sin modelo
  * (sin coincidencia, error o timeout) se le piden a la IA, en UNA llamada barata y por lotes.
  */
-const MAX_PIECES = 12;
+const MAX_PIECES = 24;
 const PartsSchema = z.array(PartSchema).min(1).max(8);
 
 export type Complete = (prompt: string, maxTokens: number) => Promise<string>;

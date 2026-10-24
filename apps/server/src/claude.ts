@@ -35,6 +35,8 @@ import {
   dioramaPrompt,
   FALLBACK_MODEL_SYSTEM_PROMPT,
   FLOW_DSL_SYSTEM_PROMPT,
+  flowMaxTokens,
+  roomPlan,
   flowDslPrompt,
   FLOW_STATIC_RULES,
   SYSTEM_PROMPT,
@@ -264,7 +266,7 @@ async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Mu
   const system: Anthropic.TextBlockParam[] = [{ type: "text", text: FLOW_DSL_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
   let dioramaRooms: string[] = [];
   const museum = await askForJson(
-    { system, content: buildFlowContent(request, "dsl"), maxTokens: 5000 },
+    { system, content: buildFlowContent(request, "dsl"), maxTokens: flowMaxTokens(roomPlan(request), request.mode) },
     (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)),
   );
   const enriched = enrichMuseum(museum, flowNotesText(request));

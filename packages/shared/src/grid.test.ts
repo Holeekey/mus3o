@@ -152,3 +152,33 @@ describe("planRoomGrid with graph", () => {
     expect(planRoomGrid(museum(ids(6), graph))).toEqual(planRoomGrid(museum(ids(6), graph)));
   });
 });
+
+describe("grafos no lineales", () => {
+  it("12 salas con ramas, convergencias y cruces: todas alcanzables y cada puerta une vecinas", () => {
+    const r = ids(12);
+    const edges: Graph["edges"] = [
+      ...r.slice(1).map((id, i) => ({ from: r[Math.floor(i / 2)], to: id, kind: "prerequisite" as const })),
+      { from: "r5", to: "r11", kind: "related" },
+      { from: "r4", to: "r9", kind: "related" },
+      { from: "r2", to: "r7", kind: "related" },
+    ];
+    const plan = planRoomGrid(museum(r, { start: "r0", edges }));
+    expectValidPlan(plan, r);
+  });
+
+  it("una arista fuera del árbol entre salas vecinas también tiene puerta (bucle)", () => {
+    // Cuadrado 2x2: a-b, a-c, b-d forman el árbol; c-d es un cruce entre vecinas.
+    const r = ["a", "b", "c", "d"];
+    const edges: Graph["edges"] = [
+      { from: "a", to: "b", kind: "related" },
+      { from: "a", to: "c", kind: "related" },
+      { from: "b", to: "d", kind: "related" },
+      { from: "c", to: "d", kind: "related" },
+    ];
+    const plan = planRoomGrid(museum(r, { start: "a", edges }));
+    expectValidPlan(plan, r);
+    expect(plan.links.length).toBeGreaterThanOrEqual(3);
+    const pairs = plan.links.map((l) => [l.from, l.to].sort().join(""));
+    if (adjacent(plan, "c", "d")) expect(pairs).toContain("cd");
+  });
+});

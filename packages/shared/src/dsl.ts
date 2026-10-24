@@ -10,6 +10,7 @@ import {
   GlyphShape,
   LIMITS,
   SearchKeywordSchema,
+  MAX_EDGES,
   MuseumSchema,
 } from "./schema";
 
@@ -104,34 +105,42 @@ export interface ParseDslOptions {
   onDioramaRooms?: (roomIds: string[]) => void;
 }
 
-/** Grafo por modo: exploration y quiz son árboles; education y biography, un camino `next` por todas las salas. */
-function buildGraph(rooms: Array<Room & { requires?: string[] }>, mode: MuseumMode | undefined) {
+/**
+ * Grafo lógico por modo a partir de lo que declara la IA: `requires` (prerrequisitos, solo hacia salas anteriores,
+ * así que nunca hay ciclos) y `related` (conexiones transversales). Toda sala queda alcanzable desde la primera.
+ *  - exploration / quiz: árbol desde la primera sala (cada sala cuelga de su primer prerrequisito) + cruces `related`.
+ *  - education: DAG de prerrequisitos (ramas y convergencias); una sala sin prerrequisito válido cuelga de la anterior.
+ *  - biography: cadena cronológica `next` (+ cruces `related`).
+ */
+function buildGraph(rooms: Array<Room & { requires?: string[]; related?: string[] }>, mode: MuseumMode | undefined) {
   const ids = new Set(rooms.map((r) => r.id));
+  const index = new Map(rooms.map((r, i) => [r.id, i]));
   const edges: Array<{ from: string; to: string; kind: "next" | "prerequisite" | "related" }> = [];
   const keys = new Set<string>();
   const add = (from: string, to: string, kind: "next" | "prerequisite" | "related") => {
     const key = `${from}->${to}:${kind}`;
-    if (from === to || !ids.has(from) || !ids.has(to) || keys.has(key) || edges.length >= 16) return;
+    if (from === to || !ids.has(from) || !ids.has(to) || keys.has(key) || edges.length >= MAX_EDGES) return;
     keys.add(key);
     edges.push({ from, to, kind });
   };
-  const chain = () => rooms.slice(0, -1).forEach((r, i) => add(r.id, rooms[i + 1].id, "next"));
+  const earlier = (room: Room & { requires?: string[] }, i: number) => (room.requires ?? []).filter((q) => (index.get(q) ?? Infinity) < i);
 
-  if (mode === "exploration" || mode === "quiz") {
-    // Árbol (n-1 aristas): cada sala cuelga de su primer prerrequisito válido anterior o, si no, de la sala inicial.
+  if (mode === "biography") {
+    rooms.slice(0, -1).forEach((r, i) => add(r.id, rooms[i + 1].id, "next"));
+  } else if (mode === "exploration" || mode === "quiz") {
+    rooms.slice(1).forEach((room, i) => add(earlier(room, i + 1)[0] ?? rooms[0].id, room.id, "related"));
+  } else if (mode === "education") {
     rooms.slice(1).forEach((room, i) => {
-      const earlier = new Set(rooms.slice(0, i + 1).map((r) => r.id));
-      add(room.requires?.find((q) => earlier.has(q)) ?? rooms[0].id, room.id, "related");
+      const reqs = earlier(room, i + 1);
+      (reqs.length > 0 ? reqs : [rooms[i].id]).forEach((q) => add(q, room.id, "prerequisite"));
     });
-  } else if (mode === "education" || mode === "biography") {
-    chain();
-    // Prerrequisitos extra solo en education (en biography el grafo es la cadena pura).
-    if (mode === "education") rooms.forEach((r) => r.requires?.forEach((q) => add(q, r.id, "prerequisite")));
   } else {
     // Comportamiento original (sin modo): prerrequisitos primero y luego la cadena.
     rooms.forEach((r) => r.requires?.forEach((q) => add(q, r.id, "prerequisite")));
-    chain();
+    rooms.slice(0, -1).forEach((r, i) => add(r.id, rooms[i + 1].id, "next"));
   }
+  // Conexiones transversales declaradas por la IA (no alteran la alcanzabilidad ni crean ciclos dirigidos).
+  if (mode) rooms.forEach((r) => r.related?.forEach((q) => add(q, r.id, "related")));
   return { start: rooms[0].id, edges };
 }
 
@@ -146,7 +155,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
   const stripped = raw.replace(/^```[a-zA-Z]*\r?\n?/m, "").replace(/\r?\n?```$/m, "").trim();
   const lines = stripped.split(/\r?\n/);
   const rooms: Room[] = [];
-  let currentRoom: (Room & { requires: string[] }) | null = null;
+  let currentRoom: (Room & { requires: string[]; related?: string[] }) | null = null;
   let roomCount = 0;
   let pieceCountInRoom = 0;
   let skippingRoom = false;
@@ -222,6 +231,11 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
 
       if ((parts[7] || "").toLowerCase() === "diorama") dioramaRooms.push(roomId);
 
+      const related = (parts[8] || "")
+        .split(",")
+        .map((r) => sanitizeSlug(r, ""))
+        .filter((r) => r.length > 0 && r !== roomId);
+
       pieceCountInRoom = 0;
       currentRoom = {
         id: roomId,
@@ -235,6 +249,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         monument,
         pieces: [],
         requires,
+        related,
       };
       rooms.push(currentRoom);
       continue;
@@ -341,7 +356,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
 
   // Build connected graph topology
   options.onDioramaRooms?.(dioramaRooms.slice(0, 2));
-  const graph = buildGraph(rooms as Array<Room & { requires?: string[] }>, options.mode);
+  const graph = buildGraph(rooms as Array<Room & { requires?: string[]; related?: string[] }>, options.mode);
 
   const museumPayload = {
     title: options.title || docTitle || rooms[0].name || "Palacio de la Memoria",
@@ -350,7 +365,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       ambience: rooms[0].theme || "cathedral",
     },
     rooms: rooms.map((r) => {
-      const { requires: _, ...cleanRoom } = r as Room & { requires?: string[] };
+      const { requires: _, related: __, ...cleanRoom } = r as Room & { requires?: string[]; related?: string[] };
       return cleanRoom;
     }),
     mode: options.mode ?? ("education" as const),

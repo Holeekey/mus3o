@@ -20,7 +20,7 @@ Tests: `schema.test.ts`, `sources.test.ts`, `diorama.test.ts`, `grid.test.ts`.
 | Clave | Valor | Uso |
 |---|---|---|
 | `maxNotesChars` | 20 000 | Texto total (prompt + fuentes) y prompt de apuntes |
-| `maxRooms` | 8 | Salas por museo |
+| `maxRooms` | 12 | Salas por museo (3 a 12 según el volumen de contenido; 12 solo con mucha documentación) |
 | `maxPiecesPerRoom` | 12 | Piezas por sala |
 | `maxTitle` | 80 | Títulos de sala, pieza y del museo |
 | `maxText` | 400 | Descripciones, `text` y `fact` |
@@ -101,10 +101,12 @@ Reglas (`checkGraph` y `checkModeGraph` en `schema.ts`):
 
 | Modo | Forma exigida | Campos extra |
 |---|---|---|
-| `exploration` (por defecto) | Árbol: exactamente `salas − 1` aristas | — |
-| `education` | Aristas `next` forman un único camino que empieza en `start` y cubre todas las salas | — |
-| `biography` | Igual que `education` (cadena cronológica) | `period` obligatorio en cada sala |
-| `quiz` | Árbol (aristas `related`) | `quiz` obligatorio en cada pieza |
+| `exploration` (por defecto) | Conexo; árbol con conexiones transversales permitidas (no tiene que ser lineal) | — |
+| `education` | Un camino `next` por todas las salas **o** un DAG de aristas dirigidas (`next`/`prerequisite`, sin ciclos) alcanzable desde `start`: ramas y convergencias | — |
+| `biography` | Cadena cronológica `next` por todas las salas (las `related` son cruces extra) | `period` obligatorio en cada sala |
+| `quiz` | Conexo (árbol de temas + cruces `related`) | `quiz` obligatorio en cada pieza |
+
+Hasta `MAX_EDGES` = 28 aristas (árbol de 11 + conexiones transversales con 12 salas).
 
 Además, `checkMuseum` exige: ids de sala y de pieza únicos; cada `image.imageId` se usa en una sola pieza.
 
