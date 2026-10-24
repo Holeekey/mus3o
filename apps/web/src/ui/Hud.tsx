@@ -60,6 +60,14 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
           <p className="card-meta">{concept.fact}</p>
         ) : null}
         <SourceBlock concept={concept} />
+        {concept.dynamicAsset?.license === 'CC-BY' && (
+          <p className="card-meta">
+            Modelo 3D «{concept.dynamicAsset.title}» por {concept.dynamicAsset.author || 'autor desconocido'} ·{' '}
+            <a href={concept.dynamicAsset.sourceUrl} target="_blank" rel="noreferrer noopener">
+              CC-BY vía Poly Pizza
+            </a>
+          </p>
+        )}
         {image && (
           <figure className="card-figure">
             <img src={image.src} alt={image.title} width={image.width} height={image.height} decoding="async" />

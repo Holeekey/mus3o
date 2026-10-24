@@ -13,7 +13,8 @@ const rot3 = z.tuple([
 /** Límites de contenido compartidos por el server, los parsers y el layout. */
 export const LIMITS = {
   maxNotesChars: 20_000,
-  maxRooms: 8,
+  /** 3 a 12 salas según el volumen de contenido (ver roomPlan en el servidor); 12 solo con mucha documentación. */
+  maxRooms: 12,
   maxPiecesPerRoom: 12,
   maxTitle: 80,
   maxText: 400,
@@ -27,6 +28,9 @@ export const LIMITS = {
 
 /** ~1,5 MB por imagen en base64 (las del cliente van a <= 1024 px). */
 export const MAX_IMAGE_BASE64_CHARS = 2_000_000;
+
+/** Con hasta 12 salas caben el árbol de recorrido (11 aristas) y varias conexiones transversales. */
+export const MAX_EDGES = 28;
 
 export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "education"]);
 
@@ -95,6 +99,21 @@ export const PieceSourceSchema = z.object({
   line: z.number().int().min(1).optional(),
 });
 
+/** Modelo 3D externo (Poly Pizza) resuelto por el servidor y servido desde /api/assets. */
+export const DynamicAssetSchema = z.object({
+  assetId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  /** URL relativa al servidor: nunca se guardan binarios ni URLs externas en el cliente. */
+  url: z.string().regex(/^\/api\/assets\/[A-Za-z0-9_-]{1,64}\.glb$/),
+  title: z.string().max(120),
+  author: z.string().max(120),
+  license: z.enum(["CC0", "CC-BY"]),
+  sourceUrl: z.string().max(300),
+});
+export type DynamicAsset = z.infer<typeof DynamicAssetSchema>;
+
+/** Sustantivo físico en inglés para buscar un modelo 3D (solo letras, dígitos, espacios y guiones). */
+export const SearchKeywordSchema = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9 -]{1,39}$/);
+
 export const PieceSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).max(LIMITS.maxTitle),
@@ -111,6 +130,10 @@ export const PieceSchema = z.object({
   quiz: QuizSchema.optional(),
   /** Búsqueda de una imagen real para colgarla como cuadro. */
   imageSearch: ImageSearchSchema.optional(),
+  /** Sustantivo físico en inglés que la IA propone para buscar un modelo 3D. */
+  searchKeyword: SearchKeywordSchema.optional().catch(undefined),
+  /** Lo rellena el servidor tras resolver el modelo; nunca la IA. */
+  dynamicAsset: DynamicAssetSchema.optional().catch(undefined),
   /** Trazabilidad: de qué parte de los apuntes sale esta pieza. */
   source: PieceSourceSchema.optional(),
   /** true si la IA agregó esta idea y no se encontró en los apuntes. */
@@ -153,7 +176,7 @@ export const KINDS = [
 ] as const;
 export const POSES = ["standing", "pointing", "charging", "fallen", "seated", "raising-arm"] as const;
 /** Diseño de la tela de una bandera: franjas (por defecto) o aspa (cruz de San Andrés). */
-export const FLAG_PATTERNS = ["stripes", "saltire"] as const;
+export const FLAG_PATTERNS = ["stripes", "saltire", "vertical"] as const;
 
 // science-kit: valores admitidos por los parámetros opcionales de los props científicos.
 export const VALVE_TYPES = ["tricuspid", "mitral", "pulmonary", "aortic"] as const;
@@ -176,7 +199,7 @@ export const FlowSchema = z.object({
 export const DioramaPropSchema = z.object({
   kind: z.enum(KINDS),
   pose: z.enum(POSES).optional().catch(undefined),
-  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`). */
+  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`); "vertical" = tres franjas verticales `color` | blanco | `secondary` (p. ej. Francia). */
   pattern: z.enum(FLAG_PATTERNS).optional().catch(undefined),
   color: dHex.optional().catch(undefined),
   secondary: dHex.optional().catch(undefined),
@@ -262,7 +285,7 @@ export const GraphEdgeSchema = z.object({
 export const MuseumGraphSchema = z.object({
   /** Sala donde aparece el jugador. */
   start: z.string().min(1),
-  edges: z.array(GraphEdgeSchema).max(16),
+  edges: z.array(GraphEdgeSchema).max(MAX_EDGES),
 });
 
 const MuseumObjectSchema = z.object({
@@ -329,6 +352,39 @@ function isNextPathCoveringAll(graph: MuseumGraph, roomIds: string[]): boolean {
   return current === undefined && visited.size === roomIds.length;
 }
 
+/** Aristas dirigidas (next y prerequisite) sin ciclos que alcanzan todas las salas desde `start`. */
+function isForwardDagCoveringAll(graph: MuseumGraph, roomIds: string[]): boolean {
+  const forward = graph.edges.filter((e) => e.kind !== "related");
+  const out = new Map<string, string[]>();
+  const indegree = new Map(roomIds.map((id) => [id, 0]));
+  for (const { from, to } of forward) {
+    out.set(from, [...(out.get(from) ?? []), to]);
+    indegree.set(to, (indegree.get(to) ?? 0) + 1);
+  }
+  // Sin ciclos (orden topológico completo) y todas alcanzables desde start.
+  const queue = roomIds.filter((id) => indegree.get(id) === 0);
+  let sorted = 0;
+  while (queue.length > 0) {
+    sorted++;
+    for (const next of out.get(queue.shift()!) ?? []) {
+      indegree.set(next, (indegree.get(next) ?? 0) - 1);
+      if (indegree.get(next) === 0) queue.push(next);
+    }
+  }
+  if (sorted !== roomIds.length) return false;
+  const seen = new Set([graph.start]);
+  const stack = [graph.start];
+  while (stack.length > 0) {
+    for (const next of out.get(stack.pop()!) ?? []) {
+      if (!seen.has(next)) {
+        seen.add(next);
+        stack.push(next);
+      }
+    }
+  }
+  return seen.size === roomIds.length;
+}
+
 function checkGraph(museum: MuseumShape, ctx: z.RefinementCtx): boolean {
   const graph = museum.graph!;
   const roomIds = new Set(museum.rooms.map((r) => r.id));
@@ -362,12 +418,14 @@ function checkModeGraph(museum: MuseumShape, ctx: z.RefinementCtx) {
 
   switch (museum.mode) {
     case "exploration":
-      // Conexo (ya validado) y con n-1 aristas: es un árbol.
-      if (graph.edges.length !== roomIds.length - 1) {
-        fail("modo exploration: el grafo debe ser un árbol desde graph.start");
-      }
+      // Conexo (ya validado). Puede ser un árbol con conexiones transversales: no hace falta ser lineal.
       break;
     case "education":
+      // Un camino `next` por todas las salas, O un DAG de prerrequisitos (ramas y convergencias) alcanzable desde start.
+      if (!isNextPathCoveringAll(graph, roomIds) && !isForwardDagCoveringAll(graph, roomIds)) {
+        fail("modo education: usa un camino next por todas las salas o prerrequisitos (sin ciclos) alcanzables desde graph.start");
+      }
+      break;
     case "biography":
       if (!isNextPathCoveringAll(graph, roomIds)) fail(linearPathMessage(museum.mode));
       break;

@@ -11,8 +11,9 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 | Nombre del Pack | Autor / Creador | Sitio Web | Licencia | Modificado en Repo |
 |---|---|---|---|---|
 | **KayKit: Dungeon Asset Pack (1.1)** | **Kay Lousberg** | [www.kaylousberg.com](https://www.kaylousberg.com) | [Creative Commons Zero (CC0)](https://creativecommons.org/publicdomain/zero/1.0/) | Extracción a `assets/kaykit_dungeon` y `apps/web/public/models/dungeon/` |
-| **Gloock** | Veronica Burian, Lisandro Murphy | [Google Fonts](https://fonts.google.com/specimen/Gloock) | SIL Open Font License, 1.1 | Fuente display para cartelas |
-| **Hanken Grotesk** | Hanken Design Co. | [Google Fonts](https://fonts.google.com/specimen/Hanken+Grotesk) | SIL Open Font License, 1.1 | Fuente de lectura en el entorno 3D |
+| **Public Sans** | U.S. Web Design System / Google Fonts | [Google Fonts](https://fonts.google.com/specimen/Public+Sans) | SIL Open Font License, 1.1 | Fuente variable autoalojada para toda la interfaz; licencia en `apps/web/public/fonts/PublicSans-OFL.txt` |
+| **Gloock** | Veronica Burian, Lisandro Murphy | [Google Fonts](https://fonts.google.com/specimen/Gloock) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
+| **Hanken Grotesk** | Hanken Design Co. | [Google Fonts](https://fonts.google.com/specimen/Hanken+Grotesk) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
 
 ---
 
@@ -29,3 +30,9 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 | Llave de hierro | `key.gltf` / `key.bin` | GLTF + Binario | Item recolectable | `/models/dungeon/key.gltf` |
 | Cofre del tesoro | `chest.gltf` / `chest.bin` | GLTF + Binario | Meta / Recompensa | `/models/dungeon/chest.gltf` |
 | Atlas de textura | `dungeon_texture.png` | PNG Binario | Textura atlas | `/models/dungeon/dungeon_texture.png` |
+
+---
+
+## Modelos dinámicos (Poly Pizza)
+
+Los modelos de los pedestales pueden venir de [Poly Pizza](https://poly.pizza) en tiempo de generación (no están en el repo): el servidor los busca por `searchKeyword`, solo con licencia **CC0** o **CC-BY** (se descartan NC/ND/SA), los guarda en `.cache/assets/` (ignorada por git) y los sirve en `/api/assets/<id>.glb`. Cada asignación (palabra clave, autor, licencia, enlace) queda en `.cache/assets/review.json` y se puede revisar con `GET /api/assets-review`. Los modelos CC-BY muestran su crédito en la ficha del concepto. Ver `docs/servidor.md`.
