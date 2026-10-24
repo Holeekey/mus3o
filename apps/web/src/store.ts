@@ -5,6 +5,8 @@ import { buildLayout, type PalaceLayout } from './palace/layout'
 import { evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
+import { resetDioramaState } from './diorama/dioramaStore'
+import { abortIntro } from './intro/store'
 import { dueIds, palaceKey, strengthOf } from './memory/model'
 import { nowMs, useMemory } from './memory/store'
 
@@ -126,15 +128,36 @@ export const useStore = create<State>()(
           openId: null,
           focusedId: null,
           focusedDoorId: null,
+          currentRoomId: null,
+          locked: false,
+          arisMessage: null,
+          arisPromptOpen: false,
           hasKey: false,
           unlockedDoors: {},
           // Las salas sin nada que memorizar ya tienen su llave.
           roomKeys: earnedRoomKeys(palace, {}, {}),
           lastKeyRoomId: null,
         })
+        // El cuadro activo del palacio anterior no puede sobrevivir al cambio.
+        resetDioramaState()
       },
       resume: () => set((s) => (s.palace ? { screen: 'palace', layout: s.layout ?? buildLayout(s.palace) } : {})),
-      exitToLanding: () => set({ screen: 'landing', openId: null, focusedId: null, focusedDoorId: null }),
+      exitToLanding: () => {
+        set({
+          screen: 'landing',
+          mode: 'explore',
+          reviewIds: null,
+          exam: {},
+          openId: null,
+          focusedId: null,
+          focusedDoorId: null,
+          arisMessage: null,
+          arisPromptOpen: false,
+          locked: false,
+        })
+        abortIntro()
+        resetDioramaState()
+      },
       setMode: (mode) => set({ mode, openId: null, exam: {}, reviewIds: null }),
       startReview: () => {
         const { palace } = get()
