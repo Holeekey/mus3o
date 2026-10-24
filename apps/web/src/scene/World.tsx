@@ -12,6 +12,7 @@ import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { ArisCompanion } from './ArisCompanion'
 import { AtmosphereController } from './AtmosphereController'
 import { DecayField } from './Decay'
+import { PerfOverlay, perfEnabled } from './PerfOverlay'
 import { Player } from './Player'
 import { Room } from './Room'
 
@@ -118,6 +119,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
           </Reveal>
         )
       })}
+      {perfEnabled() && <PerfOverlay />}
       <IntroCamera layout={layout} />
       <Player layout={layout} />
       {hasDiorama && (

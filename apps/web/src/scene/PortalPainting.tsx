@@ -7,6 +7,7 @@ import { DioramaScene } from '../diorama/DioramaScene'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import type { Diorama } from '@mus3o/shared'
 import { warmDioramaModel } from '../diorama/model'
+import { perfFlags } from './PerfOverlay'
 
 const FONT_BODY = '/fonts/HankenGrotesk.ttf'
 
@@ -171,6 +172,13 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
     gl.localClippingEnabled = true
   }, [gl])
   useEffect(() => warmDioramaModel(diorama), [diorama])
+  useEffect(() => {
+    if (!near) return
+    perfFlags.portalsRendering++
+    return () => {
+      perfFlags.portalsRendering--
+    }
+  }, [near])
   useLayoutEffect(() => {
     const g = group.current
     if (!g) return
