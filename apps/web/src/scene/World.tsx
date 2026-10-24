@@ -9,7 +9,10 @@ import { Room } from './Room'
 
 // Cuadro-portal de prueba (?demo): se carga aparte para no inflar el bundle de la sala.
 const DioramaDemo = lazy(() => import('../diorama/DioramaDemo').then((m) => ({ default: m.DioramaDemo })))
-const showDioramaDemo = new URLSearchParams(window.location.search).has('demo')
+const demoParam = new URLSearchParams(window.location.search).get('demo') // science-kit
+const MedicinaDemo = lazy(() => import('../diorama/MedicinaDemo').then((m) => ({ default: m.MedicinaDemo }))) // science-kit
+const showMedicinaDemo = demoParam === 'medicina' // science-kit
+const showDioramaDemo = demoParam !== null && !showMedicinaDemo
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
@@ -91,6 +94,11 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       {showDioramaDemo && (
         <Suspense fallback={null}>
           <DioramaDemo layout={layout} theme={theme} />
+        </Suspense>
+      )}
+      {showMedicinaDemo && (
+        <Suspense fallback={null}>
+          <MedicinaDemo layout={layout} theme={theme} />
         </Suspense>
       )}
     </Canvas>
