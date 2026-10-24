@@ -19,16 +19,21 @@ type State = {
   exam: Record<string, ExamResult>
   currentRoomId: string | null
   focusedId: string | null
+  focusedDoorId: string | null
   openId: string | null
   locked: boolean
+  hasKey: boolean
+  unlockedDoors: Record<string, true>
 
   enterPalace: (palace: Museum) => void
   resume: () => void
   exitToLanding: () => void
   setMode: (mode: Mode) => void
   toggleMemorized: (id: string) => void
+  pickupKey: () => void
+  unlockDoor: (doorId: string) => void
   recordExam: (id: string, result: ExamResult) => void
-  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'openId' | 'locked'>>) => void
+  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked'>>) => void
 }
 
 const safeStorage = createJSONStorage(() => {
@@ -50,8 +55,11 @@ export const useStore = create<State>()(
       exam: {},
       currentRoomId: null,
       focusedId: null,
+      focusedDoorId: null,
       openId: null,
       locked: false,
+      hasKey: false,
+      unlockedDoors: {},
 
       enterPalace: (palace) =>
         set({
@@ -63,10 +71,15 @@ export const useStore = create<State>()(
           exam: {},
           openId: null,
           focusedId: null,
+          focusedDoorId: null,
+          hasKey: false,
+          unlockedDoors: {},
         }),
       resume: () => set((s) => (s.palace ? { screen: 'palace', layout: s.layout ?? buildLayout(s.palace) } : {})),
-      exitToLanding: () => set({ screen: 'landing', openId: null, focusedId: null }),
+      exitToLanding: () => set({ screen: 'landing', openId: null, focusedId: null, focusedDoorId: null }),
       setMode: (mode) => set({ mode, openId: null, exam: {} }),
+      pickupKey: () => set({ hasKey: true }),
+      unlockDoor: (doorId) => set((s) => ({ unlockedDoors: { ...s.unlockedDoors, [doorId]: true } })),
       toggleMemorized: (id) =>
         set((s) => {
           const memorized = { ...s.memorized }

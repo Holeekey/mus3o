@@ -37,8 +37,17 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       keys.current[e.code] = true
       const s = useStore.getState()
       if (e.code === 'KeyE') {
+        if (s.focusedDoorId && !s.unlockedDoors[s.focusedDoorId]) {
+          if (s.hasKey) {
+            s.unlockDoor(s.focusedDoorId)
+          }
+          return
+        }
         if (s.openId) s.set({ openId: null })
         else if (s.focusedId) {
+          if (s.focusedId.toLowerCase().includes('key') || s.focusedId.toLowerCase().includes('llave')) {
+            s.pickupKey()
+          }
           s.set({ openId: s.focusedId })
           // En el examen hay que escribir, así que se libera el puntero.
           if (s.mode === 'exam' && !s.exam[s.focusedId]) controls.current?.unlock()
@@ -85,7 +94,14 @@ export function Player({ layout }: { layout: PalaceLayout }) {
         const len = Math.hypot(dx, dz)
         dx = (dx / len) * speed
         dz = (dz / len) * speed
-        const next = moveWithCollisions(layout.colliders, camera.position.x, camera.position.z, dx, dz)
+
+        // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
+        const doorColliders = (layout.doors ?? [])
+          .filter((d) => !s.unlockedDoors[d.id])
+          .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
+        const totalColliders = [...layout.colliders, ...doorColliders]
+
+        const next = moveWithCollisions(totalColliders, camera.position.x, camera.position.z, dx, dz)
         camera.position.x = next.x
         camera.position.z = next.z
       }
@@ -97,6 +113,34 @@ export function Player({ layout }: { layout: PalaceLayout }) {
 
     const room = roomAt(layout, camera.position.x, camera.position.z)
     if (room && room.id !== s.currentRoomId) s.set({ currentRoomId: room.id })
+
+    // Puerta a la que se está mirando y que está al alcance
+    let bestDoor: string | null = null
+    let bestDoorDist = 3.8
+    for (const d of layout.doors ?? []) {
+      const vx = d.x - camera.position.x
+      const vz = d.z - camera.position.z
+      const dist = Math.hypot(vx, vz)
+      if (dist > bestDoorDist) continue
+      if ((vx * f.x + vz * f.z) / dist < 0.5) continue
+      bestDoor = d.id
+      bestDoorDist = dist
+    }
+    if (bestDoor !== s.focusedDoorId) {
+      s.set({ focusedDoorId: bestDoor })
+    }
+
+    // Auto-recogida de la llave al acercarse al pedestal (dentro de 1.8m)
+    if (!s.hasKey) {
+      for (const p of room?.pedestals ?? []) {
+        if (p.concept.id.toLowerCase().includes('key') || p.concept.id.toLowerCase().includes('llave')) {
+          const dist = Math.hypot(p.x - camera.position.x, p.z - camera.position.z)
+          if (dist < 1.8) {
+            s.pickupKey()
+          }
+        }
+      }
+    }
 
     // Pedestal al que se está mirando y que está al alcance.
     let best: string | null = null

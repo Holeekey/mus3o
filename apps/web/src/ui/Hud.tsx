@@ -102,6 +102,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const exam = useStore((s) => s.exam)
   const currentRoomId = useStore((s) => s.currentRoomId)
   const focusedId = useStore((s) => s.focusedId)
+  const focusedDoorId = useStore((s) => s.focusedDoorId)
+  const hasKey = useStore((s) => s.hasKey)
+  const unlockedDoors = useStore((s) => s.unlockedDoors)
   const openId = useStore((s) => s.openId)
   const setMode = useStore((s) => s.setMode)
   const exitToLanding = useStore((s) => s.exitToLanding)
@@ -125,6 +128,11 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <div className="hud-right">
         <Minimap layout={layout} />
+        {hasKey && (
+          <div className="key-badge">
+            🗝️ Llave en inventario
+          </div>
+        )}
         <p className="hud-progress">
           {mode === 'explore' ? (
             <>{memorizedCount} de {total} memorizados</>
@@ -135,9 +143,27 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       </div>
 
       {locked && <div className="crosshair" />}
-      {locked && focusedId && !openId && (
+      {locked && focusedDoorId && !unlockedDoors[focusedDoorId] && (
+        <p className={`hint ${hasKey ? 'hint-gold' : 'hint-warn'}`}>
+          {hasKey ? (
+            <>
+              <kbd>E</kbd> Usar llave para abrir compuerta
+            </>
+          ) : (
+            <>🔒 Compuerta de mazmorra bloqueada (necesitas la llave)</>
+          )}
+        </p>
+      )}
+      {locked && (!focusedDoorId || unlockedDoors[focusedDoorId]) && focusedId && !openId && (
         <p className="hint">
-          <kbd>E</kbd> {mode === 'exam' && !exam[focusedId] ? 'Responder' : 'Examinar concepto'}
+          <kbd>E</kbd>{' '}
+          {focusedId.toLowerCase().includes('key') || focusedId.toLowerCase().includes('llave')
+            ? hasKey
+              ? 'Examinar Llave de Hierro'
+              : 'Recoger Llave de Hierro'
+            : mode === 'exam' && !exam[focusedId]
+              ? 'Responder'
+              : 'Examinar concepto'}
         </p>
       )}
 

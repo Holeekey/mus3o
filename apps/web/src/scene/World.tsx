@@ -1,9 +1,11 @@
 import { Canvas } from '@react-three/fiber'
 import { useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
+import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
+import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { Player } from './Player'
-import { Room, Wall } from './Room'
+import { Room } from './Room'
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
@@ -40,6 +42,7 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
+  const unlockedDoors = useStore((s) => s.unlockedDoors)
   const palettes = useMemo(
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
@@ -53,17 +56,32 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       {layout.rooms.map((r, i) => (
         <Room key={r.id} room={r} palette={palettes[i]} theme={theme} />
       ))}
-      {layout.corridors.map((c, i) => (
-        <group key={i}>
-          <mesh position={[c.floor.x, -0.05, c.floor.z]} receiveShadow>
-            <boxGeometry args={[c.floor.w, 0.1, c.floor.d]} />
-            <meshStandardMaterial color={scene.corridor.floor} flatShading roughness={1} />
-          </mesh>
-          {c.walls.map((w, j) => (
-            <Wall key={j} box={w} color={scene.corridor.wall} />
-          ))}
-        </group>
-      ))}
+      {layout.corridors.map((c, i) => {
+        const isHorizontal = c.floor.w > c.floor.d
+        const rotY = isHorizontal ? Math.PI / 2 : 0
+        const doorPosA: [number, number, number] = isHorizontal
+          ? [c.floor.x - c.floor.w / 2, 0, c.floor.z]
+          : [c.floor.x, 0, c.floor.z - c.floor.d / 2]
+        const doorPosB: [number, number, number] = isHorizontal
+          ? [c.floor.x + c.floor.w / 2, 0, c.floor.z]
+          : [c.floor.x, 0, c.floor.z + c.floor.d / 2]
+
+        const doorId = `door-${i}-entrance`
+        const isOpen = !!unlockedDoors[doorId]
+
+        return (
+          <group key={i}>
+            <AssetFloor box={c.floor} color={scene.corridor.floor} />
+            {c.walls.map((w, j) => (
+              <AssetWall key={j} box={w} color={scene.corridor.wall} />
+            ))}
+            {/* Puerta interactiva con físicas y animación al inicio del pasillo */}
+            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} />
+            {/* Arco abierto al final del pasillo que conecta con la siguiente cámara */}
+            <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isOpen={true} />
+          </group>
+        )
+      })}
       <Player layout={layout} />
     </Canvas>
   )

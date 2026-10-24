@@ -55,3 +55,9 @@ Las skills del proyecto (`.claude/skills/`) ya vienen en el repo: `token-budget`
 ## Commits
 
 Incluir la línea `Co-Authored-By` que indique el harness en cada commit del agente.
+
+## Reglas Críticas de Assets y Archivos Binarios
+
+1. **Gestión Git LFS**: Todos los modelos 3D (`*.gltf`, `*.bin`, `*.glb`, `*.fbx`, `*.obj`), texturas (`*.png`, `*.jpg`) y tipografías (`*.ttf`) son archivos binarios pesados rastreados mediante **Git LFS** y declarados en `.gitattributes`.
+2. **REGLA ESTRICTA PARA CLAUDE**: Claude **NUNCA DEBE LEER, ABRIR, REVISAR NI GREPEAR** archivos binarios ni directorios de assets (`Public/**`, `assets/**`, `apps/web/public/models/**`, `*.bin`, `*.gltf`, `*.fbx`, `*.obj`, `*.png`). Están excluidos en `.claudeignore` para evitar consumo innecesario de tokens y caídas de contexto. Para consultar qué modelos existen, leer únicamente `ASSETS.md` o `apps/web/public/models/catalog.json`.
+3. **Atribución de Assets**: Los assets 3D de mazmorras provienen de *KayKit: Dungeon Asset Pack* por **Kay Lousberg** ([www.kaylousberg.com](https://www.kaylousberg.com)), bajo licencia Creative Commons Zero (CC0). Consultar `ASSETS.md` para el registro completo.
