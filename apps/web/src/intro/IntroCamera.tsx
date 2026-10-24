@@ -52,6 +52,48 @@ export function introPose(layout: PalaceLayout, t: number, descentStart: number,
   }
 }
 
+// ── Cámara del palacio que se levanta en vivo ────────────────────────────────────────────────────────
+
+/** Encuadre aéreo: centro y radio de lo construido hasta ahora. */
+export type AerialFrame = { cx: number; cz: number; R: number }
+
+export function frameOf(bounds: PalaceLayout['bounds']): AerialFrame {
+  const { minX, maxX, minZ, maxZ } = bounds
+  return { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, R: Math.hypot(maxX - minX, maxZ - minZ) / 2 }
+}
+
+/** Acerca el encuadre actual al objetivo con una exponencial: el palacio crece y la cámara lo sigue sin saltos. */
+export function stepFrame(cur: AerialFrame, target: AerialFrame, dt: number, rate = 2.2): AerialFrame {
+  const k = 1 - Math.exp(-Math.max(0, dt) * rate)
+  return { cx: lerp(cur.cx, target.cx, k), cz: lerp(cur.cz, target.cz, k), R: lerp(cur.R, target.R, k) }
+}
+
+/** Cámara aérea que enmarca `frame`, con una deriva lenta de azimut. */
+export function buildAerialPose(frame: AerialFrame, t: number, aspect = 16 / 9): CameraPose {
+  const D = (frame.R * 1.1 + 5) * Math.max(1, 1.2 / aspect)
+  const elev = 0.95
+  const az = 0.62 - 0.045 * Math.min(t, 12)
+  return {
+    pos: [frame.cx + D * Math.cos(elev) * Math.sin(az), D * Math.sin(elev), frame.cz + D * Math.cos(elev) * Math.cos(az)],
+    target: [frame.cx, 0, frame.cz],
+  }
+}
+
+/** Descenso desde la última pose aérea hasta el punto de entrada; `u` en 0..1. */
+export function buildDescentPose(from: CameraPose, spawn: PalaceLayout['spawn'], u: number): CameraPose {
+  const e = smootherstep(u)
+  const p0 = from.pos
+  const { x: sx, z: sz, yaw } = spawn
+  const c: [number, number, number] = [lerp(p0[0], sx, 0.55), p0[1] * 0.5, lerp(p0[2], sz, 0.55)]
+  const b = (i: 0 | 1 | 2, p2: number) => (1 - e) * (1 - e) * p0[i] + 2 * (1 - e) * e * c[i] + e * e * p2
+  const ahead: [number, number, number] = [sx - Math.sin(yaw) * 8, EYE, sz - Math.cos(yaw) * 8]
+  const k = e * e
+  return {
+    pos: [b(0, sx), b(1, EYE), b(2, sz)],
+    target: [lerp(from.target[0], ahead[0], k), lerp(from.target[1], ahead[1], k), lerp(from.target[2], ahead[2], k)],
+  }
+}
+
 /** Conduce la cámara durante la intro y le devuelve el control al jugador al terminar. */
 export function IntroCamera({ layout }: { layout: PalaceLayout }) {
   const camera = useThree((s) => s.camera)
@@ -60,18 +102,38 @@ export function IntroCamera({ layout }: { layout: PalaceLayout }) {
   const size = useThree((s) => s.size)
   const baseFog = useRef<{ near: number; far: number } | null>(null)
   const tmp = useMemo(() => new Vector3(), [])
+  // En vivo: encuadre suavizado, última pose aérea y pose desde la que empezó el descenso.
+  const frame = useRef<AerialFrame | null>(null)
+  const lastAerial = useRef<CameraPose | null>(null)
+  const descentFrom = useRef<CameraPose | null>(null)
 
-  const place = () => {
+  const place = (dt = 0) => {
     const tl = introState.timeline
     if (!tl) return
     const fog = scene.fog as Fog | null
     if (fog && !baseFog.current) baseFog.current = { near: fog.near, far: fog.far }
-    const { pos, target } = introPose(layout, introState.t, tl.descentStart, tl.total, size.width / Math.max(1, size.height))
+    const aspect = size.width / Math.max(1, size.height)
+    let pose: CameraPose
+    let f = clamp01((introState.t - tl.descentStart) / (tl.total - tl.descentStart))
+    if (introState.mode === 'build') {
+      const target = frameOf(layout.bounds)
+      frame.current = frame.current ? stepFrame(frame.current, target, dt) : target
+      if (introState.t >= tl.descentStart) {
+        descentFrom.current ??= lastAerial.current ?? buildAerialPose(frame.current, introState.t, aspect)
+        pose = buildDescentPose(descentFrom.current, layout.spawn, f)
+      } else {
+        pose = buildAerialPose(frame.current, introState.t, aspect)
+        lastAerial.current = pose
+        f = 0 // sin final programado: (t - ∞) / (∞ - ∞) no es un número
+      }
+    } else {
+      pose = introPose(layout, introState.t, tl.descentStart, tl.total, aspect)
+    }
+    const { pos, target } = pose
     camera.position.set(pos[0], pos[1], pos[2])
     camera.lookAt(tmp.set(target[0], target[1], target[2]))
     if (fog && baseFog.current) {
       // Desde arriba la niebla de sala taparía el palacio: se retira y vuelve durante el descenso.
-      const f = clamp01((introState.t - tl.descentStart) / (tl.total - tl.descentStart))
       const k = smootherstep(f)
       fog.near = lerp(400, baseFog.current.near, k)
       fog.far = lerp(800, baseFog.current.far, k)
@@ -109,19 +171,34 @@ export function IntroCamera({ layout }: { layout: PalaceLayout }) {
 
   useFrame((_, dt) => {
     const tl = introState.timeline
-    if (!introState.active || !tl) return
-    if (introState.frozenAt != null) introState.t = introState.frozenAt
-    else {
-      // Clampeo a 50ms para evitar saltos bruscos si el navegador pierde frames.
-      const safeDt = Math.min(Math.max(0, dt), 0.05)
-      introState.t = Math.min(tl.total, introState.t + safeDt)
+    if (!tl) return
+    // Clampeo a 50ms para evitar saltos bruscos si el navegador pierde frames.
+    const safeDt = Math.min(Math.max(0, dt), 0.05)
+    if (!introState.active) {
+      // Tras saltar con la IA aún escribiendo, el reloj sigue para que las salas que llegan se levanten solas.
+      if (introState.popin) {
+        introState.t += safeDt
+        if (introState.buildDone && introState.t >= tl.descentStart) introState.popin = false
+      }
+      return
     }
+    if (introState.skipRequested) {
+      introState.skipRequested = false
+      restore()
+      introState.active = false
+      introState.popin = !introState.buildDone
+      useIntro.setState({ phase: 'done' })
+      return
+    }
+    if (introState.frozenAt != null) introState.t = introState.frozenAt
+    else introState.t = Math.min(tl.total, introState.t + safeDt)
     if (introState.t >= tl.total) {
       restore()
       finishIntro()
       return
     }
-    place()
+    // El encuadre sigue al palacio en tiempo real aunque el equipo vaya lento (el reloj de la intro ya está acotado).
+    place(Math.min(Math.max(0, dt), 0.25))
   }, -100)
 
   return <IntroTitles layout={layout} />

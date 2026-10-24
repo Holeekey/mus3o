@@ -1,13 +1,19 @@
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { sampleMuseum } from "@mus3o/shared";
 import { getCached, setCached } from "./cache";
 
 const museum = (title: string) => ({ ...sampleMuseum, title });
 
-// Las pruebas de expulsión miden la LRU en memoria: sin disco (ruta inválida) para que una lectura no la "repare".
+// Las pruebas de expulsión miden la LRU en memoria: sin disco para que una lectura no la "repare".
+// Una carpeta dentro de un archivo es inválida en todo SO (/dev/null/... en Windows sí se puede crear).
+const blocker = join(tmpdir(), "mus3o-no-disk");
+writeFileSync(blocker, "");
 const withoutDisk = () => {
   const prev = process.env.MUSEUM_CACHE_DIR;
-  process.env.MUSEUM_CACHE_DIR = "/dev/null/no-disk";
+  process.env.MUSEUM_CACHE_DIR = join(blocker, "museums");
   return () => {
     process.env.MUSEUM_CACHE_DIR = prev;
   };

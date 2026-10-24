@@ -6,6 +6,7 @@ import {
   type MonumentType,
   type Glyph,
   type MuseumMode,
+  type GraphEdge,
   QuizSchema,
   GlyphShape,
   LIMITS,
@@ -144,79 +145,105 @@ function buildGraph(rooms: Array<Room & { requires?: string[]; related?: string[
   return { start: rooms[0].id, edges };
 }
 
-/**
- * Parses low-token line-based DSL output into a strictly validated Mus3o museum payload.
- *
- * Format:
- * ROOM: <id> | <title> | <theme> | <primaryHex> | <fogHex> | <monumentType> | <requires_csv_or_empty>
- * PIECE: <concept> | <glyph> | <mnemonicCue> | <searchKeyword> | <explanation>
- */
-export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museum {
-  const stripped = raw.replace(/^```[a-zA-Z]*\r?\n?/m, "").replace(/\r?\n?```$/m, "").trim();
-  const lines = stripped.split(/\r?\n/);
-  const rooms: Room[] = [];
-  let currentRoom: (Room & { requires: string[]; related?: string[] }) | null = null;
-  let roomCount = 0;
-  let pieceCountInRoom = 0;
-  let skippingRoom = false;
-  let docTitle: string | undefined;
-  const dioramaRooms: string[] = [];
-  let lastPiece: Piece | null = null;
-  const usedImages = new Set<string>();
+/** Sala tal como la lee el parser: `requires` y `related` (ids de otras salas) solo sirven para armar el grafo. */
+export type DslRoom = Room & { requires: string[]; related?: string[] };
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) continue;
+export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE";
+
+/** Clasifica una línea del DSL (tolerante a viñetas, negritas y mayúsculas); `body` ya lleva las barras normalizadas. */
+export function classifyDslLine(trimmed: string): { kind?: DslLineKind; body: string } {
+  const tag = LINE_TAG.exec(trimmed);
+  if (!tag) return { body: "" };
+  return { kind: tag[1].toUpperCase() as DslLineKind, body: trimmed.slice(tag[0].length).replace(/｜/g, "|") };
+}
+
+const DEFAULT_PALETTE = { primary: "#3b82f6", fogColor: "#0f172a" };
+
+/** Una sala sin piezas recibe una pieza central para que el palacio siga siendo válido. */
+function ensurePieces(room: DslRoom): DslRoom {
+  if (room.pieces.length === 0) {
+    room.pieces.push({
+      id: `${room.id}-p1`,
+      title: room.name,
+      text: room.description,
+      fact: `Concepto central de ${room.name}`,
+      mnemonicCue: `Visualiza un pedestal resplandeciente para ${room.name}.`,
+      model: { type: "glyph", shape: "torus" },
+    });
+  }
+  return room;
+}
+
+/**
+ * Lee el DSL línea a línea. Es el único lugar donde se interpretan las líneas (ROOM, PIECE, TITLE, PERIOD,
+ * QUIZ, IMAGE), de modo que el parser de una sola vez (`parseMus3oDSL`) y el incremental (`Mus3oDslStream`)
+ * no pueden divergir. El grafo, los rellenos y la validación final viven en `finish()`.
+ */
+class DslAccumulator {
+  readonly rooms: DslRoom[] = [];
+  current: DslRoom | null = null;
+  docTitle: string | undefined;
+  readonly dioramaRooms: string[] = [];
+  private roomCount = 0;
+  private pieceCountInRoom = 0;
+  private skippingRoom = false;
+  private lastPiece: Piece | null = null;
+  private readonly usedImages = new Set<string>();
+
+  constructor(private readonly options: ParseDslOptions = {}) {}
+
+  feedLine(line: string): void {
+    // Una valla de código pegada al final de la línea no es parte del contenido.
+    const trimmed = line.trim().replace(/\s*```$/, "").trim();
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) return;
 
     // Tolera viñetas, numeración, negritas, mayúsculas/minúsculas y barras de ancho completo: "- **Piece**: ..."
-    const tag = LINE_TAG.exec(trimmed);
-    const kind = tag?.[1].toUpperCase();
-    const body = tag ? trimmed.slice(tag[0].length).replace(/｜/g, "|") : "";
+    const { kind, body } = classifyDslLine(trimmed);
 
     if (kind === "TITLE") {
-      docTitle = body.trim().slice(0, LIMITS.maxTitle) || docTitle;
-      continue;
+      this.docTitle = body.trim().slice(0, LIMITS.maxTitle) || this.docTitle;
+      return;
     }
     if (kind === "PERIOD") {
-      if (currentRoom && body.trim()) currentRoom.period = body.trim().slice(0, 40);
-      continue;
+      if (this.current && body.trim()) this.current.period = body.trim().slice(0, 40);
+      return;
     }
     if (kind === "QUIZ") {
       // QUIZ: <pregunta> | <opción> | <opción> [| <opción> | <opción>] | <índice 0-based de la correcta>
       const q = body.split("|").map((x) => x.trim()).filter((x) => x.length > 0);
       const answer = Number(q[q.length - 1]);
       const quiz = QuizSchema.safeParse({ question: q[0], options: q.slice(1, -1).slice(0, 4), answerIndex: answer });
-      if (lastPiece && quiz.success && quiz.data.answerIndex < quiz.data.options.length) lastPiece.quiz = quiz.data;
-      continue;
+      if (this.lastPiece && quiz.success && quiz.data.answerIndex < quiz.data.options.length) this.lastPiece.quiz = quiz.data;
+      return;
     }
     if (kind === "IMAGE") {
       const id = body.trim().replace(/^["']|["']$/g, "");
       // Solo ids que llegaron en el request y como mucho una pieza por imagen.
-      if (lastPiece && options.imageIds?.includes(id) && !usedImages.has(id)) {
-        usedImages.add(id);
-        lastPiece.image = { imageId: id };
+      if (this.lastPiece && this.options.imageIds?.includes(id) && !this.usedImages.has(id)) {
+        this.usedImages.add(id);
+        this.lastPiece.image = { imageId: id };
       }
-      continue;
+      return;
     }
 
     if (kind === "ROOM") {
-      lastPiece = null;
-      if (rooms.length >= LIMITS.maxRooms) {
-        currentRoom = null;
-        skippingRoom = true;
-        continue;
+      this.lastPiece = null;
+      if (this.rooms.length >= LIMITS.maxRooms) {
+        this.current = null;
+        this.skippingRoom = true;
+        return;
       }
-      skippingRoom = false;
+      this.skippingRoom = false;
       const content = body.trim();
       const parts = content.split("|").map((p) => p.trim());
 
-      roomCount++;
-      const rawId = parts[0] || `room-${roomCount}`;
+      this.roomCount++;
+      const rawId = parts[0] || `room-${this.roomCount}`;
       // Ids repetidos (la IA a veces repite): se desambiguan para que el grafo y los pedestales no choquen.
-      const baseId = sanitizeSlug(rawId, `room-${roomCount}`);
+      const baseId = sanitizeSlug(rawId, `room-${this.roomCount}`);
       let roomId = baseId;
-      for (let n = 2; rooms.some((r) => r.id === roomId); n++) roomId = `${baseId}-${n}`;
-      const title = parts[1] || `Sala ${roomCount}`;
+      for (let n = 2; this.rooms.some((r) => r.id === roomId); n++) roomId = `${baseId}-${n}`;
+      const title = parts[1] || `Sala ${this.roomCount}`;
       const rawTheme = (parts[2] || "").toLowerCase();
       const theme: RoomTheme = VALID_THEMES[rawTheme] ?? "cathedral";
       const primaryHex = sanitizeHex(parts[3], "#3b82f6");
@@ -229,15 +256,15 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         .map((r) => sanitizeSlug(r, ""))
         .filter((r) => r.length > 0);
 
-      if ((parts[7] || "").toLowerCase() === "diorama") dioramaRooms.push(roomId);
+      if ((parts[7] || "").toLowerCase() === "diorama") this.dioramaRooms.push(roomId);
 
       const related = (parts[8] || "")
         .split(",")
         .map((r) => sanitizeSlug(r, ""))
         .filter((r) => r.length > 0 && r !== roomId);
 
-      pieceCountInRoom = 0;
-      currentRoom = {
+      this.pieceCountInRoom = 0;
+      this.current = {
         id: roomId,
         name: title.slice(0, 80),
         description: `Exhibición temática de ${title}`.slice(0, 400),
@@ -251,40 +278,40 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         requires,
         related,
       };
-      rooms.push(currentRoom);
-      continue;
+      this.rooms.push(this.current);
+      return;
     }
 
     if (kind === "PIECE") {
       // Piezas de una sala omitida por el tope: se ignoran, no se cuelgan de otra sala.
-      if (skippingRoom) continue;
-      if (!currentRoom) {
+      if (this.skippingRoom) return;
+      if (!this.current) {
         // Create an implicit room if PIECE comes before any ROOM
-        roomCount++;
-        currentRoom = {
-          id: `room-${roomCount}`,
-          name: `Sala ${roomCount}`,
+        this.roomCount++;
+        this.current = {
+          id: `room-${this.roomCount}`,
+          name: `Sala ${this.roomCount}`,
           description: "Sala introductoria",
           theme: "cathedral",
-          palette: { primary: "#3b82f6", fogColor: "#0f172a" },
+          palette: { ...DEFAULT_PALETTE },
           monument: "torus",
           pieces: [],
           requires: [],
         };
-        rooms.push(currentRoom);
-        pieceCountInRoom = 0;
+        this.rooms.push(this.current);
+        this.pieceCountInRoom = 0;
       }
 
-      if (currentRoom.pieces.length >= LIMITS.maxPiecesPerRoom) {
+      if (this.current.pieces.length >= LIMITS.maxPiecesPerRoom) {
         // Enforce max pieces per room
-        continue;
+        return;
       }
 
-      pieceCountInRoom++;
+      this.pieceCountInRoom++;
       const content = body.trim();
       const parts = content.split("|").map((p) => p.trim());
 
-      const concept = parts[0] || `Concepto ${pieceCountInRoom}`;
+      const concept = parts[0] || `Concepto ${this.pieceCountInRoom}`;
       const rawGlyph = (parts[1] || "box").toLowerCase();
       const glyphShape: Glyph = GLYPH_MAP[rawGlyph] ?? (GlyphShape.safeParse(rawGlyph).success ? (rawGlyph as Glyph) : "box");
       // Campos: concepto | glifo | anclaje | palabra clave | explicación. Un "|" dentro del anclaje no corre los
@@ -298,7 +325,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
 
       const keyword = normalizeSearchKeyword(rawKeyword);
 
-      const pieceId = `${currentRoom.id}-p${pieceCountInRoom}`;
+      const pieceId = `${this.current.id}-p${this.pieceCountInRoom}`;
 
       const piece: Piece = {
         id: pieceId,
@@ -313,64 +340,153 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         ...(keyword ? { searchKeyword: keyword } : {}),
       };
 
-      currentRoom.pieces.push(piece);
-      lastPiece = piece;
+      this.current.pieces.push(piece);
+      this.lastPiece = piece;
     }
   }
 
-  if (rooms.length === 0) {
-    // Fallback if empty DSL
-    rooms.push({
-      id: "sala-1",
-      name: "Sala Principal",
-      description: "Introducción a los conceptos clave",
-      theme: "cathedral",
-      palette: { primary: "#3b82f6", fogColor: "#0f172a" },
-      monument: "crystal",
-      pieces: [
-        {
-          id: "sala-1-p1",
-          title: "Inicio",
-          text: "Bienvenido al palacio de la memoria",
-          fact: "Visualiza este templo como el inicio del recorrido",
-          mnemonicCue: "Un arco triunfal que resplandece en el centro de la sala.",
-          model: { type: "glyph", shape: "dodecahedron" },
-        },
-      ],
-    });
-  }
-
-  // Ensure pieces exist in all rooms
-  for (const room of rooms) {
-    if (room.pieces.length === 0) {
-      room.pieces.push({
-        id: `${room.id}-p1`,
-        title: room.name,
-        text: room.description,
-        fact: `Concepto central de ${room.name}`,
-        mnemonicCue: `Visualiza un pedestal resplandeciente para ${room.name}.`,
-        model: { type: "glyph", shape: "torus" },
+  /** Rellenos, grafo y validación final. */
+  finish(): Museum {
+    const rooms = this.rooms;
+    if (rooms.length === 0) {
+      // Fallback if empty DSL
+      rooms.push({
+        id: "sala-1",
+        name: "Sala Principal",
+        description: "Introducción a los conceptos clave",
+        theme: "cathedral",
+        palette: { ...DEFAULT_PALETTE },
+        monument: "crystal",
+        pieces: [
+          {
+            id: "sala-1-p1",
+            title: "Inicio",
+            text: "Bienvenido al palacio de la memoria",
+            fact: "Visualiza este templo como el inicio del recorrido",
+            mnemonicCue: "Un arco triunfal que resplandece en el centro de la sala.",
+            model: { type: "glyph", shape: "dodecahedron" },
+          },
+        ],
+        requires: [],
       });
     }
+
+    // Ensure pieces exist in all rooms
+    for (const room of rooms) ensurePieces(room);
+
+    // Build connected graph topology
+    this.options.onDioramaRooms?.(this.dioramaRooms.slice(0, 2));
+    const graph = buildGraph(rooms, this.options.mode);
+
+    const museumPayload = {
+      title: this.options.title || this.docTitle || rooms[0].name || "Palacio de la Memoria",
+      theme: {
+        palette: [rooms[0].palette?.primary || "#3b82f6", rooms[0].palette?.fogColor || "#0f172a"],
+        ambience: rooms[0].theme || "cathedral",
+      },
+      rooms: rooms.map((r) => {
+        const { requires: _, related: __, ...cleanRoom } = r;
+        return cleanRoom;
+      }),
+      mode: this.options.mode ?? ("education" as const),
+      graph,
+    };
+
+    return MuseumSchema.parse(museumPayload);
+  }
+}
+
+/**
+ * Parses low-token line-based DSL output into a strictly validated Mus3o museum payload.
+ *
+ * Format:
+ * ROOM: <id> | <title> | <theme> | <primaryHex> | <fogHex> | <monumentType> | <requires_csv_or_empty>
+ * PIECE: <concept> | <glyph> | <mnemonicCue> | <searchKeyword> | <explanation>
+ */
+export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museum {
+  const stripped = raw.replace(/^```[a-zA-Z]*\r?\n?/m, "").replace(/\r?\n?```$/m, "").trim();
+  const acc = new DslAccumulator(options);
+  for (const line of stripped.split(/\r?\n/)) acc.feedLine(line);
+  return acc.finish();
+}
+
+/**
+ * Lector incremental del mismo DSL: se le pasan los trozos de texto tal como llegan y devuelve cada sala
+ * en cuanto queda completa (al empezar la línea `ROOM:` siguiente, o en `end()`). Los trozos pueden
+ * cortar una línea por la mitad. Las líneas se interpretan igual que en `parseMus3oDSL` (mismo acumulador).
+ *
+ * `finish()` produce el museo final con el grafo de `buildGraph` según el modo: es igual al de `parseMus3oDSL`
+ * para el mismo texto. Las salas emitidas antes de terminar aún no conocen las aristas definitivas.
+ */
+export class Mus3oDslStream {
+  private readonly acc: DslAccumulator;
+  private buffer = "";
+  private readonly emitted = new Set<DslRoom>();
+
+  /** Todas las salas ya emitidas, en orden. */
+  readonly rooms: DslRoom[] = [];
+
+  constructor(private readonly options: ParseDslOptions = {}) {
+    this.acc = new DslAccumulator(options);
   }
 
-  // Build connected graph topology
-  options.onDioramaRooms?.(dioramaRooms.slice(0, 2));
-  const graph = buildGraph(rooms as Array<Room & { requires?: string[]; related?: string[] }>, options.mode);
+  /** Título declarado con `TITLE:` hasta ahora. */
+  get docTitle(): string | undefined {
+    return this.acc.docTitle;
+  }
 
-  const museumPayload = {
-    title: options.title || docTitle || rooms[0].name || "Palacio de la Memoria",
-    theme: {
-      palette: [rooms[0].palette?.primary || "#3b82f6", rooms[0].palette?.fogColor || "#0f172a"],
-      ambience: rooms[0].theme || "cathedral",
-    },
-    rooms: rooms.map((r) => {
-      const { requires: _, related: __, ...cleanRoom } = r as Room & { requires?: string[]; related?: string[] };
-      return cleanRoom;
-    }),
-    mode: options.mode ?? ("education" as const),
-    graph,
-  };
+  /** Ids de sala marcados como "diorama" hasta ahora (máx. 2, como en `onDioramaRooms`). */
+  get dioramaRooms(): string[] {
+    return this.acc.dioramaRooms.slice(0, 2);
+  }
 
-  return MuseumSchema.parse(museumPayload);
+  /** Añade texto y devuelve las salas que este trozo terminó de completar. */
+  push(chunk: string): DslRoom[] {
+    this.buffer += chunk;
+    const done: DslRoom[] = [];
+    const lines = this.buffer.split(/\r?\n/);
+    // La última porción no tiene salto de línea todavía: puede estar cortada.
+    this.buffer = lines.pop() ?? "";
+    for (const line of lines) this.feed(line, done);
+    // Una línea `ROOM:` ya empezada cierra la sala anterior sin esperar a su salto de línea.
+    if (classifyDslLine(this.buffer.trim()).kind === "ROOM") this.flushCurrent(done);
+    return done;
+  }
+
+  /** Cierra el texto: procesa la línea pendiente y la última sala. */
+  end(): DslRoom[] {
+    const done: DslRoom[] = [];
+    if (this.buffer) this.feed(this.buffer, done);
+    this.buffer = "";
+    this.flushCurrent(done);
+    return done;
+  }
+
+  /**
+   * Aristas provisionales entre la sala emitida `roomId` y las anteriores, con la misma regla por modo que el grafo
+   * final: el cliente ubica la sala junto a la que la enlaza sin esperar a `finish()`.
+   */
+  edgesOf(roomId: string): GraphEdge[] {
+    if (this.rooms.length === 0) return [];
+    return buildGraph(this.rooms, this.options.mode).edges.filter((e) => e.from === roomId || e.to === roomId);
+  }
+
+  /** Museo final (tras `end()`): mismo resultado que `parseMus3oDSL` sobre el texto completo. */
+  finish(): Museum {
+    return this.acc.finish();
+  }
+
+  private feed(line: string, done: DslRoom[]) {
+    if (classifyDslLine(line.trim()).kind === "ROOM") this.flushCurrent(done);
+    this.acc.feedLine(line);
+  }
+
+  private flushCurrent(done: DslRoom[]) {
+    const room = this.acc.current;
+    if (!room || this.emitted.has(room)) return;
+    this.emitted.add(room);
+    ensurePieces(room);
+    this.rooms.push(room);
+    done.push(room);
+  }
 }

@@ -21,6 +21,7 @@ Archivos:
 | Método y ruta | Entrada | Salida | Notas |
 |---|---|---|---|
 | `POST /api/generate-museum` | `{ topic }` (legacy) **o** `{ mode, prompt, sources[], images[] }` | `Museum` | Único endpoint de generación. Cuerpo ≤ 8 MB |
+| `POST /api/generate-museum/stream` | Igual que `/api/generate-museum` (tema, apuntes o flujo completo) | NDJSON de `MuseumStreamEvent` (`packages/shared/src/stream.ts`): `meta`, N × `room` (con `edges` provisionales), `done` o `error` | Misma validación, caché, tope diario y límite de solicitudes que la generación sin streaming; el cliente cae a esta si el stream falla antes de la primera sala. Con `FLOW_FORMAT=json` genera entero y reproduce sala a sala |
 | `POST /api/digest-sources` | `{ sources[] }` (1-10 fuentes, ≤ 200 000 car. en total) | `{ digest }` (≤ 15 000 car.) | Solo cuando el texto supera 20 000 car. Cuerpo ≤ 1 MB. 400 cuerpo inválido; 503 sin clave; 429 tope diario; 502 `No se pudo resumir las fuentes` |
 | `POST /api/improve-prompt` | Mismo que el flujo sin imágenes | `{ suggestions[], improvedPrompt }` | **Solo depuración**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
@@ -267,3 +268,12 @@ Estructura: `ROOM` lleva `<requires>` (prerrequisitos, solo salas **anteriores**
 En el cliente, `planRoomGrid` también abre puerta entre las salas vecinas unidas por una arista fuera del árbol (bucles y atajos), de modo que el recorrido no es una cadena de puertas.
 
 Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequisitos + 7 cruces, 1 convergencia; 24 558 caracteres de apuntes → **12 salas**, 48 piezas, 13 prerrequisitos + 11 cruces, 2 convergencias, 5 046 tokens de salida (entrada 7 993), sin reintentos.
+
+## Ayuda de Aris (`POST /api/aris-help`)
+
+`apps/server/src/arisHelp.ts`. Solo se llama cuando las reglas de Aris no entienden la pregunta.
+
+- **Entrada** (estricta): `query` (1-200), `palaceTitle?`, `roomName?`, `topics[]` (hasta 12, 80 caracteres c/u). Todo se desinfecta y va entre `<pregunta>`/`<contexto>` como datos, no instrucciones.
+- **Modelo:** Haiku (`ANTHROPIC_ARIS_MODEL`, luego `ANTHROPIC_FALLBACK_MODEL`, por defecto `claude-haiku-5-5`), sin razonamiento, `max_tokens` 80, timeout 8 s, sin reintentos. Respuesta de 1-2 frases, recortada a 280 caracteres.
+- **Límites:** 8 solicitudes/min por IP (límite propio, fuera del general), caché en memoria de 200 respuestas (palacio + sala + pregunta; un acierto no gasta cupo) y tope diario `MAX_DAILY_ARIS_HELP` (150 por defecto).
+- **Salida:** `{ answer }`. Errores: 400 entrada inválida, 429 tope diario, 502 fallo del modelo, 503 sin `ANTHROPIC_API_KEY`. El cliente trata cualquier error como "usa el respaldo".

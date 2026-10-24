@@ -47,7 +47,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       }
       controls.current?.unlock()
     }
-  }, [camera, layout])
+    // Solo cuando cambia el punto de entrada: un palacio que se levanta en vivo cambia de layout con cada sala.
+  }, [camera, layout.spawn.x, layout.spawn.z, layout.spawn.yaw]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -81,6 +82,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       window.removeEventListener('blur', clear)
     }
   }, [])
+
+  const colliderCache = useRef<{ unlocked: unknown; free: unknown; layout: unknown; list: typeof layout.colliders }>({ unlocked: null, free: null, layout: null, list: [] })
 
   useFrame((_, rawDt) => {
     // Dentro del cuadro, DioramaRuntime lleva el movimiento y el foco.
@@ -129,10 +132,18 @@ export function Player({ layout }: { layout: PalaceLayout }) {
           dz = (dz / len) * speed * mag
 
           // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
-          const doorColliders = (layout.doors ?? [])
-            .filter((d) => !isDoorOpen(s, d.id))
-            .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
-          const totalColliders = [...layout.colliders, ...doorColliders]
+          // La lista solo se rehace cuando cambian las puertas abiertas (no en cada frame que se camina).
+          const cache = colliderCache.current
+          if (cache.unlocked !== s.unlockedDoors || cache.free !== s.freeExplore || cache.layout !== layout) {
+            const doorColliders = (layout.doors ?? [])
+              .filter((d) => !isDoorOpen(s, d.id))
+              .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
+            cache.list = [...layout.colliders, ...doorColliders]
+            cache.unlocked = s.unlockedDoors
+            cache.free = s.freeExplore
+            cache.layout = layout
+          }
+          const totalColliders = cache.list
 
           const next = moveWithCollisions(totalColliders, camera.position.x, camera.position.z, dx, dz)
           camera.position.x = next.x

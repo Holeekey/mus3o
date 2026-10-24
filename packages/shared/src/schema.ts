@@ -82,6 +82,15 @@ export const ResolvedImageSchema = z.object({
   kind: z.enum(["painting", "diagram", "photo"]),
 });
 
+/** Respuesta de GET /api/info: resumen de Wikipedia con su atribución. */
+export const WikiInfoSchema = z.object({
+  title: z.string().min(1),
+  extract: z.string().min(1),
+  url: z.string().min(1),
+  license: z.literal("CC BY-SA 4.0"),
+  source: z.literal("Wikipedia"),
+});
+
 /** Dónde, en los apuntes del usuario, aparece la idea de una pieza. */
 export const PieceSourceSchema = z.object({
   /** Fragmento copiado de los apuntes (≤ 240 caracteres). */
@@ -167,7 +176,7 @@ export const KINDS = [
 ] as const;
 export const POSES = ["standing", "pointing", "charging", "fallen", "seated", "raising-arm"] as const;
 /** Diseño de la tela de una bandera: franjas (por defecto) o aspa (cruz de San Andrés). */
-export const FLAG_PATTERNS = ["stripes", "saltire"] as const;
+export const FLAG_PATTERNS = ["stripes", "saltire", "vertical"] as const;
 
 // science-kit: valores admitidos por los parámetros opcionales de los props científicos.
 export const VALVE_TYPES = ["tricuspid", "mitral", "pulmonary", "aortic"] as const;
@@ -190,7 +199,7 @@ export const FlowSchema = z.object({
 export const DioramaPropSchema = z.object({
   kind: z.enum(KINDS),
   pose: z.enum(POSES).optional().catch(undefined),
-  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`). */
+  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`); "vertical" = tres franjas verticales `color` | blanco | `secondary` (p. ej. Francia). */
   pattern: z.enum(FLAG_PATTERNS).optional().catch(undefined),
   color: dHex.optional().catch(undefined),
   secondary: dHex.optional().catch(undefined),
@@ -564,6 +573,7 @@ export type Model = z.infer<typeof ModelSchema>;
 export type Glyph = z.infer<typeof GlyphShape>;
 export type ImageSearch = z.infer<typeof ImageSearchSchema>;
 export type ResolvedImage = z.infer<typeof ResolvedImageSchema>;
+export type WikiInfo = z.infer<typeof WikiInfoSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type PieceSource = z.infer<typeof PieceSourceSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
