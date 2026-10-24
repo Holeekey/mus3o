@@ -191,21 +191,32 @@ export function Landing() {
             <span className="tab active">Tus apuntes</span>
             <button
               className="tab tab-file"
-              onClick={() => setSourcesOpen(true)}
+              onClick={() => setSourcesOpen((open) => !open)}
               title="Word, Excel, CSV, texto, JSON o imágenes"
-              aria-haspopup="dialog"
+              aria-expanded={sourcesOpen}
+              aria-controls="sources-panel"
             >
               + Fuentes{attachments.length > 0 && ` (${attachments.length})`}
             </button>
           </div>
-          <textarea
-            value={input}
-            onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
-            placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
-            spellCheck={false}
-            maxLength={MAX_INPUT_CHARS}
-            aria-label="Apuntes"
-          />
+          <div className={sourcesOpen ? 'editor-body editor-body-split' : 'editor-body'}>
+            <textarea
+              value={input}
+              onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
+              placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
+              spellCheck={false}
+              maxLength={MAX_INPUT_CHARS}
+              aria-label="Apuntes"
+            />
+            <SourcesPanel
+              open={sourcesOpen}
+              onClose={closeSources}
+              attachments={attachments}
+              onAdd={onFiles}
+              onRemove={removeAttachment}
+              error={fileError}
+            />
+          </div>
           <div className="editor-status">
             {aiError ? (
               <span className="error">{aiError}</span>
@@ -262,15 +273,6 @@ export function Landing() {
         </div>
         <FreeExploreToggleConnected />
       </section>
-
-      <SourcesPanel
-        open={sourcesOpen}
-        onClose={closeSources}
-        attachments={attachments}
-        onAdd={onFiles}
-        onRemove={removeAttachment}
-        error={fileError}
-      />
 
       <section className="landing-right" aria-label="Vista previa del palacio">
         <div className="preview-frame">

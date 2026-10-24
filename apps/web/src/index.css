@@ -224,41 +224,36 @@ kbd {
 .attachment-remove { background: none; border: 0; padding: 0 4px; font-size: 1.1rem; line-height: 1; color: var(--ink-muted); cursor: pointer; }
 .attachment-remove:hover { color: var(--danger); }
 
-/* Panel lateral de fuentes */
-.drawer-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(31, 20, 17, 0.35); animation: drawer-fade 0.18s ease-out; }
-.drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 41;
-  width: min(380px, 100vw);
+/* Columna de fuentes dentro del recuadro del editor */
+.editor-body-split { display: grid; grid-template-columns: minmax(0, 1fr) 250px; }
+.editor-body-split textarea { height: 100%; }
+.sources-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  padding: 20px;
-  background: var(--surface);
-  color: var(--ink);
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
   border-left: 2px solid var(--line);
-  box-shadow: -8px 0 0 var(--shadow);
-  animation: drawer-in 0.22s ease-out;
+  animation: sources-in 0.18s ease-out;
 }
-.drawer-header { display: flex; align-items: center; justify-content: space-between; }
-.drawer-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; font-weight: 400; }
-.drawer-close { background: none; border: 2px solid var(--line); border-radius: var(--radius); width: 34px; height: 34px; font-size: 1rem; color: var(--ink); cursor: pointer; }
-.drawer-lead, .drawer-hint, .drawer-empty, .drawer-summary { margin: 0; font-size: 0.9rem; color: var(--ink-muted); line-height: 1.5; }
-.drawer-add { align-self: flex-start; }
-.dropzone { display: grid; place-items: center; min-height: 96px; padding: 16px; border: 2px dashed var(--line); border-radius: var(--radius); color: var(--ink-muted); font-size: 0.9rem; text-align: center; }
-.dropzone-active { border-color: var(--accent); background: rgba(201, 150, 58, 0.12); color: var(--ink); }
-.drawer-error { margin: 0; font-size: 0.9rem; }
-.attachments-list { flex-direction: column; flex-wrap: nowrap; padding: 0; border-bottom: 0; }
-.attachments-list .attachment { justify-content: flex-start; }
-.attachments-list .attachment-name { flex: 1; max-width: none; }
-.drawer-hint { margin-top: auto; padding-top: 12px; border-top: 2px solid var(--line); }
-@keyframes drawer-in { from { transform: translateX(100%); } to { transform: none; } }
-@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .drawer, .drawer-backdrop { animation: none; } }
+.sources-header { display: flex; align-items: center; justify-content: space-between; }
+.sources-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; font-weight: 400; }
+.sources-close { background: none; border: 2px solid var(--line); border-radius: var(--radius); width: 26px; height: 26px; font-size: 0.8rem; line-height: 1; color: var(--ink); cursor: pointer; }
+.sources-lead, .sources-hint, .sources-empty, .sources-summary { margin: 0; font-size: 0.8rem; color: var(--ink-muted); line-height: 1.45; }
+.sources-add { align-self: stretch; padding: 8px 12px; font-size: 0.9rem; }
+.sources-drop { display: grid; place-items: center; min-height: 56px; padding: 10px; border: 2px dashed var(--line); border-radius: var(--radius); color: var(--ink-muted); font-size: 0.8rem; text-align: center; }
+.sources-drop-active { border-color: var(--accent); background: rgba(201, 150, 58, 0.12); color: var(--ink); }
+.sources-error { margin: 0; font-size: 0.8rem; }
+.attachments-list { flex-direction: column; flex-wrap: nowrap; gap: 6px; padding: 0; border-bottom: 0; }
+.attachments-list .attachment { font-size: 0.8rem; }
+.attachments-list .attachment-name { flex: 1; min-width: 0; max-width: none; }
+.sources-hint { margin-top: auto; padding-top: 8px; border-top: 2px solid var(--line); }
+@keyframes sources-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sources-panel { animation: none; } }
+@media (max-width: 640px) {
+  .editor-body-split { grid-template-columns: 1fr; }
+  .sources-panel { border-left: 0; border-top: 2px solid var(--line); }
+}
 .editor textarea {
   display: block;
   width: 100%;
