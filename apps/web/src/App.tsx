@@ -28,6 +28,7 @@ if (demo !== null) {
   applyDemoCamera()
   applyDemoJump()
 }
+import { DioramaOverlay } from './diorama/DioramaOverlay'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
 
@@ -42,6 +43,7 @@ export default function App() {
           <World layout={layout} />
         </Suspense>
         <Hud layout={layout} />
+        <DioramaOverlay />
       </div>
     )
   }

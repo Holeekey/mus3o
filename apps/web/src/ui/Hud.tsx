@@ -12,6 +12,8 @@ import { useMemory } from '../memory/store'
 import { allConcepts, inExamScope, isDoorOpen, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
 import { FreeExploreToggle } from './FreeExploreToggle'
+import { DioramaMinimap } from '../diorama/DioramaMinimap'
+import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
 import { Minimap } from './Minimap'
 import { SourceBlock } from './SourceBlock'
@@ -126,6 +128,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const memorized = useStore((s) => s.memorized)
   const exam = useStore((s) => s.exam)
   const currentRoomId = useStore((s) => s.currentRoomId)
+  const inDiorama = useDioramaStore((s) => s.phase === 'inside' || s.phase === 'leaving')
   const focusedId = useStore((s) => s.focusedId)
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const hasKey = useStore((s) => s.hasKey)
@@ -188,7 +191,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       </div>
 
       <div className="hud-right">
-        <Minimap layout={layout} />
+        {inDiorama ? <DioramaMinimap /> : <Minimap layout={layout} />}
         {hasKey && (
           <div className="key-badge">
             🗝️ Llave en inventario
