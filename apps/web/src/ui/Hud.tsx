@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { isCorrectAnswer } from '../palace/match'
 import { pieceKind } from '../palace/pieceKind'
@@ -106,6 +107,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const hasKey = useStore((s) => s.hasKey)
   const unlockedDoors = useStore((s) => s.unlockedDoors)
+  const roomKeys = useStore((s) => s.roomKeys)
+  const lastKeyRoomId = useStore((s) => s.lastKeyRoomId)
+  const setState = useStore((s) => s.set)
   const openId = useStore((s) => s.openId)
   const setMode = useStore((s) => s.setMode)
   const exitToLanding = useStore((s) => s.exitToLanding)
@@ -122,6 +126,23 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const focusedKind = focused ? pieceKind(focused.concept) : 'standard'
   const examFinished = mode === 'exam' && answered.length === total && total > 0
 
+  // Aviso de llave ganada: se muestra unos segundos.
+  useEffect(() => {
+    if (!lastKeyRoomId) return
+    const timer = setTimeout(() => setState({ lastKeyRoomId: null }), 4000)
+    return () => clearTimeout(timer)
+  }, [lastKeyRoomId, setState])
+
+  const focusedDoor = layout.doors.find((d) => d.id === focusedDoorId)
+  const doorLocked = !!focusedDoor && !unlockedDoors[focusedDoor.id]
+  const doorOpenable = !!focusedDoor && canOpenDoor(focusedDoor, hasKey, roomKeys)
+  const doorRoom = palace?.rooms.find((r) => r.id === focusedDoor?.fromRoomId)
+  const doorMissing = doorRoom ? remainingToMemorize(doorRoom, memorized, exam) : 0
+  const keyRoomName = (id: string | null) => palace?.rooms.find((r) => r.id === id)?.name ?? ''
+  // La llave de la sala actual se muestra mientras le quede alguna compuerta por abrir.
+  const currentRoomKey =
+    !!roomKeys[room.id] && layout.doors.some((d) => d.fromRoomId === room.id && !unlockedDoors[d.id])
+
   return (
     <div className="hud">
       <div className="plaque" style={wallVars(palette)}>
@@ -136,6 +157,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
             🗝️ Llave en inventario
           </div>
         )}
+        {!hasKey && currentRoomKey && <div className="key-badge">🗝️ Llave de {room.title}</div>}
         <p className="hud-progress">
           {mode === 'explore' ? (
             <>{memorizedCount} de {total} memorizados</>
@@ -146,14 +168,20 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       </div>
 
       {locked && <div className="crosshair" />}
-      {locked && focusedDoorId && !unlockedDoors[focusedDoorId] && (
-        <p className={`hint ${hasKey ? 'hint-gold' : 'hint-warn'}`}>
-          {hasKey ? (
+      {lastKeyRoomId && (
+        <p className="hint hint-gold">🗝️ ¡Memorizaste toda la sala! Obtuviste la llave de {keyRoomName(lastKeyRoomId)}</p>
+      )}
+      {locked && doorLocked && !lastKeyRoomId && (
+        <p className={`hint ${doorOpenable ? 'hint-gold' : 'hint-warn'}`}>
+          {doorOpenable ? (
             <>
               <kbd>E</kbd> Usar llave para abrir compuerta
             </>
           ) : (
-            <>🔒 Compuerta de mazmorra bloqueada (necesitas la llave)</>
+            <>
+              🔒 Compuerta bloqueada: memoriza {doorMissing} {doorMissing === 1 ? 'pieza más' : 'piezas más'} de{' '}
+              {doorRoom?.name} para obtener su llave
+            </>
           )}
         </p>
       )}
