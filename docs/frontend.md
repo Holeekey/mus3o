@@ -21,6 +21,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 | `?demo=ia` | `mocks/index.ts` (`demoMuseum`), museo con modelos de IA |
 | `?demo=historia` | `mocks/historia.ts`, con cuadros reales de Wikimedia |
 | `?demo=dungeon` | `mocks/dungeon.ts`, mazmorra del sandbox adaptada a museo |
+| `?vr=cardboard` \| `xr` \| `off` | Modo VR: fuerza el respaldo cardboard (en escritorio, el ratón simula la cabeza), WebXR emulado o lo desactiva. Ver [vr.md](./vr.md) |
 | `?cam=x,z,yaw`, `?salto=0@3000` | Solo demo: posición de cámara y salto del reloj (`memory/demo.ts`) |
 
 ## 2. Landing (`ui/Landing.tsx`)
