@@ -45,7 +45,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     [theme, layout],
   )
   return (
-    <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows}>
+    <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat>
       <color attach="background" args={[scene.background]} />
       <fog attach="fog" args={[scene.fog.color, scene.fog.near, scene.fog.far]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />

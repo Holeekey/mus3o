@@ -87,7 +87,7 @@ function Model({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 export function Preview({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout | null; theme?: Theme }) {
   const { sun, ambient } = theme.scene
   return (
-    <Canvas dpr={[1, 2]} shadows={theme.scene.shadows} gl={{ alpha: true }}>
+    <Canvas dpr={[1, 2]} shadows={theme.scene.shadows} flat gl={{ alpha: true }}>
       <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={18} near={-100} far={200} onUpdate={(c) => c.lookAt(0, 0, 0)} />
       <hemisphereLight args={[ambient.sky, ambient.ground, ambient.intensity]} />
       <directionalLight

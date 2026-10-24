@@ -26,7 +26,7 @@ export const teatro: Theme = {
     pedestal: { color: '#E4E1DB', segments: 8 },
     corridor: { wall: '#D9D4CB', floor: '#8E877C' },
     sun: { color: '#FFF1DC', intensity: 2.2, position: [8, 14, 5] },
-    ambient: { sky: '#E9D9C4', ground: '#3A2620', intensity: 0.65 },
+    ambient: { sky: '#E9D9C4', ground: '#3A2620', intensity: 1.1 },
     shadows: true,
     architecture: { cornice: true, plinth: true, wallThickness: 0.4 },
   },
