@@ -3,7 +3,7 @@ import { EXAMPLE_TEXT } from './example'
 import { buildLayout, moveWithCollisions, roomAt } from './layout'
 import { isCorrectAnswer } from './match'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace } from './parse'
-import { LIMITS } from '@mus3o/shared'
+import { LIMITS, type Graph } from '@mus3o/shared'
 
 const ok = (input: string, format?: Parameters<typeof parsePalace>[1]) => {
   const r = parsePalace(input, format)
@@ -127,6 +127,64 @@ describe('buildLayout', () => {
           const overlap = Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.z - b.z) < (a.d + b.d) / 2
           expect(overlap).toBe(false)
         }
+  })
+})
+
+describe('buildLayout con grafo', () => {
+  const palaceWith = (n: number, graph: Graph) => {
+    const text = Array.from({ length: n }, (_, i) => `# Sala ${i}\n- c${i}a\n- c${i}b`).join('\n')
+    return { ...ok(text).palace, graph }
+  }
+  const hub = (n: number, start: number): Graph => ({
+    start: `r${start}`,
+    edges: Array.from({ length: n }, (_, i) => i)
+      .filter((i) => i !== start)
+      .map((i) => ({ from: `r${start}`, to: `r${i}`, kind: 'related' as const })),
+  })
+
+  it('aparece en la sala de graph.start', () => {
+    const layout = buildLayout(palaceWith(5, hub(5, 3)))
+    expect(roomAt(layout, layout.spawn.x, layout.spawn.z)?.id).toBe('r3')
+    const { x, z } = layout.spawn
+    expect(moveWithCollisions(layout.colliders, x, z, 0.01, 0.01)).toEqual({ x: x + 0.01, z: z + 0.01 })
+  })
+
+  it.each([2, 5, 8])('con un hub de %i salas: un pasillo por puerta, transitables y sin solapes', (n) => {
+    const layout = buildLayout(palaceWith(n, hub(n, 0)))
+    expect(layout.rooms).toHaveLength(n)
+    expect(layout.corridors).toHaveLength(n - 1)
+    for (const c of layout.corridors) {
+      const horizontal = c.floor.w > c.floor.d
+      for (const dir of [1, -1]) {
+        let px = c.floor.x
+        let pz = c.floor.z
+        for (let s = 0; s < 200 && !roomAt(layout, px, pz); s++) {
+          const next = moveWithCollisions(layout.colliders, px, pz, horizontal ? 0.1 * dir : 0, horizontal ? 0 : 0.1 * dir)
+          expect(next.x !== px || next.z !== pz).toBe(true)
+          px = next.x
+          pz = next.z
+        }
+        expect(roomAt(layout, px, pz)).not.toBeNull()
+      }
+    }
+    for (const a of layout.rooms)
+      for (const b of layout.rooms)
+        if (a !== b) expect(Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.z - b.z) < (a.d + b.d) / 2).toBe(false)
+  })
+
+  it('las puertas siguen el grafo y no el orden de las salas', () => {
+    const graph: Graph = {
+      start: 'r2',
+      edges: [
+        { from: 'r2', to: 'r0', kind: 'next' },
+        { from: 'r0', to: 'r1', kind: 'next' },
+      ],
+    }
+    const layout = buildLayout(palaceWith(3, graph))
+    const byId = Object.fromEntries(layout.rooms.map((r) => [r.id, r]))
+    expect(byId.r2.doors).toHaveLength(1)
+    expect(byId.r0.doors).toHaveLength(2)
+    expect(byId.r1.doors).toHaveLength(1)
   })
 })
 
