@@ -161,24 +161,67 @@ async function fromCommons(query: string): Promise<ResolvedImage | null> {
   return null;
 }
 
+const STOP = new Set(
+  "a al con de del el en la las lo los por para que se sin sobre su un una y o the of and in on to for".split(" "),
+);
+const words = (s: string) => normalize(s).replace(/[^a-z0-9ñ]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w));
+
+/** Palabras abstractas que nunca son un artículo con imagen útil ("Fecha", "Consecuencia"...). */
+const GENERIC_WORDS = new Set(
+  ("fecha consecuencia consecuencias definicion definiciones concepto conceptos causa causas resumen introduccion conclusion " +
+    "ejemplo ejemplos funcion funciones tipo tipos etapa etapas importancia caracteristicas resultado resultados " +
+    "date definition summary example examples overview cause causes result results type types function").split(" "),
+);
+
+/**
+ * Título de una sola palabra que no sirve como búsqueda de imagen. `strict`: palabra abstracta conocida
+ * (no se busca nada). `weak`: palabra suelta en minúscula (solo vale si un resultado la contiene).
+ */
+export function genericKind(title: string): "strict" | "weak" | null {
+  const t = title.trim();
+  if (!t || /\s/.test(t)) return null;
+  if (GENERIC_WORDS.has(normalize(t))) return "strict";
+  return t[0] === t[0].toLowerCase() && t[0] !== t[0].toUpperCase() ? "weak" : null;
+}
+
+/** Búsqueda en Wikipedia: el mejor resultado cuyo título comparte palabras significativas con la consulta. */
+async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
+  const q = [title, context].filter(Boolean).join(" ");
+  const data = await getJson(
+    `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=3&format=json`,
+  );
+  const hits: string[] = (data?.query?.search ?? []).map((h: any) => String(h?.title ?? "")).filter(Boolean);
+  const own = new Set(words(title));
+  const all = new Set([...own, ...words(context)]);
+  return hits
+    .map((hit, i) => {
+      const w = words(hit);
+      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length };
+    })
+    .filter((h) => h.any > 0)
+    .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
+    .map((h) => h.hit);
+}
+
 const resolveCache = new Map<string, ResolvedImage | null>();
 const MAX_RESOLVE_ENTRIES = 500;
 // Peticiones iguales que llegan a la vez comparten una sola consulta a Wikimedia. Se limpia al terminar,
 // así un error transitorio no queda guardado (igual que antes).
 const resolving = new Map<string, Promise<ResolvedImage | null>>();
 
-export async function resolveImage(q: { wiki?: string; commons?: string; lang?: string }): Promise<ResolvedImage | null> {
+export async function resolveImage(q: { wiki?: string; commons?: string; lang?: string; context?: string }): Promise<ResolvedImage | null> {
   const lang = q.lang && /^[a-z]{2}$/.test(q.lang) ? q.lang : "es";
   const wiki = q.wiki?.trim().slice(0, 120) ?? "";
   const commons = q.commons?.trim().slice(0, 120) ?? "";
+  const context = q.context?.trim().slice(0, 120) ?? "";
   if (!wiki && !commons) return null;
-  const key = `${lang}|${normalize(wiki)}|${normalize(commons)}`;
+  const key = `${lang}|${normalize(wiki)}|${normalize(commons)}|${normalize(context)}`;
   if (resolveCache.has(key)) return resolveCache.get(key)!;
   const pending = resolving.get(key);
   if (pending) return pending;
 
   const task = (async () => {
-    const result = (wiki && (await fromWikipedia(wiki, lang))) || (commons && (await fromCommons(commons))) || null;
+    const result = await retrieve(wiki, commons, context, lang);
     if (resolveCache.size >= MAX_RESOLVE_ENTRIES) resolveCache.delete(resolveCache.keys().next().value!);
     resolveCache.set(key, result);
     return result;
@@ -189,6 +232,31 @@ export async function resolveImage(q: { wiki?: string; commons?: string; lang?: 
   } finally {
     resolving.delete(key);
   }
+}
+
+/** Recuperación en cascada: resumen exacto → búsqueda en Wikipedia (con contexto) → búsqueda en Commons. */
+async function retrieve(wiki: string, commons: string, context: string, lang: string): Promise<ResolvedImage | null> {
+  const generic = wiki ? genericKind(wiki) : null;
+  // "Fecha", "Consecuencia"... en un museo de historia: mejor sin cuadro que una imagen cualquiera.
+  if (generic === "strict" && !commons) return null;
+  if (wiki && generic !== "strict") {
+    if (generic !== "weak") {
+      const exact = await fromWikipedia(wiki, lang);
+      if (exact) return exact;
+    }
+    if (context || generic === "weak") {
+      const own = new Set(words(wiki));
+      for (const hit of await searchTitles(wiki, context, lang)) {
+        if (generic === "weak" && !words(hit).some((w) => own.has(w))) continue;
+        const found = await fromWikipedia(hit, lang);
+        if (found) return found;
+      }
+    }
+  }
+  if (generic) return commons ? fromCommons(commons) : null;
+  // Con la consulta de Commons dada se usa tal cual; sin ella, solo se busca por título + contexto.
+  const query = commons || (context ? `${wiki} ${context}` : "");
+  return query ? fromCommons(query) : null;
 }
 
 // LRU de archivos: 60 entradas / 40 MB.
@@ -275,7 +343,7 @@ imageRouter.get("/image", async (req, res) => {
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
   let image: ResolvedImage | null;
   try {
-    image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang) });
+    image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang), context: str(req.query.context) });
   } catch (err) {
     if (!(err instanceof UpstreamError)) throw err;
     res.status(502).json({ error: "Wikimedia no disponible" });

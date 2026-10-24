@@ -175,3 +175,58 @@ export function sanitizeRawSources(json: unknown): unknown {
   }
   return json;
 }
+
+const STOPWORDS = new Set(
+  (
+    "a al algo ante como con contra cual cuando de del desde donde e el ella ellas ellos en entre es esa ese eso esta este esto " +
+    "la las le les lo los mas me mi muy ni no nos o para pero por que se si sin sobre su sus te tu un una uno unos unas y ya " +
+    "son ser fue fueron han hay era the a an and are as at be but by for from has have in is it its of on or that this to was were with"
+  ).split(" "),
+);
+
+/** Minúsculas, sin tildes, solo letras/números separados por un espacio. */
+const fold = (s: string) =>
+  toNfc(s)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9ñ]+/g, " ")
+    .trim();
+
+const tokens = (s: string) => fold(s).split(" ").filter((t) => t.length > 2 && !STOPWORDS.has(t));
+
+export type SourceLine = { quote: string; line: number };
+
+const MIN_SOURCE_SCORE = 1.5;
+
+/**
+ * Busca en los apuntes la línea que respalda una pieza (sin IA). Puntúa cada línea no vacía:
+ * el título de la pieza dentro de la línea pesa mucho, y se suma el solapamiento de palabras
+ * significativas entre título + texto de la pieza y la línea (ignorando conectores). Prefiere viñetas.
+ * Devuelve la línea original recortada (≤ 240 caracteres) y su número 1-based, o null si nada supera el umbral.
+ */
+export function findSourceLine(notes: string, piece: { title: string; text?: string }): SourceLine | null {
+  const title = fold(piece.title);
+  const wanted = new Set(tokens(`${piece.title} ${piece.text ?? ""}`));
+  if (!title && wanted.size === 0) return null;
+  const lines = toNfc(notes).split(/\r?\n/);
+  let best: { score: number; index: number } | null = null;
+  lines.forEach((raw, index) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const folded = ` ${fold(trimmed)} `;
+    if (folded.trim().length === 0) return;
+    let score = 0;
+    if (title.length >= 3 && folded.includes(` ${title} `)) score += 3;
+    let shared = 0;
+    for (const t of new Set(folded.split(" "))) if (wanted.has(t)) shared++;
+    score += shared * 0.5;
+    if (score > 0 && /^([-*•·]|\d+[.)])\s/.test(trimmed)) score += 0.25;
+    if (score > 0 && /^#{1,6}\s/.test(trimmed)) score -= 0.5;
+    if (!best || score > best.score) best = { score, index };
+  });
+  if (!best || (best as { score: number }).score < MIN_SOURCE_SCORE) return null;
+  const { index } = best as { score: number; index: number };
+  const quote = lines[index].replace(/\s+/g, " ").trim().slice(0, LIMITS.maxQuote);
+  return quote ? { quote, line: index + 1 } : null;
+}

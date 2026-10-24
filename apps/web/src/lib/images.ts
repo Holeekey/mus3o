@@ -5,7 +5,7 @@ const cache = new Map<string, Promise<ResolvedImage | null>>()
 // Resultados ya resueltos: se leen de forma sincrónica para no mostrar "cargando" ni un instante.
 const settled = new Map<string, ResolvedImage | null>()
 
-const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}`
+const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}|${s.context?.trim() ?? ''}`
 
 // Wikimedia limita la tasa cuando un museo pide muchas imágenes a la vez: se reintenta con espera.
 const RETRY_DELAYS_MS = [2_000, 5_000]
@@ -37,6 +37,7 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
     const params = new URLSearchParams()
     if (search.wikiTitle?.trim()) params.set('wiki', search.wikiTitle.trim())
     if (search.commonsQuery?.trim()) params.set('commons', search.commonsQuery.trim())
+    if (search.context?.trim()) params.set('context', search.context.trim())
     params.set('lang', search.lang ?? 'es')
     pending = requestImage(params).then(
       (image) => {

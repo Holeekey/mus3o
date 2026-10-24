@@ -57,6 +57,8 @@ export const ImageSearchSchema = z.object({
   /** 2 a 4 palabras clave en inglés para buscar en Commons. */
   commonsQuery: z.string().max(120).optional(),
   lang: z.string().regex(/^[a-z]{2}$/).optional(),
+  /** Contexto para desambiguar (sala o tema): el servidor lo usa al buscar, no se muestra. */
+  context: z.string().max(120).optional(),
 });
 
 /** Respuesta de GET /api/image. */

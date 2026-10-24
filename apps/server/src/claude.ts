@@ -27,6 +27,7 @@ import {
   SYSTEM_PROMPT,
   userPrompt,
 } from "./prompts";
+import { attachImageSearches, retrieveSources } from "./enrich";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 let client: Anthropic | undefined;
@@ -63,6 +64,15 @@ export function parseFlowMuseum(raw: string, imageIds: string[]): Museum {
   const issues = findImageAssignmentIssues(museum, imageIds);
   if (issues.length > 0) throw new Error(issues.join("; "));
   return museum;
+}
+
+/**
+ * Capa de recuperación sobre la salida del modelo: pistas de búsqueda de imágenes y, con apuntes,
+ * fuentes recuperadas de ellos. El modelo no genera nada de esto.
+ */
+export function enrichMuseum(museum: Museum, notes?: string): Museum {
+  const images = attachImageSearches(museum, notes ?? museum.title);
+  return notes === undefined ? images : retrieveSources(attachSources(images, notes), notes);
 }
 
 export type GenerateInput = { topic: string } | { notes: string };
@@ -114,7 +124,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     // Con apuntes un mock no sirve: el cliente cae a su parser local.
     if ("notes" in input) throw new AiUnavailableError("IA no configurada");
     console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
-    return { ...sampleMuseum, title: input.topic };
+    return enrichMuseum({ ...sampleMuseum, title: input.topic });
   }
   const isNotes = "notes" in input;
   const content = isNotes ? dslNotesPrompt(input.notes) : dslUserPrompt(input.topic);
@@ -125,7 +135,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
-  return isNotes ? attachSources(museum, cleanNotes(input.notes)) : museum;
+  return enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined);
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
@@ -147,7 +157,7 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
     { system: SYSTEM_PROMPT, content: buildFlowContent(request), maxTokens: 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
-  return attachSources(museum, flowNotesText(request));
+  return enrichMuseum(museum, flowNotesText(request));
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {
