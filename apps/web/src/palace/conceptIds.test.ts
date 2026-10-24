@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sampleMuseum, type Museum } from '@mus3o/shared'
-import { conceptIdSet } from './conceptIds'
+import { conceptIdList, conceptIdSet } from './conceptIds'
 
 const museumWith = (ids: string[][]): Museum => ({
   ...sampleMuseum,
@@ -32,5 +32,26 @@ describe('conceptIdSet', () => {
     expect(conceptIdSet(one).has('x')).toBe(false)
     expect(conceptIdSet(two).has('x')).toBe(true)
     expect(conceptIdSet(one).has('a')).toBe(true)
+  })
+})
+
+describe('conceptIdList', () => {
+  it('lists every piece id in room then piece order', () => {
+    expect(conceptIdList(museumWith([['a', 'b'], ['c']]))).toEqual(['a', 'b', 'c'])
+  })
+
+  it('is empty without a palace', () => {
+    expect(conceptIdList(null)).toEqual([])
+  })
+
+  it('returns the same list for the same palace instead of rebuilding it', () => {
+    const palace = museumWith([['a'], ['b']])
+    expect(conceptIdList(palace)).toBe(conceptIdList(palace))
+  })
+
+  it('has the same length as the number of pieces, as the HUD counts them', () => {
+    const palace = museumWith([['a', 'b', 'c'], [], ['d']])
+    expect(conceptIdList(palace)).toHaveLength(4)
+    expect(conceptIdSet(palace).size).toBe(4)
   })
 })

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { Museum } from '@mus3o/shared'
-import { allConcepts, useStore } from '../store'
+import { conceptIdList } from '../palace/conceptIds'
+import { useStore } from '../store'
 import { levelOf, palaceKey, roomMemory, strengthOf, type Level, type PalaceMemory, type RoomMemory } from './model'
 import { nowMs, useMemory } from './store'
 
@@ -40,12 +41,12 @@ export function useDueCount(): number {
   const palace = useStore((s) => s.palace)
   const mem = usePalaceMemory()
   useMemory((s) => s.timeOffsetDays)
-  return roomMemory(mem, allConcepts(palace).map((c) => c.id), nowMs()).due
+  return roomMemory(mem, conceptIdList(palace), nowMs()).due
 }
 
 /** Pendientes de un palacio guardado, para la landing. */
 export function dueCountFor(palace: Museum | null): number {
   if (!palace) return 0
   const mem = useMemory.getState().palaces[palaceKey(palace)] ?? EMPTY
-  return roomMemory(mem, allConcepts(palace).map((c) => c.id), nowMs()).due
+  return roomMemory(mem, conceptIdList(palace), nowMs()).due
 }
