@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
 import { Vector3 } from 'three'
 
+import { handleDioramaKey, isDioramaActive } from '../diorama/dioramaStore'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { playerPose, useStore } from '../store'
 import { pointerLock } from './pointerLock'
@@ -35,6 +36,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     const down = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       keys.current[e.code] = true
+      // Cuadro-portal: E entra al diorama, Q vuelve (ver diorama/dioramaStore.ts)
+      if (handleDioramaKey(e.code)) return
       const s = useStore.getState()
       if (e.code === 'KeyE') {
         if (s.focusedDoorId && !s.unlockedDoors[s.focusedDoorId]) {
@@ -75,6 +78,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
   }, [])
 
   useFrame((_, rawDt) => {
+    // Dentro del cuadro, DioramaRuntime lleva el movimiento y el foco.
+    if (isDioramaActive()) return
     const dt = Math.min(rawDt, 0.05)
     const s = useStore.getState()
     const k = keys.current

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { demoMuseum } from './mocks'
+import { carababoMuseum } from './mocks/carabobo'
 import { dungeonDemoMuseum } from './mocks/dungeon'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
@@ -14,10 +15,12 @@ const World = lazy(() => import('./scene/World').then((m) => ({ default: m.World
 const demo = new URLSearchParams(window.location.search).get('demo')
 if (demo === 'ia') useStore.getState().enterPalace(demoMuseum)
 else if (demo === 'dungeon') useStore.getState().enterPalace(dungeonDemoMuseum)
+else if (demo === 'carabobo') useStore.getState().enterPalace(carababoMuseum)
 else if (demo !== null) {
   const r = parsePalace(EXAMPLE_TEXT)
   if (r.ok) useStore.getState().enterPalace(r.palace)
 }
+import { DioramaOverlay } from './diorama/DioramaOverlay'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
 
@@ -39,6 +42,7 @@ export default function App() {
           <World layout={layout} />
         </Suspense>
         <Hud layout={layout} />
+        <DioramaOverlay />
       </div>
     )
   }
