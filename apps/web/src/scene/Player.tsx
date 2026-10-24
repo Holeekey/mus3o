@@ -5,6 +5,7 @@ import { Vector3 } from 'three'
 
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { playerPose, useStore } from '../store'
+import { pointerLock } from './pointerLock'
 
 const EYE = 1.7
 const WALK = 4.5
@@ -14,8 +15,7 @@ const REACH = 3.2
 const onLock = () => useStore.getState().set({ locked: true })
 const onUnlock = () => useStore.getState().set({ locked: false })
 
-// Permite que el HUD bloquee/desbloquee el puntero sin acceder a la escena.
-export const pointerLock = { lock: () => {}, unlock: () => {} }
+export { pointerLock }
 
 export function Player({ layout }: { layout: PalaceLayout }) {
   const camera = useThree((s) => s.camera)

@@ -1,10 +1,12 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { generateMuseum } from '../lib/api'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { buildLayout } from '../palace/layout'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace, type InputFormat } from '../palace/parse'
-import { Preview } from '../scene/Preview'
 import { useStore } from '../store'
+
+// La maqueta 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
+const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.Preview })))
 
 const FORMATS: { id: InputFormat; label: string; placeholder: string }[] = [
   { id: 'text', label: 'Texto', placeholder: '# Tema 1\n- Concepto A: explicación\n- Concepto B\n\n# Tema 2\n- Concepto C' },
@@ -70,15 +72,11 @@ export function Landing() {
   return (
     <main className="landing">
       <section className="landing-left">
-        <p className="brand">
-          <span className="brand-mark" aria-hidden /> mus3o
-        </p>
-        <h1>
-          Convierte tus apuntes en un <em>palacio de la memoria</em>
-        </h1>
+        <p className="brand">mus3o</p>
+        <h1>Un lugar para cada idea</h1>
         <p className="lead">
-          Pega tus apuntes (o escribe un tema) y generamos un museo 3D que recorres en primera persona. Cada tema es
-          una sala, cada concepto un objeto sobre un pedestal. Tu cerebro recuerda lugares mejor que listas.
+          Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y mus3o levanta uno:
+          cada tema es una sala de un solo color, cada concepto un objeto de yeso sobre su pedestal.
         </p>
 
         <div className="editor">
@@ -133,8 +131,8 @@ export function Landing() {
           <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace)}>
             Construir palacio
           </button>
-          <button className="btn btn-ai" disabled={!input.trim() || aiState === 'loading'} onClick={generateWithAi}>
-            <span aria-hidden>✦</span> {aiState === 'loading' ? 'Diseñando tu palacio…' : 'Generar con IA'}
+          <button className="btn" disabled={!input.trim() || aiState === 'loading'} onClick={generateWithAi}>
+            {aiState === 'loading' ? 'Levantando muros…' : 'Generar con IA'}
           </button>
           <button className="btn btn-ghost" onClick={() => { setInput(EXAMPLE_TEXT); setFormat('text') }}>
             Usar ejemplo: Biología celular
@@ -149,14 +147,22 @@ export function Landing() {
 
       <section className="landing-right" aria-label="Vista previa del palacio">
         <div className="preview-frame">
-          <Preview layout={layout} />
+          <Suspense fallback={null}>
+            <Preview layout={layout} />
+          </Suspense>
           {aiState === 'loading' && (
             <div className="preview-loading" role="status">
-              <span className="loader" aria-hidden />
-              La IA está diseñando un objeto para cada concepto…
+              <span className="bricks" aria-hidden>
+                <i /><i /><i /><i /><i /><i />
+              </span>
+              <p>Levantando muros…</p>
+              <p className="sub">La IA modela un objeto para cada concepto.</p>
             </div>
           )}
-          <p className="preview-caption">Vista previa en vivo · se reconstruye mientras escribes</p>
+        </div>
+        <div className="plinth">
+          <p className="plinth-title">Maqueta del palacio</p>
+          <p className="plinth-sub">Se levanta de nuevo cada vez que cambias el texto.</p>
         </div>
       </section>
     </main>
