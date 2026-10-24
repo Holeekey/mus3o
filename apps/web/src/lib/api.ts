@@ -79,16 +79,46 @@ export async function generateMuseumFromFiles(
   return toMuseum(await postJson("/api/generate-museum", body, signal));
 }
 
-/** Ayuda de Haiku para lo que las reglas de Aris no entienden. Devuelve null si no hay respuesta usable. */
+const ARIS_HELP_MAX_PER_SESSION = 10
+const ARIS_HELP_COOLDOWN_MS = 4_000
+const arisHelpCache = new Map<string, string>()
+let arisHelpCalls = 0
+let arisHelpLast = 0
+let arisHelpBusy = false
+
+/** Solo para tests. */
+export function resetArisHelpLimits() {
+  arisHelpCache.clear()
+  arisHelpCalls = 0
+  arisHelpLast = 0
+  arisHelpBusy = false
+}
+
+/**
+ * Ayuda de Haiku para lo que las reglas de Aris no entienden. Devuelve null si no hay respuesta usable
+ * o si se limita el esfuerzo: repetida (caché), una a la vez, con espera entre consultas y tope por sesión.
+ */
 export async function askArisHelp(
   query: string,
   context: { palaceTitle?: string; roomName?: string; topics: string[] },
   signal?: AbortSignal,
 ): Promise<string | null> {
+  const key = `${context.roomName ?? ''}|${query.toLowerCase().replace(/\s+/g, ' ').trim()}`
+  const cached = arisHelpCache.get(key)
+  if (cached) return cached
+  const now = Date.now()
+  if (arisHelpBusy || arisHelpCalls >= ARIS_HELP_MAX_PER_SESSION || now - arisHelpLast < ARIS_HELP_COOLDOWN_MS) return null
+  arisHelpBusy = true
+  arisHelpCalls++
+  arisHelpLast = now
   try {
     const data = (await postJson('/api/aris-help', { query: query.slice(0, 200), ...context }, signal)) as { answer?: unknown }
-    return typeof data.answer === 'string' && data.answer.trim() ? data.answer.trim().slice(0, 300) : null
+    const answer = typeof data.answer === 'string' && data.answer.trim() ? data.answer.trim().slice(0, 300) : null
+    if (answer) arisHelpCache.set(key, answer)
+    return answer
   } catch {
     return null
+  } finally {
+    arisHelpBusy = false
   }
 }

@@ -1,4 +1,5 @@
 import express from "express";
+import { createHash } from "node:crypto";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { sanitizeUntrustedText } from "@mus3o/shared";
@@ -10,7 +11,7 @@ const MAX_QUERY = 200;
 const MAX_TOPIC = 80;
 const MAX_TOPICS = 12;
 /** Tope de la respuesta: ~2 frases. Cuida el costo y mantiene el globo de Aris legible. */
-const MAX_OUTPUT_TOKENS = 90;
+const MAX_OUTPUT_TOKENS = 80;
 const MAX_ANSWER_CHARS = 280;
 
 const HELP_SYSTEM_PROMPT = `Eres Aris, un compañero de estudio dentro de un palacio de la memoria 3D.
@@ -30,7 +31,7 @@ const BodySchema = z
 
 export type ArisHelpInput = z.infer<typeof BodySchema>;
 
-const MAX_DAILY = () => Number(process.env.MAX_DAILY_ARIS_HELP) || 300;
+const MAX_DAILY = () => Number(process.env.MAX_DAILY_ARIS_HELP) || 150;
 let budget = { day: "", used: 0 };
 function takeSlot(): boolean {
   const day = new Date().toISOString().slice(0, 10);
@@ -83,11 +84,17 @@ export async function askArisHelp(input: ArisHelpInput): Promise<string> {
   return limitAnswer(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""), res.stop_reason === "max_tokens");
 }
 
+// Preguntas repetidas (misma sala, misma pregunta) no vuelven a pagarse: caché en memoria con tope.
+const CACHE_MAX = 200;
+const answers = new Map<string, string>();
+const cacheKey = (i: ArisHelpInput) =>
+  createHash("sha256").update(JSON.stringify([i.palaceTitle ?? "", i.roomName ?? "", i.query.toLowerCase().replace(/\s+/g, " ")])).digest("hex");
+
 export const arisRouter = express.Router();
 
 arisRouter.use(
   "/aris-help",
-  rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas consultas a Aris" } }),
+  rateLimit({ windowMs: 60_000, limit: 8, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas consultas a Aris" } }),
 );
 
 arisRouter.post("/aris-help", async (req, res) => {
@@ -100,6 +107,12 @@ arisRouter.post("/aris-help", async (req, res) => {
     res.status(503).json({ error: "IA no configurada" });
     return;
   }
+  const key = cacheKey(parsed.data);
+  const hit = answers.get(key);
+  if (hit) {
+    res.json({ answer: hit });
+    return;
+  }
   if (!takeSlot()) {
     res.status(429).json({ error: "Se alcanzó el tope diario de ayuda de Aris" });
     return;
@@ -110,6 +123,8 @@ arisRouter.post("/aris-help", async (req, res) => {
       res.status(502).json({ error: "Aris no pudo responder" });
       return;
     }
+    if (answers.size >= CACHE_MAX) answers.delete(answers.keys().next().value as string);
+    answers.set(key, answer);
     res.json({ answer });
   } catch (err) {
     console.error(`aris-help falló: ${(err as Error).name}`);

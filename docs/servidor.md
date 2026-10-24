@@ -273,6 +273,6 @@ Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequi
 `apps/server/src/arisHelp.ts`. Solo se llama cuando las reglas de Aris no entienden la pregunta.
 
 - **Entrada** (estricta): `query` (1-200), `palaceTitle?`, `roomName?`, `topics[]` (hasta 12, 80 caracteres c/u). Todo se desinfecta y va entre `<pregunta>`/`<contexto>` como datos, no instrucciones.
-- **Modelo:** Haiku (`ANTHROPIC_ARIS_MODEL`, luego `ANTHROPIC_FALLBACK_MODEL`, por defecto `claude-haiku-5-5`), sin razonamiento, `max_tokens` 90, timeout 8 s, sin reintentos. Respuesta de 1-2 frases, recortada a 280 caracteres.
-- **Límites:** 20 solicitudes/min por IP (límite propio, fuera del general) y tope diario `MAX_DAILY_ARIS_HELP` (300 por defecto).
+- **Modelo:** Haiku (`ANTHROPIC_ARIS_MODEL`, luego `ANTHROPIC_FALLBACK_MODEL`, por defecto `claude-haiku-5-5`), sin razonamiento, `max_tokens` 80, timeout 8 s, sin reintentos. Respuesta de 1-2 frases, recortada a 280 caracteres.
+- **Límites:** 8 solicitudes/min por IP (límite propio, fuera del general), caché en memoria de 200 respuestas (palacio + sala + pregunta; un acierto no gasta cupo) y tope diario `MAX_DAILY_ARIS_HELP` (150 por defecto).
 - **Salida:** `{ answer }`. Errores: 400 entrada inválida, 429 tope diario, 502 fallo del modelo, 503 sin `ANTHROPIC_API_KEY`. El cliente trata cualquier error como "usa el respaldo".
