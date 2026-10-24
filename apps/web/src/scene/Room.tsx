@@ -92,10 +92,10 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
         position={pos}
         rotation={[0, rotY, 0]}
         font={FONT_DISPLAY}
-        fontSize={0.7}
+        fontSize={0.48}
         color={palette.ink}
         anchorY="middle"
-        maxWidth={Math.min(room.w, room.d) * 0.8}
+        maxWidth={Math.min(room.w, room.d) * 0.6}
         textAlign="center"
         letterSpacing={0.04}
       >

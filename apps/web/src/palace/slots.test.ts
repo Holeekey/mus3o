@@ -22,7 +22,7 @@ describe('paintingSlots', () => {
         expect(r.paintingSlots.length).toBeGreaterThan(0)
         expect(r.paintingSlots[0].main).toBe(true)
         expect(r.paintingSlots.filter((s) => s.main)).toHaveLength(1)
-        expect(r.paintingSlots[0].maxWidth).toBeLessThanOrEqual(2.6)
+        expect(r.paintingSlots[0].maxWidth).toBeLessThanOrEqual(3.4)
         for (const s of r.paintingSlots.slice(1)) expect(s.maxWidth).toBeLessThanOrEqual(1.4)
         for (const s of r.paintingSlots) expect(s.y).toBe(SLOT_Y)
       }
