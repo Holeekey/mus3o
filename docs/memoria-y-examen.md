@@ -1,4 +1,4 @@
-# Memoria, llaves y examen 🍌
+# Memoria, llaves y examen
 
 Cómo el juego registra lo que el usuario recuerda y cómo lo convierte en progreso (llaves,
 puertas, repasos). Todo ocurre en el navegador. Es lógica pura y está testeada.

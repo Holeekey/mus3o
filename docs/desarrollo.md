@@ -1,4 +1,4 @@
-# Desarrollo: comandos, flujo y mantenimiento de la documentación 🍌
+# Desarrollo: comandos, flujo y mantenimiento de la documentación
 
 ## 1. Puesta en marcha
 

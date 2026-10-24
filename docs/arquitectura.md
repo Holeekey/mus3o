@@ -1,4 +1,4 @@
-# Arquitectura 🍌
+# Arquitectura
 
 ## 1. Monorepo
 

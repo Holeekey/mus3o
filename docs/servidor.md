@@ -1,4 +1,4 @@
-# Servidor (`apps/server`) 🍌
+# Servidor (`apps/server`)
 
 Express + `@anthropic-ai/sdk`. Puerto por defecto **3001**. Su única tarea con IA es convertir
 apuntes o un tema en un `Museum` válido. Todo lo demás (validación, citas, imágenes) es determinista.

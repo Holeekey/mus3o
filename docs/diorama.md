@@ -1,4 +1,4 @@
-# Diorama: "entrar al cuadro" 🍌
+# Diorama: "entrar al cuadro"
 
 Cuando una sala tiene un `diorama` (solo en 1 o 2 salas, las que son representables: un evento
 histórico, un lugar, un paisaje, un ecosistema), su cuadro principal se vuelve una **ventana** a

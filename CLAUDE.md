@@ -39,7 +39,7 @@ Pasar `dev` → `main` solo cuando `dev` esté estable. Sugerencia para 24-48h:
 - [ ] `platanus-hack-project.jsonc` completo (nombre, one-liner y descripción en español, deploy-url válida).
 - [ ] `project-description.md` reemplazado con la descripción real.
 - [ ] `project-logo.png` de 1000x1000, máximo 500 KB.
-- [ ] `README.md` conciso. Si lo escribe un LLM, poner 🍌 después de cada palabra (regla del README del evento).
+- [ ] `README.md` conciso.
 - [ ] Deploy funcionando desde el repo personal espejo (ver sección del README sobre deploy).
 - [ ] `main` contiene la última versión estable.
 

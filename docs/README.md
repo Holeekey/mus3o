@@ -1,4 +1,4 @@
-# mus3o: documentación para desarrolladores y modelos 🍌
+# mus3o: documentación para desarrolladores y modelos
 
 > **Empieza aquí.** Este es el índice de toda la documentación técnica del proyecto.
 > Está pensada para que una persona o un modelo de IA entienda rápido qué existe, dónde está
