@@ -84,10 +84,15 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
-            <KeyHint k="M" onTap={toggleMemorize} buttonClassName="btn btn-ghost">
-              {memorized ? 'desmarcar' : 'marcar como memorizado'}
-            </KeyHint>
-            {!touch && <> · <kbd>E</kbd> cerrar</>}
+            {touch ? (
+              <button type="button" className="btn btn-ghost" onClick={toggleMemorize}>
+                {memorized ? 'desmarcar' : 'marcar como memorizado'}
+              </button>
+            ) : (
+              <>
+                <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+              </>
+            )}
           </span>
         </div>
       </div>

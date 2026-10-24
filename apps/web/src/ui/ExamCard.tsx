@@ -6,7 +6,7 @@ import { isCorrectAny } from '../palace/match'
 import { pointerLock } from '../scene/pointerLock'
 import { useStore } from '../store'
 import type { RoomPalette } from '../theme'
-import { KeyHint } from './KeyHint'
+import { useIsTouch } from './useIsTouch'
 
 const isTextTarget = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement
 
@@ -18,6 +18,7 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
   const [heard, setHeard] = useState('')
   const [hint, setHint] = useState(false)
   const stopRef = useRef<() => void>(() => {})
+  const touch = useIsTouch()
 
   const finish = useCallback(
     (ok: boolean) => {
@@ -104,7 +105,7 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
             </p>
             <div className="card-actions">
               <button className="btn btn-primary" onClick={back}>Seguir recorriendo</button>
-              <span className="keys"><KeyHint k="E">cerrar</KeyHint></span>
+              {!touch && <span className="keys"><kbd>E</kbd> cerrar</span>}
             </div>
           </>
         ) : voice.phase === 'typing' ? (
@@ -132,15 +133,22 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
             </div>
             <p className="listen-text">{voice.transcript || (voice.phase === 'listening' ? 'Di en voz alta qué concepto era' : voice.notice)}</p>
             <div className="card-actions">
-              {canListen() && (
-                <KeyHint k="R" onTap={startListening} buttonClassName="btn btn-ghost">
-                  reintentar
-                </KeyHint>
+              {touch ? (
+                <>
+                  {canListen() && (
+                    <button type="button" className="btn btn-ghost" onClick={startListening}>
+                      reintentar
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-ghost" onClick={toTyping}>
+                    escribir
+                  </button>
+                </>
+              ) : (
+                <span className="keys">
+                  <kbd>R</kbd> reintentar · <kbd>Y</kbd> escribir · <kbd>E</kbd> cerrar
+                </span>
               )}
-              <KeyHint k="Y" onTap={toTyping} buttonClassName="btn btn-ghost">
-                escribir
-              </KeyHint>
-              <span className="keys"><KeyHint k="E">cerrar</KeyHint></span>
             </div>
           </div>
         )}
