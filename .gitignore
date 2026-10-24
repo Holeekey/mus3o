@@ -1,0 +1,3 @@
+# Config local de cada dev (no compartida)
+.claude/
+CLAUDE.local.md
