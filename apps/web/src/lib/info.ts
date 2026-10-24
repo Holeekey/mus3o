@@ -77,4 +77,11 @@ export function firstSentence(text: string, max = 220): string {
 }
 
 /** URL corta para mostrar como texto seleccionable (sin protocolo). */
-export const shortUrl = (url: string) => url.replace(/^https?:\/\//, '')
+export function shortUrl(url: string): string {
+  const bare = url.replace(/^https?:\/\//, '')
+  try {
+    return decodeURI(bare) // «José_Antonio_Páez» se lee mejor que «Jos%C3%A9…»
+  } catch {
+    return bare
+  }
+}
