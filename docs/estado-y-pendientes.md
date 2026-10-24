@@ -33,9 +33,9 @@ Leyenda: ✅ listo · 🟡 parcial · 🔴 pendiente.
 
 | Comando | Resultado |
 |---|---|
-| `npm test -w @mus3o/shared` | 4 archivos, **64** pruebas, todas pasan |
-| `npm test -w @mus3o/server` | 3 archivos, **37** pruebas, todas pasan |
-| `npm test -w @mus3o/web` | 13 archivos, **139** pruebas, todas pasan |
+| `npm test -w @mus3o/shared` | 5 archivos, **69** pruebas, todas pasan |
+| `npm test -w @mus3o/server` | 4 archivos, **44** pruebas, todas pasan |
+| `npm test -w @mus3o/web` | 15 archivos, **150** pruebas, todas pasan |
 | `npm run test:dungeon` (sandbox) | 4 archivos, **7** pruebas, todas pasan |
 | `npm run typecheck -w` en los tres | Sin errores |
 

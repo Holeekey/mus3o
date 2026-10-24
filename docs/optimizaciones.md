@@ -1,8 +1,25 @@
 # Registro de optimizaciones 🍌
 
-Revisión de optimización hecha sobre `dev` (2026-10-24). **Este documento solo registra: no se cambió
-código de la app.** Cada punto trae el archivo y la línea, el costo actual, el cambio concreto, por qué
-es seguro y cómo comprobarlo, para poder aplicarlo después sin volver a investigar.
+Revisión de optimización hecha sobre `dev` (2026-10-24). La revisión solo registró; después **se aplicaron
+las 6 mejoras seguras**, cada una en su rama, con su prueba y mergeada a `dev` (ver el estado abajo). Cada punto
+conserva el archivo y la línea de **antes del cambio**, el costo, el cambio y cómo se comprobó. Los números de
+línea de la sección 1 describen el código previo y ya no coinciden con `dev`.
+
+## Estado de aplicación
+
+| # | Mejora | Estado | PR | Prueba |
+|---|---|---|---|---|
+| 1 | `Set` de conceptos por frame en el diorama | ✅ Aplicada | #32 | `palace/conceptIds.test.ts` (4). Sin verificar en navegador |
+| 2 | Apuntes normalizados una vez en `verifySources` | ✅ Aplicada | #31 | 2 pruebas de equivalencia en `shared/sources.test.ts` |
+| 3 | Caché de museos LRU | ✅ Aplicada | #29 | `server/cache.test.ts` (3) |
+| 4 | Deduplicación de peticiones de imagen simultáneas | ✅ Aplicada | #30 | 3 pruebas en `server/images.test.ts` (2 fallan con el código anterior) |
+| 5 | `dueCountFor` una vez por render en la landing | ✅ Aplicada | #33 | `memory/dueLabel.test.ts` (3). Sin verificar en navegador |
+| 6 | Lista de ids cacheada en HUD y hooks de memoria | ✅ Aplicada | #34 | `palace/conceptIds.test.ts` (4 más). Sin verificar en navegador |
+| A | `Hud` y `DioramaOverlay` con `lazy` | ⏳ Pendiente | — | Requiere recorrido manual (sección 2) |
+| B | Mocks y `dungeon-core` con `import()` | ⏳ Pendiente | — | — |
+
+Verificación posterior sobre `dev`: 69 pruebas en `shared`, 44 en `server`, 150 en `web`, y typecheck sin errores en los tres.
+Las mejoras 1, 5 y 6 se comprobaron con pruebas de lógica, build y typecheck, **no en un navegador**.
 
 ## Criterio de "sin riesgo"
 
@@ -23,7 +40,7 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 
 ---
 
-## 1. Mejoras seguras (6)
+## 1. Mejoras seguras (6, aplicadas)
 
 ### 1. Reconstrucción de un `Set` de conceptos en cada frame dentro del diorama
 
