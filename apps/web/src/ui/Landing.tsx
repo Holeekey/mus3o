@@ -3,6 +3,7 @@ import { countSources, type Museum } from '@mus3o/shared'
 import { generateMuseum } from '../lib/api'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
+import { PRESET_PALACES } from '../palace/presets'
 import { buildLayout } from '../palace/layout'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace } from '../palace/parse'
 import { dueCountFor } from '../memory/hooks'
@@ -91,6 +92,31 @@ export function Landing() {
           Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y mus3o levanta uno:
           cada tema es una sala de un solo color, cada concepto un objeto de yeso sobre su pedestal.
         </p>
+
+        <div className="presets-section">
+          <p className="presets-label">Entrada directa a palacios destacados:</p>
+          <div className="presets-grid">
+            {PRESET_PALACES.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className="preset-card"
+                onClick={() => enterPalace(preset.museum)}
+                title={`Entrar a ${preset.title}`}
+              >
+                <div className="preset-card-top">
+                  <span className="preset-icon">{preset.icon}</span>
+                  <span className="preset-badge">{preset.themeBadge}</span>
+                </div>
+                <strong className="preset-title">{preset.title}</strong>
+                <p className="preset-subtitle">{preset.subtitle}</p>
+                <span className="preset-meta">
+                  {preset.roomCount} salas · {preset.conceptCount} conceptos
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="editor">
           <div className="tabs">
