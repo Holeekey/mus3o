@@ -4,7 +4,12 @@ import { isCorrectAnswer } from '../palace/match'
 import type { Piece as Concept } from '@mus3o/shared'
 import { pointerLock } from '../scene/Player'
 import { allConcepts, useStore } from '../store'
+import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
 import { Minimap } from './Minimap'
+
+function wallVars(p: RoomPalette) {
+  return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
+}
 
 function findConcept(layout: PalaceLayout, id: string | null) {
   for (const r of layout.rooms) {
@@ -14,25 +19,27 @@ function findConcept(layout: PalaceLayout, id: string | null) {
   return null
 }
 
-function ConceptCard({ concept, color }: { concept: Concept; color: string }) {
+function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
   return (
-    <aside className="card" style={{ '--accent': color } as React.CSSProperties}>
-      <p className="eyebrow">Concepto</p>
-      <h2>{concept.title}</h2>
-      {concept.text && <p className="card-body">{concept.text}</p>}
-      {concept.fact && <p className="card-meta">{concept.fact}</p>}
-      <div className="card-actions">
-        <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? '★ Memorizado' : 'Sin memorizar'}</span>
-        <span className="keys">
-          <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
-        </span>
+    <aside className="card" style={wallVars(palette)}>
+      <p className="card-tag">{roomName}</p>
+      <div className="card-inner">
+        <h2>{concept.title}</h2>
+        {concept.text && <p className="card-body">{concept.text}</p>}
+        {concept.fact && <p className="card-meta">{concept.fact}</p>}
+        <div className="card-actions">
+          <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
+          <span className="keys">
+            <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+          </span>
+        </div>
       </div>
     </aside>
   )
 }
 
-function ExamCard({ concept, color }: { concept: Concept; color: string }) {
+function ExamCard({ concept, palette }: { concept: Concept; palette: RoomPalette }) {
   const result = useStore((s) => s.exam[concept.id])
   const recordExam = useStore((s) => s.recordExam)
   const [answer, setAnswer] = useState('')
@@ -49,30 +56,32 @@ function ExamCard({ concept, color }: { concept: Concept; color: string }) {
   }
 
   return (
-    <aside className="card card-exam" style={{ '--accent': color } as React.CSSProperties}>
-      <p className="eyebrow">Modo examen</p>
-      {!result ? (
-        <form onSubmit={submit}>
-          <h2>¿Qué concepto estaba en este pedestal?</h2>
-          {concept.text && <p className="card-body">Pista del contenido: “{concept.text}”</p>}
-          {hint && <p className="card-meta">Empieza con “{concept.title.slice(0, 2)}…” · {concept.title.length} letras</p>}
-          <input autoFocus value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Escribe tu respuesta" maxLength={120} />
-          <div className="card-actions">
-            <button type="submit" className="btn btn-primary">Responder</button>
-            {!hint && <button type="button" className="btn btn-ghost" onClick={() => setHint(true)}>Pista</button>}
-          </div>
-        </form>
-      ) : (
-        <>
-          <h2 className={result === 'ok' ? 'ok' : 'fail'}>{result === 'ok' ? '+1 · ¡Recordado!' : 'No era eso'}</h2>
-          <p className="card-body">
-            Respuesta: <strong>{concept.title}</strong>
-          </p>
-          <div className="card-actions">
-            <button className="btn btn-primary" onClick={back}>Seguir recorriendo</button>
-          </div>
-        </>
-      )}
+    <aside className="card card-exam" style={wallVars(palette)}>
+      <p className="card-tag">Modo examen</p>
+      <div className="card-inner">
+        {!result ? (
+          <form onSubmit={submit}>
+            <h2>¿Qué concepto estaba en este pedestal?</h2>
+            {concept.text && <p className="card-body">Pista del contenido: “{concept.text}”</p>}
+            {hint && <p className="card-meta">Empieza con “{concept.title.slice(0, 2)}…” · {concept.title.length} letras</p>}
+            <input autoFocus value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Escribe tu respuesta" maxLength={120} aria-label="Tu respuesta" />
+            <div className="card-actions">
+              <button type="submit" className="btn btn-primary">Responder</button>
+              {!hint && <button type="button" className="btn btn-ghost" onClick={() => setHint(true)}>Ver pista</button>}
+            </div>
+          </form>
+        ) : (
+          <>
+            <h2 className={result === 'ok' ? 'ok' : 'fail'}>{result === 'ok' ? 'Recordado' : 'No era ese'}</h2>
+            <p className="card-body">
+              Respuesta: <strong>{concept.title}</strong>
+            </p>
+            <div className="card-actions">
+              <button className="btn btn-primary" onClick={back}>Seguir recorriendo</button>
+            </div>
+          </>
+        )}
+      </div>
     </aside>
   )
 }
@@ -94,26 +103,25 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const memorizedCount = Object.keys(memorized).length
   const answered = Object.values(exam)
   const score = answered.filter((r) => r === 'ok').length
+  const palettes = roomPalettes(DEFAULT_THEME, layout.rooms.map((r) => r.title))
+  const palette = palettes[room.index]
   const open = findConcept(layout, openId)
   const examFinished = mode === 'exam' && answered.length === total && total > 0
 
   return (
     <div className="hud">
-      <div className="hud-room" style={{ '--accent': room.color } as React.CSSProperties}>
-        <span className="chip" />
-        <div>
-          <p className="eyebrow">Sala {room.index + 1} de {layout.rooms.length}</p>
-          <p className="hud-room-title">{room.title}</p>
-        </div>
+      <div className="plaque" style={wallVars(palette)}>
+        <p className="plaque-meta">Sala {room.index + 1} de {layout.rooms.length} · {palette.name}</p>
+        <p className="plaque-title">{room.title}</p>
       </div>
 
       <div className="hud-right">
         <Minimap layout={layout} />
         <p className="hud-progress">
           {mode === 'explore' ? (
-            <>★ {memorizedCount}/{total} memorizados</>
+            <>{memorizedCount} de {total} memorizados</>
           ) : (
-            <>Examen · {score}/{answered.length} correctas · {total - answered.length} restantes</>
+            <>Examen: {score} de {answered.length} correctas, faltan {total - answered.length}</>
           )}
         </p>
       </div>
@@ -126,9 +134,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       )}
 
       {open && (mode === 'explore' ? (
-        <ConceptCard concept={open.concept} color={open.room.color} />
+        <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={open.room.title} />
       ) : (
-        <ExamCard key={open.concept.id} concept={open.concept} color={open.room.color} />
+        <ExamCard key={open.concept.id} concept={open.concept} palette={palettes[open.room.index]} />
       ))}
 
       <p className="hud-legend">
@@ -138,19 +146,19 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       {!locked && !(mode === 'exam' && open) && (
         <div className="pause">
           <div className="pause-panel">
-            <p className="eyebrow">{palace?.title}</p>
-            <h1>{examFinished ? `Resultado: ${score}/${total}` : mode === 'exam' ? 'Modo examen' : 'Tu palacio está listo'}</h1>
+            <p className="pause-sub">{palace?.title}</p>
+            <h1>{examFinished ? `Resultado: ${score} de ${total}` : mode === 'exam' ? 'Modo examen' : 'Tu palacio está levantado'}</h1>
             <p className="muted">
               {mode === 'exam'
-                ? 'Los carteles están ocultos. Acércate a cada pedestal y recuerda qué concepto había.'
-                : 'Camina por las salas, examina cada pedestal y marca lo que ya memorizaste.'}
+                ? 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
+                : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
             </p>
             <div className="pause-actions">
               <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
                 {mode === 'exam' ? 'Empezar examen' : 'Entrar al palacio'}
               </button>
               <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
-                {mode === 'exam' ? 'Volver a explorar' : 'Modo examen'}
+                {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
             </div>
