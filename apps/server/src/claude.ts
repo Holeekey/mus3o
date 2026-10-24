@@ -30,6 +30,7 @@ import {
   IMPROVE_SYSTEM_PROMPT,
   improvePrompt as improvePromptText,
   notesPrompt,
+  FALLBACK_MODEL_SYSTEM_PROMPT,
   FLOW_STATIC_RULES,
   SYSTEM_PROMPT,
   SYSTEM_PROMPT_LIGHT,
@@ -37,9 +38,12 @@ import {
 } from "./prompts";
 import { attachImageSearches, retrieveSources } from "./enrich";
 import { hydrateMuseumAssets, polyEnabled } from "./polyPizza";
+import { fillMissingModels } from "./modelFallback";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
+/** Modelo barato para dibujar el respaldo de las piezas sin asset. */
+const FALLBACK_MODEL = () => process.env.ANTHROPIC_FALLBACK_MODEL || "claude-haiku-5-5";
 const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
@@ -84,6 +88,25 @@ export function parseFlowMuseum(raw: string, imageIds: string[]): Museum {
 export function enrichMuseum(museum: Museum, notes?: string): Museum {
   const images = attachImageSearches(museum, notes ?? museum.title);
   return notes === undefined ? images : retrieveSources(attachSources(images, notes), notes);
+}
+
+/** Buscar primero: trae assets y, solo para las piezas que quedaron sin modelo, la IA dibuja un respaldo. */
+async function resolveModels(museum: Museum): Promise<Museum> {
+  const hydrated = await hydrateMuseumAssets(museum);
+  // Sin búsqueda activa no hay "faltantes" que rellenar (todas las piezas conservan su glifo).
+  if (!polyEnabled() || !process.env.ANTHROPIC_API_KEY) return hydrated;
+  return fillMissingModels(hydrated, async (prompt, maxTokens) => {
+    const res = await getClient().messages.create({
+      model: FALLBACK_MODEL(),
+      thinking: { type: "disabled" },
+      max_tokens: maxTokens,
+      system: FALLBACK_MODEL_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }, { timeout: 20_000, maxRetries: 0 });
+    const u = res.usage;
+    console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
+    return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  });
 }
 
 export type GenerateInput = { topic: string } | { notes: string };
@@ -151,7 +174,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
-  return hydrateMuseumAssets(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));
+  return resolveModels(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
@@ -180,7 +203,7 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
     { system, content: buildFlowContent(request), maxTokens: light ? 9000 : 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
-  return hydrateMuseumAssets(enrichMuseum(museum, flowNotesText(request)));
+  return resolveModels(enrichMuseum(museum, flowNotesText(request)));
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {

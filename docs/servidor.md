@@ -200,3 +200,11 @@ La línea `PIECE: <concepto> | <glifo> | <anclaje> | <searchKeyword>` ahora tien
 (con ejemplo; `-` si no hay objeto). `parseMus3oDSL` la toma siempre del **último** campo (un `|` dentro del anclaje ya no corre los
 campos) y la normaliza con `normalizeSearchKeyword`: minúsculas, sin tildes ni signos, máx. 3 palabras. Si no queda nada usable, la pieza
 conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre también en esta ruta.
+
+### Buscar primero, crear solo lo que falta
+
+Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
+(`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
+(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
+por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
+`POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
