@@ -9,6 +9,7 @@ import { handleDioramaKey, isDioramaActive } from '../diorama/dioramaStore'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import { inExamScope, isDoorOpen, playerPose, useStore } from '../store'
+import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
 
 const EYE = 1.7
@@ -88,6 +89,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
   useFrame((_, rawDt) => {
     // Dentro del cuadro, DioramaRuntime lleva el movimiento y el foco.
     if (isDioramaActive()) return
+    if (introState.active) return // INTRO: controles desactivados mientras vuela la cámara
     const dt = Math.min(rawDt, 0.05)
     const s = useStore.getState()
     const k = keys.current

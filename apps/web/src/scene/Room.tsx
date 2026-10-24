@@ -14,6 +14,8 @@ import { AssetWall } from './DungeonAssets'
 import { ProceduralMonument } from './Monument'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
+import { Reveal } from '../intro/Reveal' // INTRO: aparición al entrar al palacio
+import { floorKey, monumentKey, objectKey, paintingsKey, pedestalKey, wallsKey } from '../intro/timeline'
 
 export const FONT_BODY = '/fonts/HankenGrotesk.ttf'
 export const FONT_DISPLAY = '/fonts/Gloock.ttf'
@@ -126,6 +128,7 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
           <meshStandardMaterial color={band} roughness={0.5} metalness={0.35} flatShading />
         </mesh>
       )}
+      <Reveal id={objectKey(p.concept.id)} mode="drop">
       <DecayWrap id={p.concept.id}>
       {model ? (
         <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k}>
@@ -140,6 +143,8 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
         </mesh>
       )}
       </DecayWrap>
+      </Reveal>
+      <Reveal id={objectKey(p.concept.id)} mode="pop" origin={[0, 2.2, 0]}>
       <Suspense fallback={null}>
         <Billboard position={[0, model ? 2.3 : 2.15, 0]}>
           <LabelPlate
@@ -166,6 +171,7 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
           )}
         </Billboard>
       </Suspense>
+      </Reveal>
     </group>
   )
 }
@@ -175,21 +181,31 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
   const paintings = useMemo(() => assignPaintings(room), [room])
   return (
     <group>
-      <FadingFloor room={room} palette={palette} />
-      <WallFlakes room={room} />
-      {room.walls.map((w, i) => (
-        <group key={i}>
-          <Wall box={w} color={palette.wall} />
-          <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
-        </group>
-      ))}
-      <Inscription room={room} palette={palette} />
+      <Reveal id={floorKey(room.id)} mode="pop" origin={[room.x, 0, room.z]}>
+        <FadingFloor room={room} palette={palette} />
+      </Reveal>
+      <Reveal id={wallsKey(room.id)} mode="rise">
+        <WallFlakes room={room} />
+        {room.walls.map((w, i) => (
+          <group key={i}>
+            <Wall box={w} color={palette.wall} />
+            <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
+          </group>
+        ))}
+        <Inscription room={room} palette={palette} />
+      </Reveal>
       {paintings.map((a) => (
-        <Painting key={a.key} slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} />
+        <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
+          <Painting slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} />
+        </Reveal>
       ))}
-      <ProceduralMonument room={room} theme={theme} />
+      <Reveal id={monumentKey(room.id)} mode="sink">
+        <ProceduralMonument room={room} theme={theme} />
+      </Reveal>
       {room.pedestals.map((p) => (
-        <Pedestal key={p.concept.id} p={p} palette={palette} theme={theme} />
+        <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
+          <Pedestal p={p} palette={palette} theme={theme} />
+        </Reveal>
       ))}
     </group>
   )

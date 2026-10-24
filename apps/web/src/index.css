@@ -747,3 +747,9 @@ kbd {
 .btn-step { padding: 4px 10px; font-size: 0.85rem; background: var(--surface); color: var(--ink); }
 .btn-step.is-on { background: var(--ink); color: var(--surface); }
 .time-machine input[type='range'] { width: 100%; accent-color: var(--ink); }
+
+/* ---------- Intro: "El palacio se levanta" ---------- */
+.palace.intro-on .hud { visibility: hidden; }
+.intro-skip { position: fixed; right: 24px; bottom: 24px; z-index: 50; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.intro-skip kbd { margin-left: 8px; font: inherit; font-size: 0.8em; color: var(--ink-muted); }
+@keyframes intro-fade { from { opacity: 1; } to { opacity: 0; } }
