@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { GenerateMuseumRequestSchema, ImprovePromptRequestSchema, LIMITS, type Museum } from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
@@ -119,10 +120,11 @@ app.post("/api/improve-prompt", async (req, res) => {
 });
 
 // Serve frontend SPA in production if built
+const appDir = path.dirname(fileURLToPath(import.meta.url));
 const webDistCandidates = [
   path.resolve(process.cwd(), "apps/web/dist"),
-  path.resolve(__dirname, "../../web/dist"),
-  path.resolve(__dirname, "../web/dist"),
+  path.resolve(appDir, "../../web/dist"),
+  path.resolve(appDir, "../web/dist"),
 ];
 const webDistPath = webDistCandidates.find((dir) => fs.existsSync(dir));
 
