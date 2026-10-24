@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"npm run dev -w @mus3o/server\" \"npm run dev -w @mus3o/web\"",
     "dev:web": "npm run dev -w @mus3o/web",
+    "dev:https": "npm run dev:https -w @mus3o/web",
+    "dev:tunnel": "npm run dev:tunnel -w @mus3o/web",
     "dev:server": "npm run dev -w @mus3o/server",
     "build": "npm run build -w @mus3o/shared && npm run build -w @mus3o/server && npm run build -w @mus3o/web",
     "start": "node apps/server/dist/index.js",

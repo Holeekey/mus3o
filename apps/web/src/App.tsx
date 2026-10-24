@@ -39,6 +39,7 @@ import { useIntro } from './intro/store'
 import { BuildNotice } from './ui/BuildNotice'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
+import { VrOverlay } from './vr/VrOverlay'
 import { TeamPage } from './ui/TeamSection'
 import { TEAM_HASH, useHash } from './ui/useHash'
 
@@ -61,6 +62,7 @@ export default function App() {
         {!waitingForBuild && <Hud layout={layout} />}
         <DioramaOverlay />
         <IntroOverlay />
+        <VrOverlay />
         <BuildNotice />
       </div>
     )

@@ -113,7 +113,7 @@ export function DioramaMinimap() {
   }, [diorama, size, expanded])
 
   return (
-    <div className="minimap-wrapper">
+    <div className="minimap-wrapper minimap-inline">
       <div className="minimap-header">
         <button type="button" className="minimap-toggle" onClick={() => setExpanded(!expanded)} title={expanded ? 'Contraer minimapa' : 'Desplegar minimapa'}>
           {expanded ? '⤡ Contraer' : '⤢ Desplegar'}

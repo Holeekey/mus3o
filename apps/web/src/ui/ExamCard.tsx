@@ -6,6 +6,7 @@ import { isCorrectAny } from '../palace/match'
 import { pointerLock } from '../scene/pointerLock'
 import { useStore } from '../store'
 import type { RoomPalette } from '../theme'
+import { useCardScroll } from './cardScroll'
 import { useIsTouch } from './useIsTouch'
 
 const isTextTarget = (t: EventTarget | null) => t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement
@@ -19,6 +20,8 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
   const [hint, setHint] = useState(false)
   const stopRef = useRef<() => void>(() => {})
   const touch = useIsTouch()
+  const inner = useRef<HTMLDivElement>(null)
+  const more = useCardScroll(inner)
 
   const finish = useCallback(
     (ok: boolean) => {
@@ -95,7 +98,7 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
           ✕
         </button>
       </div>
-      <div className="card-inner">
+      <div ref={inner} className={more ? 'card-inner has-more' : 'card-inner'}>
         {result ? (
           <>
             <h2 className={result === 'ok' ? 'ok' : 'fail'}>{result === 'ok' ? 'Recordado' : 'No era ese'}</h2>

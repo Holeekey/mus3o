@@ -21,6 +21,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 | `?demo=ia` | `mocks/index.ts` (`demoMuseum`), museo con modelos de IA |
 | `?demo=historia` | `mocks/historia.ts`, con cuadros reales de Wikimedia |
 | `?demo=dungeon` | `mocks/dungeon.ts`, mazmorra del sandbox adaptada a museo |
+| `?vr=cardboard` \| `xr` \| `off` | Modo VR: fuerza el respaldo cardboard (en escritorio, el ratón simula la cabeza), WebXR emulado o lo desactiva. Ver [vr.md](./vr.md) |
 | `?cam=x,z,yaw`, `?salto=0@3000` | Solo demo: posición de cámara y salto del reloj (`memory/demo.ts`) |
 
 ## 2. Landing (`ui/Landing.tsx`)
@@ -112,6 +113,7 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 - **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
+- **Identidad de sala** (`palace/roomIdentity.ts`): cada `RoomLayout` trae `floorStyle` (`checker` mármol, `radial` rosetón, `hexRings` anillos) y `decor` (`columns`, `arches`, `niches` en las esquinas, o `kind: null` en ~25 % de las salas). Salen del título de la sala (hash) y difieren de la sala anterior; la decoración esquiva puertas (`doorOpenings`), cuadros (`slotZone`), pedestales, la pieza central y el punto de entrada, y sus cajas (`decorBox`) entran en `layout.colliders`. Al añadir una puerta solo desaparece lo que la tapa. Test: `roomIdentity.test.ts`.
 
 Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `sourceText.test.ts`, `pieceKind.test.ts`.
 
@@ -130,6 +132,8 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
+| `Decay.tsx` (`FadingFloor`) + `floorGeometry.ts` | Suelo de la sala: una malla con color por vértice (derivado de `palette.floor`/`trim`) que se desvanece a yeso pálido con la memoria (shader con `uFade`) |
+| `RoomDecor.tsx` + `decorGeometry.ts` | Columnas, arcos o nichos de la sala fundidos en una sola malla (yeso y moldura); no proyectan sombra para ahorrar draw calls |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
 | `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
 | `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
@@ -168,12 +172,23 @@ Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/
 | Botones en las fichas ("marcar como memorizado", ✕) y en el examen ("reintentar", "escribir") | `M`, `E`, `R`, `Y` |
 | Tocar "Narrador" | `N` |
 
+El joystick y la mirada táctil funcionan igual dentro del cuadro: `scene/moveInput.ts` (`moveAxes`, `applyTouchLook`) lo comparten `Player.tsx` y `diorama/DioramaRuntime.tsx`.
+
+HUD responsive (sección "HUD responsive" al final de `index.css`):
+
+- **Tamaños fluidos.** Variables en `:root` que escalan con el lado corto de la pantalla (`clamp()` + `vmin`): `--joy` (joystick), `--btn` (🤖 ✓ 👁️ y 🗺️), `--hud-font`, `--hud-gap`, `--hud-shadow`. El JS del joystick lee su radio del tamaño real (`TouchControls.tsx`).
+- **Posiciones encadenadas, no fijas.** El narrador va sobre el joystick (`--joy`); los avisos van sobre el más alto entre joystick+narrador y la botonera (`--hud-bottom-stack`). La ayuda inicial se oculta mientras hay un aviso.
+- **Márgenes seguros** con `env(safe-area-inset-*)` (mínimo 8 px).
+- **Pantallas chicas** (`max-width: 768px` o `max-height: 520px`): minimapa como botón 🗺️ (el del cuadro, pequeño), título de la placa en dos renglones como máximo, "Repasos pendientes" solo si hay. Con poco espacio (`max-width: 420px` o `max-height: 520px`) la placa muestra solo el título. En pantallas bajas la botonera va en fila.
+- **Verificación.** Barrido de 57 tamaños (320–1366 × 320–1024) con título y aviso largos: sin elementos superpuestos ni fuera de pantalla.
+
 `ui/KeyHint.tsx` dibuja cada atajo: en escritorio `<kbd>E</kbd> Examinar`; en táctil un botón con la misma acción, o nada si la tecla no tiene equivalente. La primera vez se muestra la ayuda "Arrastra a la izquierda para moverte · desliza a la derecha para mirar" hasta el primer movimiento (`localStorage` `mus3o-touch-tip`).
 
 ## 6. HUD (`ui/Hud.tsx`) y otros componentes de `ui/`
 
 | Componente | Función |
 |---|---|
+| `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
 | `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
