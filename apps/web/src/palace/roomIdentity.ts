@@ -42,11 +42,11 @@ const COLUMN_SIZE = 0.9
 const ARCH_SIZE = 1.6
 const NICHE_SIZE = 0.9
 // Distancia del centro del elemento al eje del muro (el muro mide 0.4: su cara interior está a 0.2).
-// Con estas distancias el borde del elemento queda a >= 0.6 m de la cara del muro: un cuadro no se tapa.
-const INSET: Record<DecorKind, number> = { columns: 1.3, arches: 1.8, niches: 1.5 }
+// Con estas distancias el borde del elemento queda a >= 0.7 m de la cara del muro: un cuadro no se tapa.
+const INSET: Record<DecorKind, number> = { columns: 1.4, arches: 1.9, niches: 1.6 }
 
 /** Altura (m) del colisionador de un elemento de decoración. */
-const decorHeight = (kind: DecorKind, roomHeight: number) => (kind === 'columns' ? roomHeight : kind === 'arches' ? 3 : 2.8)
+const decorHeight = (kind: DecorKind, roomHeight: number) => (kind === 'columns' ? roomHeight : kind === 'arches' ? 3.2 : 2.8)
 
 /** Caja de colisión de un elemento sólido de decoración. */
 export function decorBox(kind: DecorKind, it: DecorItem, roomHeight: number): Box {
@@ -56,7 +56,7 @@ export function decorBox(kind: DecorKind, it: DecorItem, roomHeight: number): Bo
 
 const overlaps = (a: Box, b: Box, m: number) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 + m && Math.abs(a.z - b.z) < (a.d + b.d) / 2 + m
 
-const CLEARANCE = 0.2 // holgura mínima entre la decoración y cualquier zona reservada
+const CLEARANCE = 0.1 // holgura mínima entre la decoración y cualquier zona reservada
 
 export type DecorInput = { x: number; z: number; w: number; d: number; height: number; kind: DecorKind | null; avoid: Box[] }
 

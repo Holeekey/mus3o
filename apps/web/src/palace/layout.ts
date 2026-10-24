@@ -174,7 +174,7 @@ export function doorOpenings(room: Pick<RoomLayout, 'x' | 'z' | 'w' | 'd' | 'doo
   })
 }
 
-const SLOT_CLEAR = 0.7 // fondo (m) que se mantiene libre delante de un cuadro
+const SLOT_CLEAR = 0.6 // fondo (m) que se mantiene libre delante de un cuadro
 
 /** Volumen que ocupa un cuadro y su marco, más el paso delante de él: nada de decoración dentro. */
 export function slotZone(slot: PaintingSlot): Box {
