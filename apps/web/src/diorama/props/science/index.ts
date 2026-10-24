@@ -22,7 +22,7 @@ export const SCIENCE_HEIGHT: Record<ScienceKind, number> = {
   'muscle-wall': 5.0,
   neuron: 6.5,
   organ: 4.6,
-  nucleus: 12,
+  nucleus: 9, // la etiqueta queda en la mitad alta de la esfera: se ve desde el punto de aparición
   mitochondrion: 4.2,
   ribosome: 1.5,
   'rough-er': 4.6,

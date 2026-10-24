@@ -3,11 +3,12 @@ import * as THREE from 'three'
 import { atmosphereOf } from './atmosphere'
 import { BLOOD_CELLS, KINDS, ORGANS, TERRAINS, VALVE_TYPES, parseDiorama } from '@mus3o/shared'
 import { layoutDiorama } from './layout'
-import { CELULA, CELULA_PIECES, CORAZON, CORAZON_PIECES, NEURONA, NEURONA_PIECES } from './medicina'
+import { CELULA, CELULA_PIECES, CORAZON, CORAZON_PIECES, NEURONA, NEURONA_PIECES, NUCLEO_POS } from './medicina'
 import { getDioramaModel } from './model'
 import { medicinaMuseum } from '../mocks/medicina'
 import { buildProp } from './props'
 import { buildOrgan, buildValve } from './props/science/anatomy'
+import { buildDnaHelix, buildGolgi, cisterna } from './props/science/cell'
 import { SCIENCE_KINDS, SCIENCE_HEIGHT } from './props/science'
 import { BEAT, PHASE0, blob, flip, heartPhase, signedVolume, thump, valveOpenness } from './props/science/util'
 import { heightField, buildTerrainGeometry } from './terrain'
@@ -259,6 +260,46 @@ describe('demo ?demo=medicina', () => {
     expect(tris).toBeLessThan(260_000)
     expect(m.atmo.clouds).toBe(false)
   }, 60_000)
+
+  it('el ADN está dentro del núcleo, no flotando en el citoplasma', () => {
+    const nucleus = CELULA.props.find((p) => p.kind === 'nucleus')!
+    const dna = CELULA.props.filter((p) => p.kind === 'dna-helix')
+    expect(dna.length).toBeGreaterThan(0)
+    const R = 6 * nucleus.scale * 0.95 // radio interior de la envoltura (R = 6 m a escala 1)
+    const cy = 6 * 0.92 * nucleus.scale
+    const h = buildDnaHelix({ ...ctx, terrain: 'cellular' as const }).height
+    for (const d of dna) {
+      // todos los extremos de la hélice (arriba y abajo) caen dentro de la esfera nuclear
+      for (const top of [0.2, h - 0.3]) {
+        const dist = Math.hypot(d.pos[0] - nucleus.pos[0], d.y + top * d.scale - cy, d.pos[1] - nucleus.pos[1])
+        expect(dist).toBeLessThan(R)
+      }
+    }
+    expect(NUCLEO_POS).toEqual(nucleus.pos)
+  })
+
+  it('la célula está despejada: pocas moléculas sueltas y los cinco orgánulos a la vista', () => {
+    const floating = CELULA.props.filter((p) => ['atp', 'vesicle'].includes(p.kind)).reduce((n, p) => n + p.count, 0)
+    expect(floating).toBeLessThanOrEqual(6)
+    const linked = CELULA.props.filter((p) => p.pieceId)
+    expect(linked).toHaveLength(5)
+    // desde el punto de aparición (0, 10,6, mirando a -z; FOV horizontal ≈ 96°) caen dentro del campo visual
+    for (const p of linked) {
+      const ang = Math.abs(Math.atan2(p.pos[0], 10.6 - p.pos[1]))
+      expect(ang).toBeLessThan((46 * Math.PI) / 180)
+    }
+  })
+
+  it('el Golgi son cisternas planas y curvas apiladas con vesículas', () => {
+    const c = cisterna(3, 2.2, 0.17, 0.5, 0, 0)
+    expect(signedVolume(c)).toBeGreaterThan(0)
+    const s = bbox(c)
+    expect(s.y).toBeLessThan(s.x * 0.35) // plana, no una bola
+    const g = buildGolgi({ ...ctx, terrain: 'cellular' as const })
+    const gs = bbox(g.geometry)
+    expect(gs.y).toBeGreaterThan(3.5) // pila de seis
+    expect(gs.y).toBeLessThan(g.height + 0.5)
+  })
 
   it('el diorama nunca nombra el producto con el nombre antiguo', () => {
     const all = JSON.stringify([CORAZON, CELULA, NEURONA, medicinaMuseum])

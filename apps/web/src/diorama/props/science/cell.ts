@@ -182,42 +182,56 @@ export function buildRoughER(ctx: PropCtx): Built {
 
 // --- Aparato de Golgi ------------------------------------------------------------------------
 
+/** Cisterna: lámina aplanada con borde redondeado (lente achatada), arqueada en x. Cerrada, caras hacia fuera. */
+export function cisterna(rx: number, rz: number, thick: number, bow: number, y0: number, wob: number): THREE.BufferGeometry {
+  const body = (rho: number) => thick * Math.sqrt(Math.max(0, 1 - rho ** 6)) // plana arriba, borde redondeado
+  return surface(
+    30,
+    14,
+    (u, v) => {
+      const th = u * TAU
+      const down = v > 0.5
+      const rho = down ? (1 - v) * 2 : v * 2
+      const h = down ? -body(rho) : body(rho)
+      const x = Math.cos(th) * rho * rx
+      const z = Math.sin(th) * rho * rz
+      // arco: el centro sube, los extremos caen; ondulación suave del borde
+      const arch = bow * (1 - (x / rx) ** 2)
+      return [x, y0 + arch + h + wob * Math.sin(th * 3) * rho ** 4, z]
+    },
+    false,
+  )
+}
+
 export function buildGolgi(ctx: PropCtx): Built {
   const kit = new Kit()
   const r = rngOf(ctx.seed, 15)
-  const n = 6
+  const base = ctx.color ?? CELL.golgi
+  const n = 6 // pila de cisternas planas y curvas: cara cis (abajo, grande) a cara trans (arriba, pequeña)
   for (let s = 0; s < n; s++) {
     const t = s / (n - 1)
-    const w = 3.0 - t * 0.6
-    const y = 0.75 + s * 0.62
-    kit.b.add(
-      surface(
-        22,
-        8,
-        (u, v) => {
-          const a = (u - 0.5) * 2.1 // arco
-          const rad = 3.0 + (v - 0.5) * 0.1
-          const wv = (v - 0.5) * 2 * w
-          const bow = 0.5 * (1 - (2 * u - 1) ** 2) // abomba hacia arriba al centro
-          const lip = 0.18 * Math.pow(Math.abs(2 * u - 1), 6) // bordes ensanchados
-          return [Math.sin(a) * rad, y + bow * 0.55 * (1 - t * 0.2) - 0.1 * (1 - Math.abs(2 * v - 1)) + lip, wv * Math.cos(a * 0.5) - Math.cos(a) * 0.0]
-        },
-        true,
-      ),
-      new THREE.Matrix4(),
-      { color: mixHex(ctx.color ?? CELL.golgi, '#f2c06a', t * 0.6), jitter: 0.05, double: true },
-    )
-    // ampollas en los bordes
-    for (let k = 0; k < 2; k++) {
-      const side = k ? 1 : -1
-      for (let q = 0; q < 2; q++) {
-        kit.b.ico(range(r, 0.14, 0.3), mat(side * (3.0 * Math.sin(1.05) + range(r, 0.05, 0.4)), y + 0.5 + range(r, -0.1, 0.25), range(r, -w * 0.5, w * 0.5)), { color: mixHex(ctx.color ?? CELL.golgi, '#ffffff', 0.15), jitter: 0.05 }, 1)
+    const rx = 3.1 - t * 0.7
+    const rz = 2.2 - t * 0.5
+    const y = 0.55 + s * 0.7
+    kit.b.add(cisterna(rx, rz, 0.17 + 0.03 * (1 - t), 0.5 + 0.2 * t, y, 0.05), new THREE.Matrix4(), {
+      color: mixHex(base, '#f2b36a', t * 0.7),
+      jitter: 0.035,
+    })
+    // extremos dilatados de la cisterna y vesículas pequeñas que brotan de los bordes
+    for (const side of [-1, 1]) {
+      const ex = side * (rx - 0.05)
+      kit.b.ico(0.2 + 0.04 * (1 - t), mat(ex, y + 0.02, range(r, -0.25, 0.25), 0, 0, 0, 1.15, 0.8, 1), { color: mixHex(base, '#ffffff', 0.18), jitter: 0.04 }, 1)
+      if (s % 2 === (side > 0 ? 0 : 1) || s === n - 1) {
+        const out = v3(ex + side * range(r, 0.45, 0.7), y + range(r, 0.05, 0.3), range(r, -0.7, 0.7))
+        const vr = range(r, 0.2, 0.3)
+        kit.b.limb(v3(ex, y + 0.02, 0), out, 0.06, 0.1, 4, { color: mixHex(base, '#ffffff', 0.12), jitter: 0.03 })
+        kit.b.ico(vr, mat(out.x, out.y, out.z), { color: '#f7b4c2', jitter: 0.05 }, 1)
       }
     }
   }
-  // vesículas que se desprenden de la cara trans
-  for (let i = 0; i < 5; i++) kit.b.ico(range(r, 0.25, 0.4), mat(range(r, 3.4, 4.6), 1.5 + i * 0.5, range(r, -1.5, 1.5)), { color: '#f7b4c2', jitter: 0.05 }, 1)
-  return { geometry: kit.build(), radius: 2.4, height: 4.8, motion: 'none' }
+  // vesículas ya liberadas desde la cara trans, camino de la membrana
+  for (let i = 0; i < 3; i++) kit.b.ico(range(r, 0.22, 0.32), mat(3.0 + i * 0.5 + range(r, 0, 0.4), 4.3 + i * 0.45, range(r, -1.1, 1.1)), { color: '#f7b4c2', jitter: 0.05 }, 1)
+  return { geometry: kit.build(), radius: 2.4, height: 5.2, motion: 'none' }
 }
 
 // --- ADN ------------------------------------------------------------------------------------------

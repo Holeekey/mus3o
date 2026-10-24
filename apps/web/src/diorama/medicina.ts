@@ -59,7 +59,7 @@ export const CORAZON = parseDiorama({
     // Pared de la aurícula con músculos pectíneos.
     { kind: 'muscle-wall', pos: [-13.4, 5.5], rotY: Math.PI / 2, scale: 1.2, label: 'Aurícula derecha', pieceId: CORAZON_PIECES.auricula },
     // Válvula mitral (modelo de corte) del lado izquierdo.
-    { kind: 'heart-chamber-valve', valveType: 'mitral', pos: [8.2, -3.2], rotY: -0.5, scale: 1.4, spread: 2.4, label: 'Válvula mitral', pieceId: CORAZON_PIECES.mitral },
+    { kind: 'heart-chamber-valve', valveType: 'mitral', pos: [8.2, -3.2], y: 1.6, rotY: -0.5, scale: 1.4, spread: 2.4, label: 'Válvula mitral', pieceId: CORAZON_PIECES.mitral },
     // Entradas de las venas cavas.
     { kind: 'vessel-mouth', pos: [-13.6, -5], y: 2, rotY: Math.PI / 2, scale: 1.4, label: 'Venas cavas' },
     { kind: 'vessel-mouth', pos: [-13.6, 8], y: 0, rotY: Math.PI / 2 + 0.15, scale: 1.4, color: '#7c4a82' },
@@ -76,25 +76,28 @@ export const CORAZON = parseDiorama({
   ],
 })
 
+// Núcleo: centro (-3, -12,5), escala 1,3 → radio ≈ 7,8 m y centro a ≈ 7,2 m del suelo. Se abre hacia +z (el jugador).
+export const NUCLEO_POS: [number, number] = [-3, -12.5]
+
 export const CELULA = parseDiorama({
   title: 'Dentro de una célula animal',
   terrain: 'cellular',
   time: 'day',
   palette: { ground: '#9a6a86', sky: '#bfe4d8', accent: '#f0c968' },
   props: [
-    { kind: 'nucleus', pos: [-3, -12.5], scale: 1.3, label: 'Núcleo', pieceId: CELULA_PIECES.nucleo },
-    { kind: 'dna-helix', pos: [2.4, -4.5], scale: 1.0, rotY: 0.4 },
-    { kind: 'mitochondrion', pos: [6.5, 0.5], rotY: -0.5, label: 'Mitocondria', pieceId: CELULA_PIECES.mitocondria },
-    { kind: 'mitochondrion', pos: [10.5, -7], rotY: -0.5, scale: 1.15 },
-    { kind: 'mitochondrion', pos: [-9, 1], rotY: 0.85, scale: 0.9 },
-    { kind: 'ribosome', pos: [-3, 3.5], rotY: 0.3, scale: 1.6, label: 'Ribosoma', pieceId: CELULA_PIECES.ribosoma },
-    { kind: 'ribosome', pos: [-1, -1], count: 10, spread: 9, scale: 1.0, y: 0.8 },
-    { kind: 'rough-er', pos: [-10, -4], rotY: 0.55, scale: 1.2, label: 'Retículo endoplasmático rugoso', pieceId: CELULA_PIECES.reticulo },
-    { kind: 'golgi', pos: [9, -12], rotY: -0.45, scale: 1.0 },
-    { kind: 'membrane-protein', pos: [11.5, 7], rotY: -0.9, scale: 1.0, label: 'Membrana celular', pieceId: CELULA_PIECES.membrana },
-    { kind: 'atp', pos: [1, 1], count: 9, spread: 11, scale: 1.0, y: 1.8 },
-    { kind: 'atp', pos: [3, -3], count: 6, spread: 9, scale: 0.9, y: 4.8 },
-    { kind: 'vesicle', pos: [-6, 8], count: 4, spread: 6, scale: 1.0, y: 1.5 },
+    // Los cinco orgánulos enlazados, repartidos en abanico delante del jugador (aparece en 0, 10,6 mirando a -z).
+    { kind: 'nucleus', pos: NUCLEO_POS, scale: 1.3, label: 'Núcleo', pieceId: CELULA_PIECES.nucleo },
+    // El ADN vive DENTRO del núcleo: se ve a través del corte de la envoltura nuclear (centro de la esfera a ≈ 7,2 m).
+    { kind: 'dna-helix', pos: [-0.8, -11.3], y: 3.8, scale: 1.0, rotY: 0.4 },
+    { kind: 'mitochondrion', pos: [3.8, -1.5], rotY: -0.5, label: 'Mitocondria', pieceId: CELULA_PIECES.mitocondria },
+    { kind: 'ribosome', pos: [-2, 4], rotY: 0.3, scale: 1.7, label: 'Ribosoma', pieceId: CELULA_PIECES.ribosoma },
+    { kind: 'rough-er', pos: [-11.2, -6.5], rotY: 0.55, scale: 1.2, label: 'Retículo endoplasmático rugoso', pieceId: CELULA_PIECES.reticulo },
+    { kind: 'membrane-protein', pos: [10.8, -7.5], rotY: -0.7, scale: 1.5, label: 'Membrana celular', pieceId: CELULA_PIECES.membrana },
+    // Contexto, sin tapar nada: un Golgi con vesículas, otra mitocondria lejana y pocas moléculas sueltas.
+    { kind: 'golgi', pos: [9.6, -12.5], rotY: -0.5, scale: 1.0 },
+    { kind: 'mitochondrion', pos: [-11, 4], rotY: 0.85, scale: 0.85 },
+    { kind: 'ribosome', pos: [-8, -10], count: 4, spread: 4, scale: 1.0, y: 0.8 },
+    { kind: 'atp', pos: [7.5, -6], count: 2, spread: 2.5, scale: 0.9, y: 3.4 },
   ],
 })
 
