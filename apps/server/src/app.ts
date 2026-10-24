@@ -11,9 +11,13 @@ import {
   ImprovePromptRequestSchema,
   LIMITS,
   sanitizeUntrustedText,
+  NDJSON_CONTENT_TYPE,
+  sampleMuseum,
   type Museum,
+  type MuseumStreamEvent,
 } from "@mus3o/shared";
-import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
+import { AiUnavailableError, currentTextStreamer, enrichMuseum, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
+import { replayMuseum, streamNewMuseum } from "./stream";
 import { imageRouter } from "./images";
 import { ttsRouter } from "./tts";
 import { getCached, setCached } from "./cache";
@@ -123,6 +127,81 @@ app.post("/api/generate-museum", async (req, res) => {
   };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
   await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
+});
+
+// Pausa entre salas al reproducir un museo en caché por el stream (da el efecto de "se va construyendo").
+const replayDelayMs = () => {
+  const n = Number(process.env.STREAM_REPLAY_DELAY_MS);
+  return Number.isFinite(n) && process.env.STREAM_REPLAY_DELAY_MS !== undefined && process.env.STREAM_REPLAY_DELAY_MS !== "" ? n : 450;
+};
+
+/**
+ * Igual que /api/generate-museum, pero responde en NDJSON (`MuseumStreamEvent`, un evento por línea y
+ * vaciado en cada uno) para que el cliente construya el palacio sala a sala mientras la IA escribe.
+ * Solo temas y apuntes; el flujo con imágenes sigue por el endpoint sin streaming.
+ */
+app.post("/api/generate-museum/stream", async (req, res) => {
+  const parsed = RequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)` });
+    return;
+  }
+  const input: GenerateInput =
+    "notes" in parsed.data
+      ? { notes: sanitizeUntrustedText(parsed.data.notes, LIMITS.maxNotesChars) }
+      : { topic: sanitizeUntrustedText(parsed.data.topic, 200) };
+  const key = cacheKey(input);
+  const controller = new AbortController();
+  const hasKey = !!process.env.ANTHROPIC_API_KEY;
+
+  let events: AsyncGenerator<MuseumStreamEvent>;
+  let cacheResult = false;
+  const cached = getCached(key);
+  if (cached) {
+    events = replayMuseum(cached, { signal: controller.signal, delayMs: replayDelayMs() });
+  } else if (!hasKey && "notes" in input) {
+    res.status(503).json({ error: "IA no configurada" });
+    return;
+  } else if (!takeDailySlot()) {
+    res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+    return;
+  } else if (!hasKey) {
+    console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
+    events = replayMuseum(enrichMuseum({ ...sampleMuseum, title: (input as { topic: string }).topic }), {
+      signal: controller.signal,
+      delayMs: replayDelayMs(),
+    });
+  } else {
+    cacheResult = true;
+    events = streamNewMuseum(input, { streamText: currentTextStreamer(), signal: controller.signal });
+  }
+
+  // Si el cliente se va, se corta la conexión con el modelo para no seguir gastando tokens.
+  res.on("close", () => {
+    if (!res.writableFinished) controller.abort();
+  });
+  res.status(200);
+  res.setHeader("Content-Type", `${NDJSON_CONTENT_TYPE}; charset=utf-8`);
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  try {
+    for await (const event of events) {
+      if (controller.signal.aborted || res.destroyed) break;
+      if (event.type === "done" && cacheResult) setCached(key, event.museum);
+      const flushed = res.write(JSON.stringify(event) + "\n");
+      (res as unknown as { flush?: () => void }).flush?.();
+      if (!flushed) await new Promise<void>((resolve) => {
+        res.once("drain", resolve);
+        res.once("close", resolve);
+      });
+    }
+  } finally {
+    // Cierra el generador (y con él la conexión con el modelo) si se salió antes de tiempo.
+    await events.return(undefined).catch(() => undefined);
+    if (!res.writableEnded) res.end();
+  }
 });
 
 // Solo para depurar el flujo: sugiere mejoras al pedido antes de generar.

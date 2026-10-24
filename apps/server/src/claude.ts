@@ -138,6 +138,39 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
   return enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined);
 }
 
+/** Fuente de texto en streaming: trozos de la respuesta del modelo según llegan. */
+export type TextStreamer = (params: {
+  system: string;
+  content: string;
+  maxTokens: number;
+  signal: AbortSignal;
+}) => AsyncIterable<string>;
+
+/** Streaming real contra la API de Anthropic. Si el consumidor deja de leer o se aborta, se corta la conexión. */
+export const anthropicTextStreamer: TextStreamer = async function* ({ system, content, maxTokens, signal }) {
+  const stream = getClient().messages.stream(
+    { model: MODEL(), max_tokens: maxTokens, system, messages: [{ role: "user", content }] },
+    { signal },
+  );
+  try {
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") yield event.delta.text;
+    }
+  } finally {
+    stream.abort();
+  }
+};
+
+let streamerOverride: TextStreamer | null = null;
+/** Solo pruebas: sustituye al cliente de Anthropic por uno falso. */
+export function setTextStreamerForTests(streamer: TextStreamer | null) {
+  streamerOverride = streamer;
+}
+export const currentTextStreamer = (): TextStreamer => streamerOverride ?? anthropicTextStreamer;
+
+/** Tokens máximos de la respuesta DSL (los mismos que la generación sin streaming). */
+export const dslMaxTokens = (input: GenerateInput) => ("notes" in input ? 2500 : 1200);
+
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
 export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.ContentBlockParam[] {
   const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => {
