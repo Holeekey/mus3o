@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
+import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { Player } from './Player'
@@ -41,6 +42,7 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
+  const unlockedDoors = useStore((s) => s.unlockedDoors)
   const palettes = useMemo(
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
@@ -64,15 +66,19 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
           ? [c.floor.x + c.floor.w / 2, 0, c.floor.z]
           : [c.floor.x, 0, c.floor.z + c.floor.d / 2]
 
+        const doorId = `door-${i}-entrance`
+        const isOpen = !!unlockedDoors[doorId]
+
         return (
           <group key={i}>
             <AssetFloor box={c.floor} color={scene.corridor.floor} />
             {c.walls.map((w, j) => (
               <AssetWall key={j} box={w} color={scene.corridor.wall} />
             ))}
-            {/* Puertas / arcos de conexión entre salas y pasillos */}
-            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} />
-            <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isGated={i % 2 === 1} />
+            {/* Puerta interactiva con físicas y animación al inicio del pasillo */}
+            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} />
+            {/* Arco abierto al final del pasillo que conecta con la siguiente cámara */}
+            <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isOpen={true} />
           </group>
         )
       })}

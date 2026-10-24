@@ -283,6 +283,33 @@ kbd {
   border: 2px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 4px 4px 0 var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+.hint-warn {
+  border-color: #e53e3e;
+  color: #c53030;
+  background: #fff5f5;
+}
+.hint-gold {
+  border-color: #d69e2e;
+  color: #744210;
+  background: #fffaf0;
+}
+.key-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fefcbf;
+  color: #744210;
+  border: 2px solid #d69e2e;
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--shadow);
 }
 .hud-legend {
   position: absolute;

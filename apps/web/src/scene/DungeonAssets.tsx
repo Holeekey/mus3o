@@ -1,5 +1,7 @@
 import { Clone, useGLTF } from '@react-three/drei'
-import { Suspense, useEffect } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import * as THREE from 'three'
 import type { Box } from '../palace/layout'
 
 const WALL_MODEL = '/models/dungeon/wall.gltf'
@@ -80,31 +82,48 @@ export function AssetFloor({ box, color }: { box: Box; color?: string }) {
 function AssetDoorwayInner({
   position,
   rotation,
+  isOpen = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
+  isOpen?: boolean
 }) {
   const { scene } = useGLTF(DOORWAY_MODEL)
+  // Clonamos el modelo de manera independiente para cada instancia de puerta
+  const cloned = useMemo(() => scene.clone(true), [scene])
+  const doorRef = useRef<THREE.Object3D | null>(null)
 
-  // Abre la puerta de madera hacia el muro para dejar el vano completamente transitable y visible
   useEffect(() => {
-    scene.traverse((child) => {
-      if (child.name === 'wall_doorway_door') {
-        child.rotation.y = -Math.PI * 0.45
-      }
-    })
-  }, [scene])
+    const door = cloned.getObjectByName('wall_doorway_door')
+    if (door) {
+      doorRef.current = door
+      door.rotation.y = isOpen ? -Math.PI * 0.48 : 0
+    }
+  }, [cloned, isOpen])
+
+  // Animación física suave al abrir o cerrar
+  useFrame((_, dt) => {
+    if (doorRef.current) {
+      const target = isOpen ? -Math.PI * 0.48 : 0
+      doorRef.current.rotation.y = THREE.MathUtils.damp(
+        doorRef.current.rotation.y,
+        target,
+        7,
+        dt,
+      )
+    }
+  })
 
   return (
     <group position={position} rotation={rotation}>
-      <Clone
-        object={scene}
+      <primitive
+        object={cloned}
         scale={[2.8 / 4, 3.6 / 4, 0.8]}
         castShadow
         receiveShadow
       />
       {/* Antorcha / Luz cálida que ilumina el arco de la puerta */}
-      <pointLight color="#ffb347" intensity={8} distance={7} position={[0, 2.2, 0]} />
+      <pointLight color="#ffb347" intensity={6} distance={6} position={[0, 2.2, 0]} />
     </group>
   )
 }
@@ -112,14 +131,16 @@ function AssetDoorwayInner({
 export function AssetDoorway({
   position,
   rotation,
+  isOpen = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
+  isOpen?: boolean
   isGated?: boolean
 }) {
   return (
     <Suspense fallback={null}>
-      <AssetDoorwayInner position={position} rotation={rotation} />
+      <AssetDoorwayInner position={position} rotation={rotation} isOpen={isOpen} />
     </Suspense>
   )
 }
