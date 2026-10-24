@@ -67,9 +67,13 @@ export function Painting({
   const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const activeTexture = isIntroPlaying ? null : texture
   const matColor = useMemo(() => new Color(theme.scene.object.color).multiplyScalar(0.92), [theme])
-  if (!image || !texture) return null
 
-  const aspect = (texture.image as { width: number; height: number }).width / (texture.image as { width: number; height: number }).height
+  const hasTexture = Boolean(image && texture)
+  const imgAspect = texture?.image
+    ? (texture.image as { width: number; height: number }).width /
+      (texture.image as { width: number; height: number }).height
+    : 4 / 3
+  const aspect = Number.isFinite(imgAspect) && imgAspect > 0 ? imgAspect : 4 / 3
   const maxW = slot.maxWidth - 2 * (FRAME_T + MAT)
   const maxH = slot.maxHeight - 2 * (FRAME_T + MAT)
   const w = Math.min(maxW, maxH * aspect)
@@ -93,7 +97,7 @@ export function Painting({
   const flat = (
     <mesh position={[0, 0, WALL_Z + 0.0505]} receiveShadow>
       <planeGeometry args={[w, h]} />
-      {activeTexture ? (
+      {hasTexture && activeTexture ? (
         <meshStandardMaterial map={activeTexture} roughness={1} />
       ) : (
         <meshStandardMaterial color={matColor} roughness={0.95} />
@@ -123,7 +127,7 @@ export function Painting({
           </mesh>
         </group>
       ))}
-      {!isIntroPlaying && (
+      {image && texture && !isIntroPlaying && (
         <Suspense fallback={null}>
           {/* Cartela de yeso bajo el cuadro: legible sobre cualquier pared. */}
           <group position={[0, bottom - 0.22, WALL_Z + 0.03]}>
