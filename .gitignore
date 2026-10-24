@@ -5,3 +5,13 @@ dist
 !.env.example
 *.log
 .DS_Store
+
+# Config local de cada dev (no compartida)
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/token-budget/
+!.claude/skills/assets/
+!.claude/skills/architecture/
+!.claude/skills/3d-validation/
+CLAUDE.local.md
