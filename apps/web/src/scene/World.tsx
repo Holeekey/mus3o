@@ -1,11 +1,15 @@
 import { Canvas } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { Player } from './Player'
 import { Room } from './Room'
+
+// Cuadro-portal de prueba (?demo): se carga aparte para no inflar el bundle de la sala.
+const DioramaDemo = lazy(() => import('../diorama/DioramaDemo').then((m) => ({ default: m.DioramaDemo })))
+const showDioramaDemo = new URLSearchParams(window.location.search).has('demo')
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
@@ -84,6 +88,11 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         )
       })}
       <Player layout={layout} />
+      {showDioramaDemo && (
+        <Suspense fallback={null}>
+          <DioramaDemo layout={layout} theme={theme} />
+        </Suspense>
+      )}
     </Canvas>
   )
 }
