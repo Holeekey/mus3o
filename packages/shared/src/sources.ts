@@ -58,14 +58,26 @@ const lineAt = (text: string, index: number) => {
   return line;
 };
 
+/** Apuntes ya normalizados: se calculan una vez y se reutilizan para buscar muchas citas. */
+export type PreparedText = { nfc: string; hay: { norm: string; map: number[] } };
+
+export function prepareText(text: string): PreparedText {
+  const nfc = toNfc(text);
+  return { nfc, hay: normalizeWithMap(nfc) };
+}
+
 /**
  * Busca `fragment` dentro de `text` ignorando mayúsculas, espacios, comillas y guiones tipográficos.
  * Si la cita completa no está, acepta el fragmento común más largo con al menos el 60 % de la cita.
  * `from` (posición en NFC) hace preferir coincidencias a partir de ahí.
  */
 export function locateFragment(text: string, fragment: string, from = 0): FragmentMatch | null {
-  const nfc = toNfc(text);
-  const hay = normalizeWithMap(nfc);
+  return locateIn(prepareText(text), fragment, from);
+}
+
+/** Igual que `locateFragment`, pero sobre apuntes ya preparados con `prepareText`. */
+export function locateIn(prepared: PreparedText, fragment: string, from = 0): FragmentMatch | null {
+  const { nfc, hay } = prepared;
   const q = normalizeWithMap(toNfc(fragment)).norm.trim();
   if (q.length < MIN_FRAGMENT_CHARS) return null;
 
@@ -123,14 +135,15 @@ const tidy = (s: string) => s.replace(/\s+/g, " ").trim().slice(0, LIMITS.maxQuo
  * `source` y la pieza queda marcada `unverified`: la IA agregó esa idea.
  */
 export function verifySources(museum: Museum, notes: string): { museum: Museum; stats: SourceStats } {
-  const text = toNfc(notes);
+  const prepared = prepareText(notes);
+  const text = prepared.nfc;
   const stats: SourceStats = { total: 0, verified: 0, unverified: 0 };
   const rooms = museum.rooms.map((room) => ({
     ...room,
     pieces: room.pieces.map((piece) => {
       stats.total++;
       const { source, unverified: _previous, ...rest } = piece;
-      const hit = source?.quote ? locateFragment(text, source.quote) : null;
+      const hit = source?.quote ? locateIn(prepared, source.quote) : null;
       if (!hit) {
         stats.unverified++;
         return { ...rest, unverified: true };
