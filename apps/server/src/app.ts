@@ -229,7 +229,7 @@ app.post("/api/generate-museum/stream", async (req, res) => {
 
   let events: AsyncGenerator<MuseumStreamEvent>;
   let cacheResult = false;
-  const cached = getCached(key);
+  const cached = await getCached(key);
   if (cached) {
     events = replayMuseum(cached, { signal: controller.signal, delayMs });
   } else if (!hasKey && (isFlowInput(input) || "notes" in input)) {
