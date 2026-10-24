@@ -90,6 +90,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
 
 export function Hud({ layout }: { layout: PalaceLayout }) {
   const palace = useStore((s) => s.palace)
+  const buildSummary = useStore((s) => s.build.summary) // palacio generado con IA: "N de M verificados"
   // Precarga las imágenes de todo el palacio para que las fichas se abran al instante.
   useEffect(() => {
     if (palace) void prefetchPalaceImages(palace)
@@ -247,6 +248,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         <div className="pause">
           <div className="pause-panel">
             <p className="pause-sub">{palace?.title}</p>
+            {buildSummary && <p className="pause-sub">{buildSummary}</p>}
             <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu palacio está levantado'}</h1>
             <p className="muted">
               {mode === 'exam'

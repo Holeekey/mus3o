@@ -21,6 +21,7 @@ Archivos:
 | Método y ruta | Entrada | Salida | Notas |
 |---|---|---|---|
 | `POST /api/generate-museum` | `{ topic }` (legacy) **o** `{ mode, prompt, sources[], images[] }` | `Museum` | Único endpoint de generación. Cuerpo ≤ 8 MB |
+| `POST /api/generate-museum/stream` | Igual que `/api/generate-museum` (tema, apuntes o flujo completo) | NDJSON de `MuseumStreamEvent` (`packages/shared/src/stream.ts`): `meta`, N × `room` (con `edges` provisionales), `done` o `error` | Misma validación, caché, tope diario y límite de solicitudes que la generación sin streaming; el cliente cae a esta si el stream falla antes de la primera sala. Con `FLOW_FORMAT=json` genera entero y reproduce sala a sala |
 | `POST /api/digest-sources` | `{ sources[] }` (1-10 fuentes, ≤ 200 000 car. en total) | `{ digest }` (≤ 15 000 car.) | Solo cuando el texto supera 20 000 car. Cuerpo ≤ 1 MB. 400 cuerpo inválido; 503 sin clave; 429 tope diario; 502 `No se pudo resumir las fuentes` |
 | `POST /api/improve-prompt` | Mismo que el flujo sin imágenes | `{ suggestions[], improvedPrompt }` | **Solo depuración**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |

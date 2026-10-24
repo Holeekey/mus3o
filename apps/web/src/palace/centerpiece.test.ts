@@ -28,6 +28,10 @@ describe('classifyRoom', () => {
     ['Heart anatomy', 'organ'],
     ['The Battle of Trafalgar', 'battle'],
     ['Parliament and law', 'assembly'],
+    ['La Toma de la Bastilla', 'battle'],
+    ['La Revolución Francesa', 'battle'],
+    ['El Terror', 'abstract'],
+    ['Las Causas del Antiguo Régimen', 'abstract'],
   ]
   it.each(table)('%s -> %s', (name, archetype) => {
     expect(classifyRoom(name).archetype).toBe(archetype)
