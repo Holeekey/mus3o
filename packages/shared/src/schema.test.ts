@@ -298,3 +298,25 @@ describe("digest sources contract", () => {
     expect(LIMITS.maxDigestChars).toBe(15_000);
   });
 });
+
+describe("PieceSchema dynamic assets", () => {
+  it("accepts searchKeyword and dynamicAsset", () => {
+    const p = piece("p-dyn", {
+      searchKeyword: "hourglass",
+      dynamicAsset: {
+        assetId: "poly-123",
+        glbUrl: "/api/assets/poly-123.glb",
+        license: "CC0",
+        author: "PolyArtist",
+      },
+    });
+    const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });
+    expect(MuseumSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("works without searchKeyword and dynamicAsset (backward compatible)", () => {
+    const p = piece("p-plain");
+    const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });
+    expect(MuseumSchema.safeParse(parsed).success).toBe(true);
+  });
+});
