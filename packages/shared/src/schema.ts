@@ -19,6 +19,10 @@ export const LIMITS = {
   maxText: 400,
   maxImages: 6,
   maxQuote: 240,
+  /** Texto total que acepta /api/digest-sources (suma de todas las fuentes). */
+  maxDigestInputChars: 200_000,
+  /** Largo máximo del temario base: prompt + temario queda bajo maxNotesChars. */
+  maxDigestChars: 15_000,
 } as const;
 
 /** ~1,5 MB por imagen en base64 (las del cliente van a <= 1024 px). */
@@ -415,9 +419,11 @@ export function findImageAssignmentIssues(museum: Museum, requestImageIds: strin
   );
 }
 
+export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json"]);
+
 export const SourceSchema = z.object({
   name: z.string().min(1).max(120),
-  kind: z.enum(["docx", "xlsx", "csv", "txt"]),
+  kind: SourceKindSchema,
   /** Texto ya extraído en el navegador: los archivos nunca llegan al servidor. */
   text: z.string().max(LIMITS.maxNotesChars),
 });
@@ -464,6 +470,33 @@ export const ImprovePromptResponseSchema = z.object({
   improvedPrompt: z.string().min(1).max(2_000),
 });
 
+/** Fuentes demasiado largas para el flujo: un modelo barato las resume en un temario base. */
+export const DigestSourcesRequestSchema = z.object({
+  sources: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        kind: SourceKindSchema,
+        text: z.string().min(1).max(100_000),
+      }),
+    )
+    .min(1)
+    .max(10),
+}).superRefine((request, ctx) => {
+  const total = request.sources.reduce((sum, s) => sum + s.text.length, 0);
+  if (total > LIMITS.maxDigestInputChars) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `el texto total supera ${LIMITS.maxDigestInputChars} caracteres`,
+      path: ["sources"],
+    });
+  }
+});
+
+export const DigestSourcesResponseSchema = z.object({
+  digest: z.string().min(1).max(LIMITS.maxDigestChars),
+});
+
 export type RoomTheme = z.infer<typeof RoomThemeSchema>;
 export type MonumentType = z.infer<typeof MonumentTypeSchema>;
 export type RoomPaletteDescriptor = z.infer<typeof RoomPaletteSchema>;
@@ -495,4 +528,7 @@ export type Source = z.infer<typeof SourceSchema>;
 export type InputImage = z.infer<typeof InputImageSchema>;
 export type GenerateMuseumRequest = z.infer<typeof GenerateMuseumRequestSchema>;
 export type ImprovePromptRequest = z.infer<typeof ImprovePromptRequestSchema>;
+export type SourceKind = z.infer<typeof SourceKindSchema>;
+export type DigestSourcesRequest = z.infer<typeof DigestSourcesRequestSchema>;
+export type DigestSourcesResponse = z.infer<typeof DigestSourcesResponseSchema>;
 export type ImprovePromptResponse = z.infer<typeof ImprovePromptResponseSchema>;

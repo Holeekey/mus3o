@@ -95,11 +95,13 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 
 ### Imágenes que sube el usuario (solo flujo nuevo)
 
-- El contrato espera imágenes en base64, ya redimensionadas a ≤ 1024 px en el navegador (`InputImage`, ids `img-1`…`img-99`). **Hoy no hay código en el frontend que haga esto.**
+- El navegador las achica a ≤ 1024 px y las pasa a JPEG en base64 (`lib/files.ts#readImageAttachment`, ids `img-1`…`img-99`).
 - Máximo 6 por generación. El servidor las pasa a la IA con su id precedido de texto.
 - La IA asigna cada imagen a **como mucho una** pieza (`piece.image.imageId`).
 - Si la IA usa un id que no llegó en el request, la respuesta se rechaza y se reintenta.
-- **Estado actual:** el servidor y el contrato lo soportan, pero la interfaz todavía no envía imágenes (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
+- Al entrar, las imágenes viajan al palacio por id (`enterPalace(palace, text, userImages)`, `store.userImages`, data URLs **solo en memoria**: no van a `localStorage` porque pesan demasiado).
+- `assignPaintings(room, userImages)` cuelga primero el cuadro de la sala, después las piezas con imagen del usuario y por último las búsquedas de Wikimedia. La ficha también muestra la imagen del usuario. La placa dice "Imagen subida por ti".
+- Si se recarga la página, las imágenes del usuario ya no están en memoria: esas piezas vuelven a su `imageSearch`, si tienen.
 
 ## 3. Privacidad
 
@@ -118,3 +120,20 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 | `apps/server/src/images.test.ts` | Clasificación, URLs permitidas, caché |
 | `apps/web/src/lib/images.test.ts`, `images.retry.test.ts` | Caché, deduplicación, reintentos |
 | `apps/web/src/palace/sources.test.ts`, `sourceText.test.ts` | Vista de la fuente en el HUD |
+
+## 5. Imágenes de Wikimedia: semilla y caché en disco
+
+Orden de búsqueda (metadatos de `/api/image` y bytes de `/api/image/file`): **memoria → semilla → caché en disco → Wikimedia**.
+
+- **Semilla** (`apps/server/seed/images/`, commiteada, solo lectura, archivos normales sin Git LFS): la demo (`?demo=historia`, `?demo=medicina`) funciona aunque Wikimedia nos limite la tasa. Nombres = sha256 de la consulta / URL.
+- **Caché** (`IMAGE_CACHE_DIR`, por defecto `./.cache/images`, ignorada por Git): sobrevive a reinicios; guarda también los "sin imagen" definitivos, nunca errores transitorios. Tope `IMAGE_CACHE_MAX_MB` (200), borra lo más antiguo por mtime. En Render sin disco persistente se vacía en cada deploy (la semilla cubre la demo).
+- **Cortesía con Wikimedia:** `User-Agent` de la política (`WIKIMEDIA_USER_AGENT` para cambiarlo), máx. 2 llamadas simultáneas, `Retry-After` respetado (tope 5 s, un reintento) y pausa global de unos segundos tras un 429.
+
+Regenerar la semilla (lento a propósito: secuencial, 1,5 s entre consultas; reanudable, salta lo ya sembrado):
+
+```bash
+npx tsx apps/server/scripts/preload-images.ts          # desde la raíz del repo
+npx tsx apps/server/scripts/preload-images.ts --force  # vuelve a pedir todo
+```
+
+Si imprime "error transitorio" (429), espera unos minutos y vuelve a ejecutarlo. Tope de 8 MB en total y ~900 KB por imagen (las PNG grandes bajan a 500/330 px). Después: `git add apps/server/seed` y commit.

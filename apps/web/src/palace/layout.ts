@@ -358,15 +358,27 @@ export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: n
   return { x: nx, z: nz }
 }
 
-export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string; roomId?: string; diorama?: Diorama }
+/** Imagen subida por el usuario y asignada por la IA a una pieza (vive solo en memoria). */
+export type UserImage = { src: string; title: string }
+
+export type PaintingAssignment = {
+  slot: PaintingSlot
+  key: string
+  /** Búsqueda en Wikimedia; falta cuando el cuadro muestra una imagen del usuario. */
+  search?: ImageSearch
+  userImage?: UserImage
+  roomId?: string
+  diorama?: Diorama
+}
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
 
 /**
- * La búsqueda de la sala va al cuadro principal; cada pieza con búsqueda, al hueco libre
- * más cercano a su pedestal. Si faltan huecos, las piezas sobrantes se quedan sin cuadro.
+ * La búsqueda de la sala va al cuadro principal. Después, las piezas con una imagen del usuario
+ * (si sigue en memoria) y luego las piezas con búsqueda, cada una al hueco libre más cercano a su
+ * pedestal. Si faltan huecos, las piezas sobrantes se quedan sin cuadro.
  */
-export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
+export function assignPaintings(room: RoomLayout, userImages: Record<string, string> = {}): PaintingAssignment[] {
   const out: PaintingAssignment[] = []
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
@@ -374,8 +386,7 @@ export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
     out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
     free.splice(free.indexOf(main), 1)
   }
-  for (const p of room.pedestals) {
-    if (!hasSearch(p.concept.imageSearch) || free.length === 0) continue
+  const nearestFree = (p: PedestalLayout) => {
     let best = 0
     let bestD = Infinity
     free.forEach((s, i) => {
@@ -385,8 +396,17 @@ export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
         best = i
       }
     })
-    out.push({ slot: free[best], search: p.concept.imageSearch, key: `piece:${p.concept.id}` })
-    free.splice(best, 1)
+    return free.splice(best, 1)[0]
+  }
+  const userSrc = (p: PedestalLayout) => (p.concept.image ? userImages[p.concept.image.imageId] : undefined)
+  for (const p of room.pedestals) {
+    const src = userSrc(p)
+    if (!src || free.length === 0) continue
+    out.push({ slot: nearestFree(p), userImage: { src, title: p.concept.title }, key: `user:${p.concept.id}` })
+  }
+  for (const p of room.pedestals) {
+    if (userSrc(p) || !hasSearch(p.concept.imageSearch) || free.length === 0) continue
+    out.push({ slot: nearestFree(p), search: p.concept.imageSearch, key: `piece:${p.concept.id}` })
   }
   return out
 }

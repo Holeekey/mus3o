@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
-import { creditLine, useResolvedImage } from '../lib/images'
+import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { useIntro } from '../intro/store'
 import { LabelPlate } from './LabelPlate'
-import type { PaintingSlot } from '../palace/layout'
+import type { PaintingSlot, UserImage } from '../palace/layout'
 import type { RoomPalette, Theme } from '../theme'
 
 // El cuadro-portal arrastra el código del diorama (geometría procedural, terreno): solo se
@@ -49,20 +49,24 @@ function useTexture(src?: string): Texture | null {
 export function Painting({
   slot,
   search,
+  userImage,
   palette,
   theme,
   diorama,
   roomId,
 }: {
   slot: PaintingSlot
-  search: ImageSearch
+  search?: ImageSearch
+  /** Imagen subida por el usuario: tiene prioridad sobre la búsqueda. */
+  userImage?: UserImage
   palette: RoomPalette
   theme: Theme
   /** Si lo hay, el cuadro es un portal: al acercarse se disuelve en este diorama. */
   diorama?: Diorama
   roomId?: string
 }) {
-  const image = useResolvedImage(search)
+  const resolved = useResolvedImage(userImage ? undefined : search)
+  const image = userImage ? userImageAsResolved(userImage.src, userImage.title) : resolved
   const texture = useTexture(image?.src)
   const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const activeTexture = isIntroPlaying ? null : texture

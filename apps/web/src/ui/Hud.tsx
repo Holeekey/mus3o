@@ -3,7 +3,7 @@ import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
-import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
+import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
@@ -35,7 +35,9 @@ function findConcept(layout: PalaceLayout, id: string | null) {
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
-  const image = useResolvedImage(concept.imageSearch)
+  const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
+  const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
+  const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
   const close = () => useStore.getState().set({ openId: null })
   return (
     <aside className="card" style={wallVars(palette)}>

@@ -1,7 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
 import {
+  DigestSourcesResponseSchema,
   findImageAssignmentIssues,
+  LIMITS,
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
@@ -9,6 +11,8 @@ import {
   sampleMuseum,
   sanitizeRawSources,
   verifySources,
+  type DigestSourcesRequest,
+  type DigestSourcesResponse,
   type GenerateMuseumRequest,
   type ImprovePromptRequest,
   type ImprovePromptResponse,
@@ -16,6 +20,8 @@ import {
 } from "@mus3o/shared";
 import {
   cleanNotes,
+  DIGEST_SYSTEM_PROMPT,
+  digestPrompt,
   DSL_SYSTEM_PROMPT,
   dslNotesPrompt,
   dslUserPrompt,
@@ -30,6 +36,8 @@ import {
 import { attachImageSearches, retrieveSources } from "./enrich";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+/** Modelo barato para resumir fuentes largas en un temario base. */
+const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
 const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -166,4 +174,28 @@ export async function improvePrompt(request: ImprovePromptRequest): Promise<Impr
     { system: IMPROVE_SYSTEM_PROMPT, content: improvePromptText(request), maxTokens: 1500 },
     (raw) => ImprovePromptResponseSchema.parse(JSON.parse(stripFence(raw))),
   );
+}
+
+/** Recorta el temario a LIMITS.maxDigestChars cortando en el último salto de línea anterior al límite. */
+export function clampDigest(raw: string): string {
+  const text = raw.trim();
+  if (text.length <= LIMITS.maxDigestChars) return text;
+  const head = text.slice(0, LIMITS.maxDigestChars);
+  const cut = head.lastIndexOf("\n");
+  return (cut > 0 ? head.slice(0, cut) : head).trim();
+}
+
+export async function digestSources(sources: DigestSourcesRequest["sources"]): Promise<DigestSourcesResponse> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("IA no configurada");
+  const res = await getClient().messages.create({
+    model: DIGEST_MODEL(),
+    // Haiku 5.5 razona por defecto y ese razonamiento se cobra: para resumir no hace falta.
+    thinking: { type: "disabled" },
+    max_tokens: 6000,
+    system: DIGEST_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: digestPrompt(sources) }],
+  });
+  const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  // Salida vacía o inválida: lanza y el route responde 502.
+  return DigestSourcesResponseSchema.parse({ digest: clampDigest(stripFence(text)) });
 }
