@@ -177,6 +177,7 @@ Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/
 
 | Componente | Función |
 |---|---|
+| `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
 | `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
