@@ -35,10 +35,13 @@ import { IntroOverlay } from './intro/IntroOverlay'
 import { useIntro } from './intro/store'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
+import { TeamPage } from './ui/TeamSection'
+import { TEAM_HASH, useHash } from './ui/useHash'
 
 export default function App() {
   const screen = useStore((s) => s.screen)
   const layout = useStore((s) => s.layout)
+  const hash = useHash()
 
   const introOn = useIntro((s) => s.phase === 'idle' || (s.phase === 'playing' && !s.reduced)) // intro: oculta el HUD hasta que el vuelo termina
 
@@ -54,5 +57,5 @@ export default function App() {
       </div>
     )
   }
-  return <Landing />
+  return hash === TEAM_HASH ? <TeamPage /> : <Landing />
 }
