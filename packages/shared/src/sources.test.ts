@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sampleMuseum } from "./mock";
 import { MuseumSchema, type Museum } from "./schema";
-import { locateFragment, sanitizeRawSources, verifySources } from "./sources";
+import { locateFragment, locateIn, prepareText, sanitizeRawSources, verifySources } from "./sources";
 
 const NOTES = [
   "# Transporte",
@@ -148,5 +148,35 @@ describe("sanitizeRawSources", () => {
     expect(b).not.toHaveProperty("source");
     expect(c).not.toHaveProperty("source");
     expect(d).not.toHaveProperty("source");
+  });
+});
+
+describe("prepared notes are reusable", () => {
+  const QUOTES = [
+    "Difusión simple",
+    "Transporte activo: mueve sustancias contra gradiente usando ATP celular",
+    "Las proteínas bombean moléculas hacia afuera usando combustible celular",
+    "osmosis - AGUA que cruza la membrana",
+    "a",
+  ];
+
+  it("locateIn on one prepared text matches locateFragment for every quote", () => {
+    const prepared = prepareText(NOTES);
+    for (const quote of QUOTES) {
+      expect(locateIn(prepared, quote)).toEqual(locateFragment(NOTES, quote));
+    }
+    // El texto preparado no cambia entre búsquedas: repetir la primera da lo mismo.
+    expect(locateIn(prepared, QUOTES[0])).toEqual(locateFragment(NOTES, QUOTES[0]));
+  });
+
+  it("verifies many pieces in one call exactly as it verifies them one by one", () => {
+    const together = verifySources(museumWith(QUOTES.map((quote) => ({ quote }))), NOTES);
+    QUOTES.forEach((quote, i) => {
+      const alone = verify(quote).piece;
+      const piece = together.museum.rooms[0].pieces[i];
+      expect(piece.source).toEqual(alone.source);
+      expect(piece.unverified).toEqual(alone.unverified);
+    });
+    expect(together.stats).toEqual({ total: 5, verified: 3, unverified: 2 });
   });
 });
