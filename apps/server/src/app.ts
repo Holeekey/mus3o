@@ -7,16 +7,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import {
+  DigestSourcesRequestSchema,
   GenerateMuseumRequestSchema,
   ImprovePromptRequestSchema,
   LIMITS,
   sanitizeUntrustedText,
   type Museum,
 } from "@mus3o/shared";
-import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
+import { AiUnavailableError, digestSources, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { ttsRouter } from "./tts";
-import { getCached, setCached } from "./cache";
+import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
 export const app = express();
 // Detrás del proxy de Render: la IP real viene en X-Forwarded-For. Sin esto todos los usuarios
@@ -43,7 +44,11 @@ app.get("/api/health", (_req, res) => {
 const smallJson = express.json({ limit: "100kb" });
 // generate-museum además recibe hasta LIMITS.maxImages imágenes en base64 (≤ 1024 px, en memoria).
 const generateJson = express.json({ limit: "8mb" });
-app.use((req, res, next) => (req.path === "/api/generate-museum" ? generateJson : smallJson)(req, res, next));
+// digest-sources recibe hasta LIMITS.maxDigestInputChars caracteres de texto ya extraído.
+const digestJson = express.json({ limit: "1mb" });
+const jsonParserFor = (path: string) =>
+  path === "/api/generate-museum" ? generateJson : path === "/api/digest-sources" ? digestJson : smallJson;
+app.use((req, res, next) => jsonParserFor(req.path)(req, res, next));
 // Las imágenes se piden por decenas al entrar a un museo: límite aparte y más alto.
 app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
@@ -123,6 +128,45 @@ app.post("/api/generate-museum", async (req, res) => {
   };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
   await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
+});
+
+// Fuentes que superan LIMITS.maxNotesChars: un modelo barato las resume en un temario base.
+app.post("/api/digest-sources", async (req, res) => {
+  const parsed = DigestSourcesRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: `Envía "sources" (1-10 fuentes, hasta ${LIMITS.maxDigestInputChars} caracteres en total)` });
+    return;
+  }
+  const sources = parsed.data.sources.map((s) => ({
+    ...s,
+    name: sanitizeUntrustedText(s.name, 120),
+    text: sanitizeUntrustedText(s.text, LIMITS.maxDigestInputChars),
+  }));
+  // La clave no guarda las fuentes en claro.
+  const key = "digest:" + sha256(JSON.stringify(sources));
+  const started = Date.now();
+  try {
+    const cached = getCachedDigest(key);
+    if (cached !== undefined) {
+      res.json({ digest: cached });
+      return;
+    }
+    if (!takeDailySlot()) {
+      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones" });
+      return;
+    }
+    const { digest } = await digestSources(sources);
+    setCachedDigest(key, digest);
+    res.json({ digest });
+  } catch (err) {
+    if (err instanceof AiUnavailableError) {
+      res.status(503).json({ error: "IA no configurada" });
+      return;
+    }
+    // Solo el tipo de error y la latencia: nunca las fuentes ni la respuesta del modelo.
+    console.error(`digest-sources falló tras ${Date.now() - started} ms: ${(err as Error).name}`);
+    res.status(502).json({ error: "No se pudo resumir las fuentes" });
+  }
 });
 
 // Solo para depurar el flujo: sugiere mejoras al pedido antes de generar.

@@ -25,3 +25,24 @@ export function setCached(topic: string, museum: Museum) {
   }
   store.set(k, museum);
 }
+
+/** Temarios base de /api/digest-sources: LRU aparte para no mezclar tipos con los museos. */
+const digests = new Map<string, string>();
+
+export function getCachedDigest(k: string) {
+  const hit = digests.get(k);
+  if (hit !== undefined) {
+    digests.delete(k);
+    digests.set(k, hit);
+  }
+  return hit;
+}
+
+export function setCachedDigest(k: string, digest: string) {
+  digests.delete(k);
+  if (digests.size >= MAX_ENTRIES) {
+    const oldest = digests.keys().next().value;
+    if (oldest !== undefined) digests.delete(oldest);
+  }
+  digests.set(k, digest);
+}
