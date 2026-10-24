@@ -21,3 +21,8 @@
 *.mp3 filter=lfs diff=lfs merge=lfs -text binary
 *.wav filter=lfs diff=lfs merge=lfs -text binary
 *.ogg filter=lfs diff=lfs merge=lfs -text binary
+
+# Lo que la web sirve en producción va como archivo normal (< 1 MB en total):
+# así el deploy no depende de que la plataforma descargue Git LFS.
+apps/web/public/** -filter -diff -merge -text
+project-logo.png -filter -diff -merge -text
