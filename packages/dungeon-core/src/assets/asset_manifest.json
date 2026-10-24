@@ -1,6 +1,9 @@
 {
   "name": "KayKit Dungeon Pack Manifest",
   "version": "1.1",
+  "author": "Kay Lousberg",
+  "website": "https://www.kaylousberg.com",
+  "license": "Creative Commons Zero (CC0)",
   "basePath": "./assets/kaykit_dungeon",
   "tileSize": 2.0,
   "mappings": {
