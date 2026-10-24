@@ -21,6 +21,7 @@ const EXPANDED_SIZE = 340
 
 export function Minimap({ layout }: { layout: PalaceLayout }) {
   const [expanded, setExpanded] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const canvas = useRef<HTMLCanvasElement>(null)
   const size = expanded ? EXPANDED_SIZE : COMPACT_SIZE
 
@@ -179,33 +180,62 @@ export function Minimap({ layout }: { layout: PalaceLayout }) {
   }, [layout, size, expanded])
 
   return (
-    <div className="minimap-wrapper">
-      <div className="minimap-header">
-        <button
-          type="button"
-          className="minimap-toggle"
-          onClick={() => setExpanded(!expanded)}
-          title={expanded ? 'Contraer minimapa' : 'Desplegar minimapa'}
-        >
-          {expanded ? '⤡ Contraer' : '⤢ Desplegar'}
-        </button>
-      </div>
-      <canvas
-        ref={canvas}
-        className="minimap"
-        style={{ width: size, height: size }}
-        onClick={() => setExpanded(!expanded)}
-        title={expanded ? 'Haz clic para contraer' : 'Haz clic para desplegar minimapa'}
-        aria-label="Minimapa"
-      />
-      {expanded && (
-        <div className="minimap-legend">
-          <span><i className="legend-chip" style={{ background: '#ECC94B' }} /> Llave</span>
-          <span><i className="legend-chip" style={{ background: '#D69E2E' }} /> Cofre</span>
-          <span><i className="legend-chip" style={{ background: '#E53E3E' }} /> Trampa</span>
-          <span><i className="legend-chip" style={{ background: '#319795' }} /> Puerta</span>
+    <>
+      <button
+        type="button"
+        className="minimap-mobile-fab"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Abrir minimapa"
+        title="Abrir minimapa"
+      >
+        🗺️
+      </button>
+
+      <div className={`minimap-wrapper ${mobileOpen ? 'mobile-open' : ''}`}>
+        {mobileOpen && (
+          <div
+            className="minimap-modal-backdrop"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <div className="minimap-card-container">
+          <div className="minimap-header">
+            <button
+              type="button"
+              className="minimap-toggle"
+              onClick={() => setExpanded(!expanded)}
+              title={expanded ? 'Contraer minimapa' : 'Desplegar minimapa'}
+            >
+              {expanded ? '⤡ Contraer' : '⤢ Desplegar'}
+            </button>
+            <button
+              type="button"
+              className="minimap-mobile-close"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Cerrar minimapa"
+            >
+              ✕
+            </button>
+          </div>
+          <canvas
+            ref={canvas}
+            className="minimap"
+            style={{ width: size, height: size }}
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? 'Haz clic para contraer' : 'Haz clic para desplegar minimapa'}
+            aria-label="Minimapa"
+          />
+          {expanded && (
+            <div className="minimap-legend">
+              <span><i className="legend-chip" style={{ background: '#ECC94B' }} /> Llave</span>
+              <span><i className="legend-chip" style={{ background: '#D69E2E' }} /> Cofre</span>
+              <span><i className="legend-chip" style={{ background: '#E53E3E' }} /> Trampa</span>
+              <span><i className="legend-chip" style={{ background: '#319795' }} /> Puerta</span>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   )
 }

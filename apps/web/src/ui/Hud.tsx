@@ -35,9 +35,15 @@ function findConcept(layout: PalaceLayout, id: string | null) {
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
   const image = useResolvedImage(concept.imageSearch)
+  const close = () => useStore.getState().set({ openId: null })
   return (
     <aside className="card" style={wallVars(palette)}>
-      <p className="card-tag">{roomName}</p>
+      <div className="card-header-bar">
+        <p className="card-tag">{roomName}</p>
+        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+          ✕
+        </button>
+      </div>
       <div className="card-inner">
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}

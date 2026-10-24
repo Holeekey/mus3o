@@ -87,7 +87,12 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
 
   return (
     <aside className="card card-exam" style={style}>
-      <p className="card-tag">Modo examen</p>
+      <div className="card-header-bar">
+        <p className="card-tag">Modo examen</p>
+        <button type="button" className="card-close" onClick={back} aria-label="Cerrar examen">
+          ✕
+        </button>
+      </div>
       <div className="card-inner">
         {result ? (
           <>
