@@ -533,6 +533,11 @@ function hits(x: number, z: number, b: Box) {
   return Math.abs(x - b.x) < b.w / 2 + PLAYER_R && Math.abs(z - b.z) < b.d / 2 + PLAYER_R
 }
 
+/** ¿El jugador, de pie en (x, z), se solapa con algún collider? */
+export function isBlocked(colliders: readonly Box[], x: number, z: number) {
+  return colliders.some((b) => hits(x, z, b))
+}
+
 // Mueve por ejes separados para poder deslizarse contra las paredes.
 export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: number, dz: number) {
   // Si ya está dentro de algo (volver de un cuadro, aparecer o teletransportarse encima de un pedestal),
