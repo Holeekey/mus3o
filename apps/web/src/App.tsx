@@ -1,8 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { demoMuseum } from './mocks'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
-import { World } from './scene/World'
 import { useStore } from './store'
+import { DEFAULT_THEME } from './theme'
+
+// La escena 3D (three, fiber, drei) se carga aparte para no inflar el bundle de la landing.
+const World = lazy(() => import('./scene/World').then((m) => ({ default: m.World })))
 
 // ?demo entra directo al palacio de ejemplo; ?demo=ia usa el museo de muestra con modelos de IA.
 const demo = new URLSearchParams(window.location.search).get('demo')
@@ -21,7 +25,9 @@ export default function App() {
   if (screen === 'palace' && layout) {
     return (
       <div className="palace">
-        <World layout={layout} />
+        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: DEFAULT_THEME.scene.background }} />}>
+          <World layout={layout} />
+        </Suspense>
         <Hud layout={layout} />
       </div>
     )
