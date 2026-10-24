@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MuseumSchema, sampleMuseum, type Museum } from "@mus3o/shared";
-import { SYSTEM_PROMPT, userPrompt } from "./prompts";
+import { notesPrompt, SYSTEM_PROMPT, userPrompt } from "./prompts";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 let client: Anthropic | undefined;
@@ -10,20 +10,28 @@ function parseMuseum(raw: string): Museum {
   return MuseumSchema.parse(JSON.parse(cleaned));
 }
 
-export async function generateMuseum(topic: string): Promise<Museum> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
-    return { ...sampleMuseum, title: topic };
-  }
-  client ??= new Anthropic();
+export type GenerateInput = { topic: string } | { notes: string };
 
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userPrompt(topic) }];
+export class AiUnavailableError extends Error {}
+
+export async function generateMuseum(input: GenerateInput): Promise<Museum> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Con apuntes un mock no sirve: el cliente cae a su parser local.
+    if ("notes" in input) throw new AiUnavailableError("IA no configurada");
+    console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
+    return { ...sampleMuseum, title: input.topic };
+  }
+  client ??= new Anthropic({ timeout: 120_000, maxRetries: 1 });
+
+  const content = "notes" in input ? notesPrompt(input.notes) : userPrompt(input.topic);
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content }];
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await client.messages.create({
       model: MODEL(),
-      max_tokens: 8000,
+      // Los apuntes pueden traer hasta 8 salas × 12 piezas con modelos: necesita más salida.
+      max_tokens: "notes" in input ? 16000 : 8000,
       system: SYSTEM_PROMPT,
       messages,
     });

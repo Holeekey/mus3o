@@ -1,23 +1,30 @@
-import { lazy, Suspense } from "react";
-import { useMuseumStore } from "./store/useMuseumStore";
-import PromptScreen from "./components/ui/PromptScreen";
-import LoadingScreen from "./components/ui/LoadingScreen";
-import HUD from "./components/ui/HUD";
+import { demoMuseum } from './mocks'
+import { EXAMPLE_TEXT } from './palace/example'
+import { parsePalace } from './palace/parse'
+import { World } from './scene/World'
+import { useStore } from './store'
 
-const MuseumCanvas = lazy(() => import("./components/museum/MuseumCanvas"));
+// ?demo entra directo al palacio de ejemplo; ?demo=ia usa el museo de muestra con modelos de IA.
+const demo = new URLSearchParams(window.location.search).get('demo')
+if (demo === 'ia') useStore.getState().enterPalace(demoMuseum)
+else if (demo !== null) {
+  const r = parsePalace(EXAMPLE_TEXT)
+  if (r.ok) useStore.getState().enterPalace(r.palace)
+}
+import { Hud } from './ui/Hud'
+import { Landing } from './ui/Landing'
 
 export default function App() {
-  const phase = useMuseumStore((s) => s.phase);
-  const museum = useMuseumStore((s) => s.museum);
+  const screen = useStore((s) => s.screen)
+  const layout = useStore((s) => s.layout)
 
-  if (phase === "prompt") return <PromptScreen />;
-  if (phase === "loading" || !museum) return <LoadingScreen />;
-  return (
-    <div className="relative h-full w-full">
-      <Suspense fallback={<LoadingScreen />}>
-        <MuseumCanvas museum={museum} />
-      </Suspense>
-      <HUD museum={museum} />
-    </div>
-  );
+  if (screen === 'palace' && layout) {
+    return (
+      <div className="palace">
+        <World layout={layout} />
+        <Hud layout={layout} />
+      </div>
+    )
+  }
+  return <Landing />
 }
