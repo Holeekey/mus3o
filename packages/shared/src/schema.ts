@@ -46,6 +46,28 @@ export const QuizSchema = z.object({
   answerIndex: z.number().int().min(0).max(3),
 });
 
+/** Pista para buscar una imagen de dominio público (Wikipedia / Wikimedia Commons). */
+export const ImageSearchSchema = z.object({
+  /** Título exacto del artículo de Wikipedia en el idioma de los apuntes. */
+  wikiTitle: z.string().max(120).optional(),
+  /** 2 a 4 palabras clave en inglés para buscar en Commons. */
+  commonsQuery: z.string().max(120).optional(),
+  lang: z.string().regex(/^[a-z]{2}$/).optional(),
+});
+
+/** Respuesta de GET /api/image. */
+export const ResolvedImageSchema = z.object({
+  src: z.string().min(1),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  title: z.string(),
+  artist: z.string(),
+  license: z.string(),
+  licenseUrl: z.string().optional(),
+  sourceUrl: z.string(),
+  kind: z.enum(["painting", "diagram", "photo"]),
+});
+
 export const PieceSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).max(LIMITS.maxTitle),
@@ -58,6 +80,8 @@ export const PieceSchema = z.object({
   image: z.object({ imageId: z.string().min(1) }).optional(),
   /** Obligatorio en modo quiz. */
   quiz: QuizSchema.optional(),
+  /** Búsqueda de una imagen real para colgarla como cuadro. */
+  imageSearch: ImageSearchSchema.optional(),
 });
 
 export const RoomSchema = z.object({
@@ -67,6 +91,8 @@ export const RoomSchema = z.object({
   pieces: z.array(PieceSchema).max(LIMITS.maxPiecesPerRoom),
   /** Obligatorio en modo biography, por ejemplo "1879–1905". */
   period: z.string().min(1).max(40).optional(),
+  /** Cuadro principal de la sala. */
+  imageSearch: ImageSearchSchema.optional(),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -295,6 +321,8 @@ export type MuseumMode = z.infer<typeof MuseumModeSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Model = z.infer<typeof ModelSchema>;
 export type Glyph = z.infer<typeof GlyphShape>;
+export type ImageSearch = z.infer<typeof ImageSearchSchema>;
+export type ResolvedImage = z.infer<typeof ResolvedImageSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
 export type Room = z.infer<typeof RoomSchema>;

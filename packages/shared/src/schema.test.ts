@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { sampleMuseum } from "./mock";
 import {
   GenerateMuseumRequestSchema,
+  ImageSearchSchema,
+  ResolvedImageSchema,
   ImprovePromptRequestSchema,
   LIMITS,
   MuseumSchema,
@@ -238,5 +240,28 @@ describe("GenerateMuseumRequestSchema", () => {
   it("improve-prompt request does not accept images", () => {
     const parsed = ImprovePromptRequestSchema.parse({ prompt: "x", images: [image] });
     expect(parsed).not.toHaveProperty("images");
+  });
+});
+
+describe("image search contract", () => {
+  it("accepts imageSearch on rooms and pieces", () => {
+    const search = { wikiTitle: "Batalla de Carabobo (1821)", commonsQuery: "Carabobo Tovar", lang: "es" };
+    const m = museum({ rooms: [room("a", { imageSearch: search, pieces: [piece("p", { imageSearch: search })] })] });
+    expect(issues(m)).toEqual([]);
+    expect(MuseumSchema.parse(m).rooms[0].imageSearch).toEqual(search);
+  });
+
+  it("rejects an invalid lang and oversized titles", () => {
+    expect(ImageSearchSchema.safeParse({ lang: "esp" }).success).toBe(false);
+    expect(ImageSearchSchema.safeParse({ wikiTitle: "x".repeat(121) }).success).toBe(false);
+  });
+
+  it("validates a resolved image", () => {
+    const ok = {
+      src: "/api/image/file?u=x", width: 960, height: 600, title: "t", artist: "a",
+      license: "Public domain", sourceUrl: "https://commons.wikimedia.org/wiki/File:X.jpg", kind: "painting",
+    };
+    expect(ResolvedImageSchema.safeParse(ok).success).toBe(true);
+    expect(ResolvedImageSchema.safeParse({ ...ok, kind: "video" }).success).toBe(false);
   });
 });
