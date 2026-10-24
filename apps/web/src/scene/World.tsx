@@ -3,6 +3,11 @@ import { lazy, Suspense, useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
+import { palaceKey } from '../memory/model'
+import { IntroCamera } from '../intro/IntroCamera'
+import { HideDuringIntro, Reveal } from '../intro/Reveal'
+import { beginIntro } from '../intro/store'
+import { corridorKey } from '../intro/timeline'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { ArisCompanion } from './ArisCompanion'
 import { AtmosphereController } from './AtmosphereController'
@@ -46,8 +51,23 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
   )
 }
 
+// ?intro=0 la desactiva, ?intro=1 la fuerza; ?introAt=<s> congela el reloj (capturas).
+function startIntro(layout: PalaceLayout) {
+  const q = new URLSearchParams(window.location.search)
+  const flag = q.get('intro')
+  const at = Number(q.get('introAt'))
+  const palace = useStore.getState().palace
+  beginIntro(layout, {
+    key: palace ? palaceKey(palace) : layout.rooms.map((r) => r.id).join('|'),
+    force: flag === '1' ? 'on' : flag === '0' ? 'off' : null,
+    reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+    frozenAt: q.get('introAt') !== null && Number.isFinite(at) ? at : null,
+  })
+}
+
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
+  useMemo(() => startIntro(layout), [layout]) // INTRO: debe decidirse antes del primer frame
   const unlockedDoors = useStore((s) => s.unlockedDoors)
   const freeExplore = useStore((s) => s.freeExplore)
   const palettes = useMemo(
@@ -83,7 +103,8 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         const isOpen = freeExplore || (door ? !!unlockedDoors[door.id] : true)
 
         return (
-          <group key={i}>
+          <Reveal key={i} id={corridorKey(i)} mode="rise" /* INTRO */>
+          <group>
             <AssetFloor box={c.floor} color={scene.corridor.floor} />
             {c.walls.map((w, j) => (
               <AssetWall key={j} box={w} color={scene.corridor.wall} />
@@ -94,15 +115,19 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
             {/* Arco abierto al final del pasillo que conecta con la siguiente cámara */}
             <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isOpen={true} />
           </group>
+          </Reveal>
         )
       })}
+      <IntroCamera layout={layout} />
       <Player layout={layout} />
       {hasDiorama && (
         <Suspense fallback={null}>
           <DioramaRuntime layout={layout} theme={theme} />
         </Suspense>
       )}
-      <ArisCompanion />
+      <HideDuringIntro>
+        <ArisCompanion />
+      </HideDuringIntro>
     </Canvas>
   )
 }

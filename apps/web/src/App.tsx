@@ -31,6 +31,8 @@ if (demo !== null) {
   applyDemoJump()
 }
 import { DioramaOverlay } from './diorama/DioramaOverlay'
+import { IntroOverlay } from './intro/IntroOverlay'
+import { useIntro } from './intro/store'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
 
@@ -38,14 +40,17 @@ export default function App() {
   const screen = useStore((s) => s.screen)
   const layout = useStore((s) => s.layout)
 
+  const introOn = useIntro((s) => s.phase === 'idle' || (s.phase === 'playing' && !s.reduced)) // intro: oculta el HUD hasta que el vuelo termina
+
   if (screen === 'palace' && layout) {
     return (
-      <div className="palace">
+      <div className={introOn ? 'palace intro-on' : 'palace'}>
         <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: DEFAULT_THEME.scene.background }} />}>
           <World layout={layout} />
         </Suspense>
         <Hud layout={layout} />
         <DioramaOverlay />
+        <IntroOverlay />
       </div>
     )
   }
