@@ -4,6 +4,7 @@ import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
+import { ArisCompanion } from './ArisCompanion'
 import { DecayField } from './Decay'
 import { Player } from './Player'
 import { Room } from './Room'
@@ -99,6 +100,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
           <DioramaRuntime layout={layout} theme={theme} />
         </Suspense>
       )}
+      <ArisCompanion />
     </Canvas>
   )
 }

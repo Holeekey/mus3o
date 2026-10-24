@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { earnedRoomKeys } from './palace/keys'
 import { buildLayout, type PalaceLayout } from './palace/layout'
+import { evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
 import { dueIds, palaceKey, strengthOf } from './memory/model'
 import { nowMs, useMemory } from './memory/store'
@@ -37,6 +38,8 @@ type State = {
   roomKeys: Record<string, true>
   /** Sala cuya llave se acaba de ganar, para avisarlo en el HUD. */
   lastKeyRoomId: string | null
+  arisMessage: string | null
+  arisPromptOpen: boolean
 
   enterPalace: (palace: Museum, sourceText?: string | null) => void
   resume: () => void
@@ -49,7 +52,10 @@ type State = {
   unlockDoor: (doorId: string) => void
   setFreeExplore: (on: boolean) => void
   recordExam: (id: string, result: ExamResult) => void
-  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId'>>) => void
+  askAris: (query: string) => void
+  setArisPromptOpen: (open: boolean) => void
+  closeArisDialog: () => void
+  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId' | 'arisMessage' | 'arisPromptOpen'>>) => void
 }
 
 type Progress = Pick<State, 'palace' | 'memorized' | 'exam' | 'roomKeys' | 'lastKeyRoomId'>
@@ -98,6 +104,8 @@ export const useStore = create<State>()(
       freeExplore: true,
       roomKeys: {},
       lastKeyRoomId: null,
+      arisMessage: null,
+      arisPromptOpen: false,
 
       enterPalace: (palace, sourceText) =>
         set({
@@ -156,6 +164,22 @@ export const useStore = create<State>()(
           const exam = { ...s.exam, [id]: result }
           return { exam, ...withEarnedKeys(s, s.memorized, exam) }
         }),
+      askAris: (query) =>
+        set((s) => {
+          const res = evaluateArisQuery(query, {
+            palace: s.palace,
+            currentRoomId: s.currentRoomId,
+            memorized: s.memorized,
+            hasKey: s.hasKey,
+            unlockedDoors: s.unlockedDoors,
+            roomKeys: s.roomKeys,
+            mode: s.mode,
+          })
+          speakAris(res.text)
+          return { arisMessage: res.text, arisPromptOpen: false }
+        }),
+      setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
+      closeArisDialog: () => set({ arisMessage: null }),
       set: (patch) => set(patch),
     }),
     {

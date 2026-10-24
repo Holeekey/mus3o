@@ -14,6 +14,7 @@ import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
 import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
+import { ArisDialog, ArisPrompt } from './ArisDialog'
 import { Minimap } from './Minimap'
 import { SourceBlock } from './SourceBlock'
 
@@ -235,8 +236,26 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       ))}
 
       <p className="hud-legend">
-        <kbd>W A S D</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar · <kbd>Esc</kbd> pausa
+        <kbd>W A S D</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>T</kbd> hablar con Aris · <kbd>Mouse</kbd> mirar · <kbd>Esc</kbd> pausa
       </p>
+
+      {locked && (
+        <button
+          type="button"
+          className="aris-trigger-btn"
+          onClick={() => {
+            useStore.getState().setArisPromptOpen(true)
+            pointerLock.unlock()
+          }}
+          title="Consultar a Aris (T)"
+        >
+          <span>🤖 Aris</span>
+          <kbd>T</kbd>
+        </button>
+      )}
+
+      <ArisDialog />
+      <ArisPrompt />
 
       {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
         <div className="pause">

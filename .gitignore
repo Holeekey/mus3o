@@ -7,6 +7,8 @@ dist
 .DS_Store
 
 # Config local de cada dev (no compartida)
+*.backup.*
+*.backup.glb
 .claude/*
 !.claude/skills/
 .claude/skills/*
@@ -14,6 +16,7 @@ dist
 !.claude/skills/assets/
 !.claude/skills/architecture/
 !.claude/skills/3d-validation/
+!.claude/skills/gltf-compression/
 CLAUDE.local.md
 
 # Caché de dependencias de Vite
