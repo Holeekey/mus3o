@@ -3,6 +3,7 @@ import { sampleMuseum } from "./mock";
 import {
   GenerateMuseumRequestSchema,
   ImprovePromptRequestSchema,
+  LIMITS,
   MuseumSchema,
   findImageAssignmentIssues,
   type Museum,
@@ -209,8 +210,8 @@ describe("GenerateMuseumRequestSchema", () => {
     expect(parsed.images).toHaveLength(1);
   });
 
-  it("maps the legacy { topic } request to exploration mode", () => {
-    expect(GenerateMuseumRequestSchema.parse({ topic: "Imperio Romano" })).toEqual({
+  it("applies defaults for mode, sources and images", () => {
+    expect(GenerateMuseumRequestSchema.parse({ prompt: "Imperio Romano" })).toEqual({
       mode: "exploration",
       prompt: "Imperio Romano",
       sources: [],
@@ -228,8 +229,8 @@ describe("GenerateMuseumRequestSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects more than 50,000 characters of text in total", () => {
-    const sources = [{ name: "a.txt", kind: "txt" as const, text: "a".repeat(49_999) }];
+  it("rejects more text in total than LIMITS.maxNotesChars", () => {
+    const sources = [{ name: "a.txt", kind: "txt" as const, text: "a".repeat(LIMITS.maxNotesChars - 1) }];
     const result = GenerateMuseumRequestSchema.safeParse({ prompt: "ab", sources });
     expect(result.success).toBe(false);
   });

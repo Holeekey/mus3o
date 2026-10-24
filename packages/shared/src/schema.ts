@@ -1,24 +1,43 @@
 import { z } from "zod";
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{3,8}$/, "color hex inválido");
-const vec3 = z.tuple([z.number(), z.number(), z.number()]);
+// Coordenadas y medidas acotadas: el modelo viene de la IA y no debe poder colgar el navegador.
+const coord = z.number().finite().min(-5).max(5);
+const vec3 = z.tuple([coord, coord, coord]);
+const rot3 = z.tuple([
+  z.number().finite().min(-7).max(7),
+  z.number().finite().min(-7).max(7),
+  z.number().finite().min(-7).max(7),
+]);
 
-export const MAX_INPUT_CHARS = 50_000;
-export const MAX_INPUT_IMAGES = 6;
+/** Límites de contenido compartidos por el server, los parsers y el layout. */
+export const LIMITS = {
+  maxNotesChars: 20_000,
+  maxRooms: 8,
+  maxPiecesPerRoom: 12,
+  maxTitle: 80,
+  maxText: 400,
+  maxImages: 6,
+} as const;
 
 export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "education"]);
 
 export const PartSchema = z.object({
   shape: z.enum(["box", "cylinder", "sphere", "cone"]),
-  args: z.array(z.number()).max(8).default([]),
+  // Medidas en metros (≤ 4) o número de segmentos (≤ 32); se vuelve a acotar al renderizar.
+  args: z.array(z.number().finite().min(0).max(32)).max(8).default([]),
   pos: vec3.default([0, 0, 0]),
-  rot: vec3.default([0, 0, 0]),
+  rot: rot3.default([0, 0, 0]),
   color: hex,
 });
+
+/** Forma geométrica simple: la usan los apuntes parseados en el cliente, sin IA. */
+export const GlyphShape = z.enum(["icosahedron", "octahedron", "dodecahedron", "tetrahedron", "torus", "cone", "box", "sphere"]);
 
 export const ModelSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("catalog"), id: z.string().min(1) }),
   z.object({ type: z.literal("procedural"), parts: z.array(PartSchema).min(1).max(40) }),
+  z.object({ type: z.literal("glyph"), shape: GlyphShape }),
 ]);
 
 export const QuizSchema = z.object({
@@ -29,12 +48,12 @@ export const QuizSchema = z.object({
 
 export const PieceSchema = z.object({
   id: z.string().min(1),
-  title: z.string().min(1),
-  text: z.string(),
-  fact: z.string(),
-  /** [x, y, z] local a la sala. y = altura de la base de la pieza (alto del pedestal). */
-  position: vec3,
-  model: ModelSchema,
+  title: z.string().min(1).max(LIMITS.maxTitle),
+  text: z.string().max(LIMITS.maxText),
+  fact: z.string().max(LIMITS.maxText).default(""),
+  /** Opcional: el layout procedural del frontend decide la ubicación final. */
+  position: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]).optional(),
+  model: ModelSchema.optional(),
   /** Imagen subida por el usuario que la IA asignó a este cuadro. */
   image: z.object({ imageId: z.string().min(1) }).optional(),
   /** Obligatorio en modo quiz. */
@@ -43,9 +62,9 @@ export const PieceSchema = z.object({
 
 export const RoomSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string(),
-  pieces: z.array(PieceSchema).min(1).max(12),
+  name: z.string().min(1).max(LIMITS.maxTitle),
+  description: z.string().max(LIMITS.maxText).default(""),
+  pieces: z.array(PieceSchema).max(LIMITS.maxPiecesPerRoom),
   /** Obligatorio en modo biography, por ejemplo "1879–1905". */
   period: z.string().min(1).max(40).optional(),
 });
@@ -63,12 +82,14 @@ export const MuseumGraphSchema = z.object({
 });
 
 const MuseumObjectSchema = z.object({
-  title: z.string().min(1),
-  theme: z.object({
-    palette: z.array(hex).min(2).max(8),
-    ambience: z.string(),
-  }),
-  rooms: z.array(RoomSchema).min(1).max(8),
+  title: z.string().min(1).max(LIMITS.maxTitle),
+  theme: z
+    .object({
+      palette: z.array(hex).min(2).max(8),
+      ambience: z.string(),
+    })
+    .optional(),
+  rooms: z.array(RoomSchema).min(1).max(LIMITS.maxRooms),
   mode: MuseumModeSchema.optional(),
   /** Si falta, el frontend recorre las salas en el orden de `rooms`. */
   graph: MuseumGraphSchema.optional(),
@@ -225,7 +246,7 @@ export const SourceSchema = z.object({
   name: z.string().min(1).max(120),
   kind: z.enum(["docx", "xlsx", "csv", "txt"]),
   /** Texto ya extraído en el navegador: los archivos nunca llegan al servidor. */
-  text: z.string().max(MAX_INPUT_CHARS),
+  text: z.string().max(LIMITS.maxNotesChars),
 });
 
 export const InputImageSchema = z.object({
@@ -239,46 +260,31 @@ export const InputImageSchema = z.object({
 
 const RequestObjectSchema = z.object({
   mode: MuseumModeSchema.default("exploration"),
-  prompt: z.string().trim().min(1).max(2_000),
+  prompt: z.string().trim().min(1).max(LIMITS.maxNotesChars),
   sources: z.array(SourceSchema).max(5).default([]),
-  images: z.array(InputImageSchema).max(MAX_INPUT_IMAGES).default([]),
+  images: z.array(InputImageSchema).max(LIMITS.maxImages).default([]),
 });
-
-/** Acepta el formato anterior `{ topic }` como `{ prompt: topic }`. */
-const fromLegacyTopic = (value: unknown) => {
-  if (value && typeof value === "object" && "topic" in value && !("prompt" in value)) {
-    const { topic, ...rest } = value as { topic: unknown };
-    return { ...rest, prompt: topic };
-  }
-  return value;
-};
 
 function checkTextLimit(request: { prompt: string; sources: { text: string }[] }, ctx: z.RefinementCtx) {
   const total = request.sources.reduce((sum, s) => sum + s.text.length, request.prompt.length);
-  if (total > MAX_INPUT_CHARS) {
+  if (total > LIMITS.maxNotesChars) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `el texto total supera ${MAX_INPUT_CHARS} caracteres`,
+      message: `el texto total supera ${LIMITS.maxNotesChars} caracteres`,
       path: ["sources"],
     });
   }
 }
 
-export const GenerateMuseumRequestSchema = z.preprocess(
-  fromLegacyTopic,
-  RequestObjectSchema.superRefine((request, ctx) => {
-    checkTextLimit(request, ctx);
-    const ids = request.images.map((i) => i.id);
-    if (new Set(ids).size !== ids.length) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ids de imagen duplicados", path: ["images"] });
-    }
-  }),
-);
+export const GenerateMuseumRequestSchema = RequestObjectSchema.superRefine((request, ctx) => {
+  checkTextLimit(request, ctx);
+  const ids = request.images.map((i) => i.id);
+  if (new Set(ids).size !== ids.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ids de imagen duplicados", path: ["images"] });
+  }
+});
 
-export const ImprovePromptRequestSchema = z.preprocess(
-  fromLegacyTopic,
-  RequestObjectSchema.omit({ images: true }).superRefine(checkTextLimit),
-);
+export const ImprovePromptRequestSchema = RequestObjectSchema.omit({ images: true }).superRefine(checkTextLimit);
 
 export const ImprovePromptResponseSchema = z.object({
   suggestions: z.array(z.string().min(1).max(200)).max(5),
@@ -288,6 +294,7 @@ export const ImprovePromptResponseSchema = z.object({
 export type MuseumMode = z.infer<typeof MuseumModeSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Model = z.infer<typeof ModelSchema>;
+export type Glyph = z.infer<typeof GlyphShape>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
 export type Room = z.infer<typeof RoomSchema>;
