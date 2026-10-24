@@ -34,7 +34,6 @@ services:
   - type: web
     name: mus3o
     runtime: static
-    region: oregon
     branch: main
     buildCommand: npm ci --include=dev && npm run build -w @mus3o/shared && npm run build -w @mus3o/web
     staticPublishPath: apps/web/dist
