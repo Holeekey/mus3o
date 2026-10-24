@@ -117,7 +117,8 @@ export function buildCenterpieceGeometry(cp: CenterpieceSpec, seed: number): Bui
     case 'mitochondrion':
     case 'neuron': {
       const base = merge([cyl(0.62, 0.72, 0.6, 12, 0, 0, 0), cyl(0.78, 0.78, 0.1, 12, 0, 0.6, 0)])
-      const g = fitted(cp.kind, seed, { h: 2.1, fx: 1.2, fz: 1.2, radial: 1.2 }, [0, 0, 0])
+      const r = cp.kind === 'neuron' ? 1.5 : 1.2
+      const g = fitted(cp.kind, seed, { h: 2.1, fx: r, fz: r, radial: r }, [0, 0, 0])
       return { base, top: { geometry: g, y: 0.7 } }
     }
     case 'ship': {

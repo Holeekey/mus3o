@@ -173,7 +173,7 @@ const SPEC: Record<CenterpieceKind, { footprint: [number, number]; height: numbe
   organ: { footprint: [2.2, 2.0], height: 3.1 },
   nucleus: { footprint: [2.4, 2.4], height: 3.0 },
   mitochondrion: { footprint: [2.6, 2.0], height: 2.7 },
-  neuron: { footprint: [2.6, 2.6], height: 3.2 },
+  neuron: { footprint: [3.0, 3.0], height: 3.2 },
   ship: { footprint: [3.0, 1.4], height: 3.0 },
   temple: { footprint: [2.4, 2.4], height: 3.0 },
   rock: { footprint: [2.2, 2.2], height: 2.4 },
