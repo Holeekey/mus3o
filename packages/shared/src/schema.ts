@@ -82,6 +82,8 @@ export const PieceSchema = z.object({
   title: z.string().min(1).max(LIMITS.maxTitle),
   text: z.string().max(LIMITS.maxText),
   fact: z.string().max(LIMITS.maxText).default(""),
+  /** Anclaje mnemotécnico visual/surrealista según el Método de Loci. */
+  mnemonicCue: z.string().max(LIMITS.maxText).optional(),
   /** Opcional: el layout procedural del frontend decide la ubicación final. */
   position: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]).optional(),
   model: ModelSchema.optional(),
@@ -97,6 +99,15 @@ export const PieceSchema = z.object({
   unverified: z.boolean().optional(),
 });
 
+export const RoomThemeSchema = z.enum(["cyberpunk", "ancient", "organic", "void", "cathedral"]);
+
+export const MonumentTypeSchema = z.enum(["torus", "dodecahedron", "ring_system", "crystal"]);
+
+export const RoomPaletteSchema = z.object({
+  primary: hex,
+  fogColor: hex,
+});
+
 export const RoomSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(LIMITS.maxTitle),
@@ -106,6 +117,12 @@ export const RoomSchema = z.object({
   period: z.string().min(1).max(40).optional(),
   /** Cuadro principal de la sala. */
   imageSearch: ImageSearchSchema.optional(),
+  /** Tema visual sensorial para la sala. */
+  theme: RoomThemeSchema.optional(),
+  /** Paleta ambiental (primario y niebla) para interpolación en WebGL. */
+  palette: RoomPaletteSchema.optional(),
+  /** Monumento escultórico central de la sala. */
+  monument: MonumentTypeSchema.optional(),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -332,6 +349,9 @@ export const ImprovePromptResponseSchema = z.object({
   improvedPrompt: z.string().min(1).max(2_000),
 });
 
+export type RoomTheme = z.infer<typeof RoomThemeSchema>;
+export type MonumentType = z.infer<typeof MonumentTypeSchema>;
+export type RoomPaletteDescriptor = z.infer<typeof RoomPaletteSchema>;
 export type MuseumMode = z.infer<typeof MuseumModeSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Model = z.infer<typeof ModelSchema>;

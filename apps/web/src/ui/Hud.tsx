@@ -37,7 +37,14 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
       <div className="card-inner">
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
-        {concept.fact && <p className="card-meta">{concept.fact}</p>}
+        {concept.mnemonicCue ? (
+          <div className="card-cue">
+            <span className="card-cue-badge">Anclaje Mnemotécnico</span>
+            <p className="card-cue-text">{concept.mnemonicCue}</p>
+          </div>
+        ) : concept.fact ? (
+          <p className="card-meta">{concept.fact}</p>
+        ) : null}
         <SourceBlock concept={concept} />
         {image && (
           <figure className="card-figure">
@@ -82,6 +89,9 @@ function ExamCard({ concept, palette }: { concept: Concept; palette: RoomPalette
           <form onSubmit={submit}>
             <h2>¿Qué concepto estaba en este pedestal?</h2>
             {concept.text && <p className="card-body">Pista del contenido: “{concept.text}”</p>}
+            {hint && concept.mnemonicCue && (
+              <p className="card-meta">Anclaje visual: “{concept.mnemonicCue}”</p>
+            )}
             {hint && <p className="card-meta">Empieza con “{concept.title.slice(0, 2)}…” · {concept.title.length} letras</p>}
             <input autoFocus value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Escribe tu respuesta" maxLength={120} aria-label="Tu respuesta" />
             <div className="card-actions">

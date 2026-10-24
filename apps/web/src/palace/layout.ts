@@ -1,4 +1,4 @@
-import { planRoomGrid, type Glyph, type ImageSearch, type Museum, type Piece } from '@mus3o/shared'
+import { planRoomGrid, type Glyph, type ImageSearch, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -30,13 +30,15 @@ export type RoomLayout = {
   w: number
   d: number
   height: number
-  monument: Monument
+  monument: Monument | MonumentType
   doors: Side[]
   walls: Box[]
   pedestals: PedestalLayout[]
   paintingSlots: PaintingSlot[]
   /** Búsqueda del cuadro principal de la sala. */
   imageSearch?: ImageSearch
+  theme?: RoomTheme
+  palette?: RoomPaletteDescriptor
 }
 
 export type CorridorLayout = { floor: Box; walls: Box[] }
@@ -232,18 +234,20 @@ export function buildLayout(palace: Museum): PalaceLayout {
       id: room.id,
       index: i,
       title: room.name,
-      color: ROOM_COLORS[i % ROOM_COLORS.length],
+      color: room.palette?.primary || ROOM_COLORS[i % ROOM_COLORS.length],
       x,
       z,
       w,
       d,
       height,
-      monument: MONUMENTS[i % MONUMENTS.length],
+      monument: room.monument || MONUMENTS[i % MONUMENTS.length],
       doors: doorsOf[i],
       walls: roomWalls(x, z, w, d, height, doorsOf[i]),
       pedestals,
       paintingSlots: paintingSlots(x, z, w, d, doorsOf[i]),
       imageSearch: room.imageSearch,
+      theme: room.theme,
+      palette: room.palette,
     }
   })
 

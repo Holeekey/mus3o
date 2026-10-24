@@ -353,6 +353,29 @@ kbd {
 .card h2.fail { color: var(--danger); }
 .card-body { margin: 0 0 10px; color: var(--ink); line-height: 1.55; }
 .card-meta { margin: 0 0 10px; color: var(--ink-muted); font-size: 0.95rem; }
+.card-cue {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--wall) 25%, #fff);
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+}
+.card-cue-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+.card-cue-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--ink);
+  line-height: 1.45;
+}
 .card-source {
   margin: 12px 0 0;
   padding: 8px 10px 9px;

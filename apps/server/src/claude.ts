@@ -4,6 +4,7 @@ import {
   findImageAssignmentIssues,
   ImprovePromptResponseSchema,
   MuseumSchema,
+  parseMus3oDSL,
   sampleMuseum,
   sanitizeRawSources,
   verifySources,
@@ -12,16 +13,36 @@ import {
   type ImprovePromptResponse,
   type Museum,
 } from "@mus3o/shared";
-import { cleanNotes, flowNotesText, flowPrompt, IMPROVE_SYSTEM_PROMPT, improvePrompt as improvePromptText, notesPrompt, SYSTEM_PROMPT, userPrompt } from "./prompts";
+import {
+  cleanNotes,
+  DSL_SYSTEM_PROMPT,
+  dslNotesPrompt,
+  dslUserPrompt,
+  flowNotesText,
+  flowPrompt,
+  IMPROVE_SYSTEM_PROMPT,
+  improvePrompt as improvePromptText,
+  notesPrompt,
+  SYSTEM_PROMPT,
+  userPrompt,
+} from "./prompts";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 let client: Anthropic | undefined;
 
-const stripFence = (raw: string) => raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
 function parseMuseum(raw: string): Museum {
   // Las citas largas se recortan antes de validar: lo que cuenta es que luego se verifiquen.
   return MuseumSchema.parse(sanitizeRawSources(JSON.parse(stripFence(raw))));
+}
+
+export function parseAdaptiveMuseum(raw: string, topic?: string): Museum {
+  const stripped = stripFence(raw);
+  if (stripped.includes("ROOM:") || stripped.startsWith("ROOM:")) {
+    return parseMus3oDSL(stripped, { title: topic });
+  }
+  return parseMuseum(raw);
 }
 
 /**
@@ -73,7 +94,7 @@ async function askForJson<T>(
       lastError = err;
       messages.push(
         { role: "assistant", content: text },
-        { role: "user", content: `El JSON no es válido (${String(err).slice(0, 500)}). Responde de nuevo solo con el JSON corregido.` },
+        { role: "user", content: `La respuesta no es válida (${String(err).slice(0, 500)}). Corrige el formato y responde de nuevo siguiendo las reglas estrictas.` },
       );
     }
   }
@@ -87,10 +108,16 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
     return { ...sampleMuseum, title: input.topic };
   }
-  const content = "notes" in input ? notesPrompt(input.notes) : userPrompt(input.topic);
-  // Los apuntes pueden traer hasta 8 salas × 12 piezas con modelos: necesita más salida.
-  const museum = await askForJson({ system: SYSTEM_PROMPT, content, maxTokens: "notes" in input ? 16000 : 8000 }, parseMuseum);
-  return "notes" in input ? attachSources(museum, cleanNotes(input.notes)) : museum;
+  const isNotes = "notes" in input;
+  const content = isNotes ? dslNotesPrompt(input.notes) : dslUserPrompt(input.topic);
+  const topic = isNotes ? undefined : input.topic;
+
+  // El formato DSL reduce la longitud requerida a <2000 tokens garantizando baja latencia
+  const museum = await askForJson(
+    { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
+    (raw) => parseAdaptiveMuseum(raw, topic),
+  );
+  return isNotes ? attachSources(museum, cleanNotes(input.notes)) : museum;
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */

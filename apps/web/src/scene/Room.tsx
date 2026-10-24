@@ -10,6 +10,7 @@ import { DecayWrap, FadingFloor, WallFlakes } from './Decay'
 import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import { AssetWall } from './DungeonAssets'
+import { ProceduralMonument } from './Monument'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 
@@ -47,28 +48,6 @@ function Moldings({ box, color, cornice, plinth }: { box: Box; color: string; co
 // Yeso mate: el material de todo objeto, pedestal y monumento.
 function Plaster({ theme, color }: { theme: Theme; color?: string }) {
   return <meshStandardMaterial color={color ?? theme.scene.object.color} roughness={theme.scene.object.roughness} flatShading />
-}
-
-function Monument({ room, theme }: { room: RoomLayout; theme: Theme }) {
-  const ref = useRef<Mesh>(null)
-  useFrame((_, dt) => {
-    if (ref.current) {
-      ref.current.rotation.y += dt * 0.25
-      ref.current.rotation.x += dt * 0.1
-    }
-  })
-  return (
-    <group position={[room.x, 0, room.z]}>
-      <mesh position={[0, 0.3, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.1, 1.3, 0.6, theme.scene.pedestal.segments]} />
-        <meshStandardMaterial color={theme.scene.pedestal.color} roughness={theme.scene.object.roughness} flatShading />
-      </mesh>
-      <mesh ref={ref} position={[0, 2.2, 0]} castShadow receiveShadow>
-        <ShapeGeometry shape={room.monument} size={1} />
-        <Plaster theme={theme} />
-      </mesh>
-    </group>
-  )
 }
 
 // El título de la sala va como inscripción en un muro sin puerta, mirando al interior.
@@ -201,7 +180,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       {paintings.map((a) => (
         <Painting key={a.key} slot={a.slot} search={a.search} palette={palette} theme={theme} />
       ))}
-      <Monument room={room} theme={theme} />
+      <ProceduralMonument room={room} theme={theme} />
       {room.pedestals.map((p) => (
         <Pedestal key={p.concept.id} p={p} palette={palette} theme={theme} />
       ))}
