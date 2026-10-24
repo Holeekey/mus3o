@@ -43,6 +43,7 @@ function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
 export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout; theme?: Theme }) {
   const { scene } = theme
   const unlockedDoors = useStore((s) => s.unlockedDoors)
+  const freeExplore = useStore((s) => s.freeExplore)
   const palettes = useMemo(
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
@@ -70,7 +71,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         const nearA = !door || Math.hypot(door.x - endA[0], door.z - endA[2]) <= Math.hypot(door.x - endB[0], door.z - endB[2])
         const doorPosA = nearA ? endA : endB
         const doorPosB = nearA ? endB : endA
-        const isOpen = door ? !!unlockedDoors[door.id] : true
+        const isOpen = freeExplore || (door ? !!unlockedDoors[door.id] : true)
 
         return (
           <group key={i}>

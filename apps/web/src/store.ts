@@ -25,6 +25,8 @@ type State = {
   locked: boolean
   hasKey: boolean
   unlockedDoors: Record<string, true>
+  /** Exploración libre: todas las puertas abiertas, sin llaves. Preferencia del usuario. */
+  freeExplore: boolean
   /** Llave de cada sala ganada al memorizar todas sus piezas. No se pierde al desmarcar. */
   roomKeys: Record<string, true>
   /** Sala cuya llave se acaba de ganar, para avisarlo en el HUD. */
@@ -37,6 +39,7 @@ type State = {
   toggleMemorized: (id: string) => void
   pickupKey: () => void
   unlockDoor: (doorId: string) => void
+  setFreeExplore: (on: boolean) => void
   recordExam: (id: string, result: ExamResult) => void
   set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId'>>) => void
 }
@@ -76,6 +79,7 @@ export const useStore = create<State>()(
       locked: false,
       hasKey: false,
       unlockedDoors: {},
+      freeExplore: true,
       roomKeys: {},
       lastKeyRoomId: null,
 
@@ -101,6 +105,7 @@ export const useStore = create<State>()(
       setMode: (mode) => set({ mode, openId: null, exam: {} }),
       pickupKey: () => set({ hasKey: true }),
       unlockDoor: (doorId) => set((s) => ({ unlockedDoors: { ...s.unlockedDoors, [doorId]: true } })),
+      setFreeExplore: (freeExplore) => set({ freeExplore }),
       toggleMemorized: (id) =>
         set((s) => {
           const memorized = { ...s.memorized }
@@ -124,20 +129,22 @@ export const useStore = create<State>()(
         memorized: s.memorized,
         roomKeys: s.roomKeys,
         unlockedDoors: s.unlockedDoors,
+        freeExplore: s.freeExplore,
       }),
       // Lo guardado puede estar corrupto o venir de otra versión: se valida antes de usarlo.
       merge: (persisted, current) => {
         const p = persisted as
-          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown }
+          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown; freeExplore?: unknown }
           | undefined
+        const freeExplore = typeof p?.freeExplore === 'boolean' ? p.freeExplore : current.freeExplore
         const palace = MuseumSchema.safeParse(p?.palace)
-        if (!palace.success) return current
+        if (!palace.success) return { ...current, freeExplore }
         const record = (value: unknown) =>
           value && typeof value === 'object' ? (value as Record<string, true>) : {}
         const memorized = record(p?.memorized)
         // Las llaves guardadas se completan con las que corresponden al progreso guardado.
         const roomKeys = { ...record(p?.roomKeys), ...earnedRoomKeys(palace.data, memorized, {}) }
-        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors) }
+        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore }
       },
     },
   ),
@@ -145,4 +152,9 @@ export const useStore = create<State>()(
 
 export function allConcepts(palace: Museum | null) {
   return palace?.rooms.flatMap((r) => r.pieces) ?? []
+}
+
+/** Una puerta está abierta si se desbloqueó con la llave o si se explora libremente. */
+export function isDoorOpen(s: { freeExplore: boolean; unlockedDoors: Record<string, true> }, doorId: string) {
+  return s.freeExplore || !!s.unlockedDoors[doorId]
 }

@@ -6,8 +6,9 @@ import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
-import { allConcepts, useStore } from '../store'
+import { allConcepts, useStore, isDoorOpen } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
+import { FreeExploreToggle } from './FreeExploreToggle'
 import { Minimap } from './Minimap'
 
 function wallVars(p: RoomPalette) {
@@ -113,6 +114,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const hasKey = useStore((s) => s.hasKey)
   const unlockedDoors = useStore((s) => s.unlockedDoors)
+  const freeExplore = useStore((s) => s.freeExplore)
+  const setFreeExplore = useStore((s) => s.setFreeExplore)
+  const doorOpen = (id: string) => isDoorOpen({ freeExplore, unlockedDoors }, id)
   const roomKeys = useStore((s) => s.roomKeys)
   const lastKeyRoomId = useStore((s) => s.lastKeyRoomId)
   const setState = useStore((s) => s.set)
@@ -140,14 +144,14 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   }, [lastKeyRoomId, setState])
 
   const focusedDoor = layout.doors.find((d) => d.id === focusedDoorId)
-  const doorLocked = !!focusedDoor && !unlockedDoors[focusedDoor.id]
+  const doorLocked = !!focusedDoor && !doorOpen(focusedDoor.id)
   const doorOpenable = !!focusedDoor && canOpenDoor(focusedDoor, hasKey, roomKeys)
   const doorRoom = palace?.rooms.find((r) => r.id === focusedDoor?.fromRoomId)
   const doorMissing = doorRoom ? remainingToMemorize(doorRoom, memorized, exam) : 0
   const keyRoomName = (id: string | null) => palace?.rooms.find((r) => r.id === id)?.name ?? ''
   // La llave de la sala actual se muestra mientras le quede alguna compuerta por abrir.
   const currentRoomKey =
-    !!roomKeys[room.id] && layout.doors.some((d) => d.fromRoomId === room.id && !unlockedDoors[d.id])
+    !!roomKeys[room.id] && layout.doors.some((d) => d.fromRoomId === room.id && !doorOpen(d.id))
 
   return (
     <div className="hud">
@@ -191,7 +195,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
           )}
         </p>
       )}
-      {locked && (!focusedDoorId || unlockedDoors[focusedDoorId]) && focusedId && !openId && (
+      {locked && (!focusedDoorId || doorOpen(focusedDoorId)) && focusedId && !openId && (
         <p className="hint">
           <kbd>E</kbd>{' '}
           {focusedKind === 'key'
@@ -233,6 +237,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
             </div>
+            <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
           </div>
         </div>
       )}
