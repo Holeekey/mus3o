@@ -101,10 +101,12 @@ export function Painting({
   const flat = (
     <mesh position={[0, 0, WALL_Z + 0.0505]} receiveShadow>
       <planeGeometry args={[w, h]} />
+      {/* key distinta por variante: three.js compila el shader sin textura si se reutiliza el
+          material del placeholder y solo se le asigna `map` después (el lienzo queda negro). */}
       {hasTexture && activeTexture ? (
-        <meshStandardMaterial map={activeTexture} roughness={1} />
+        <meshStandardMaterial key={activeTexture.uuid} map={activeTexture} roughness={1} />
       ) : (
-        <meshStandardMaterial color={matColor} roughness={0.95} />
+        <meshStandardMaterial key="placeholder" color={matColor} roughness={0.95} />
       )}
     </mesh>
   )
