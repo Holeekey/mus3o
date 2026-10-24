@@ -1,4 +1,4 @@
-import { planRoomGrid, type Diorama, type Glyph, type ImageSearch, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
+import { LIMITS, planRoomGrid, type Diorama, type Glyph, type ImageSearch, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -363,10 +363,10 @@ export function buildLayout(palace: Museum): PalaceLayout {
 // (`STREAM_CELL`, suficiente para cualquier sala permitida) y la posición solo depende del índice.
 // El layout final es el incremental (no se recalcula con `buildLayout`), así que nada salta al terminar.
 
-export const STREAM_COLS = 4
+export const STREAM_COLS = 3
 export const STREAM_CELL = 24
-/** Límites de un palacio en construcción lleno (8 salas): sol y sombras se encuadran una vez y no se mueven al crecer. */
-export const STREAM_MAX_BOUNDS = { minX: -11, maxX: (STREAM_COLS - 1) * STREAM_CELL + 11, minZ: -9, maxZ: STREAM_CELL + 9 }
+/** Límites de un palacio en construcción lleno (LIMITS.maxRooms salas): sol y sombras se encuadran una vez y no se mueven al crecer. */
+export const STREAM_MAX_BOUNDS = { minX: -11, maxX: (STREAM_COLS - 1) * STREAM_CELL + 11, minZ: -9, maxZ: (Math.ceil(LIMITS.maxRooms / STREAM_COLS) - 1) * STREAM_CELL + 9 }
 /** La IA aún no mandó la primera sala: el punto de entrada ya es el de cualquier primera sala. */
 const STREAM_SPAWN: PalaceLayout['spawn'] = { x: -4.5, z: -4.5, yaw: Math.atan2(-4.5, -4.5) }
 

@@ -197,7 +197,8 @@ export function IntroCamera({ layout }: { layout: PalaceLayout }) {
       finishIntro()
       return
     }
-    place(safeDt)
+    // El encuadre sigue al palacio en tiempo real aunque el equipo vaya lento (el reloj de la intro ya está acotado).
+    place(Math.min(Math.max(0, dt), 0.25))
   }, -100)
 
   return <IntroTitles layout={layout} />
