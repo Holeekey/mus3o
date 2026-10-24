@@ -193,3 +193,10 @@ Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el s
   no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
 - **Sin razonamiento**: `askForJson` desactiva `thinking` (se cobra como salida y generar JSON no lo necesita).
 - **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
+
+### DSL (tema y apuntes) y modelos 3D
+
+La línea `PIECE: <concepto> | <glifo> | <anclaje> | <searchKeyword>` ahora tiene la palabra clave como campo obligatorio en el prompt
+(con ejemplo; `-` si no hay objeto). `parseMus3oDSL` la toma siempre del **último** campo (un `|` dentro del anclaje ya no corre los
+campos) y la normaliza con `normalizeSearchKeyword`: minúsculas, sin tildes ni signos, máx. 3 palabras. Si no queda nada usable, la pieza
+conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre también en esta ruta.

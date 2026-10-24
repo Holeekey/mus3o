@@ -79,3 +79,26 @@ PIECE: P3 | tree | Raíces profundas
     expect(museum.graph?.edges.filter((e) => e.kind === "prerequisite")).toHaveLength(2);
   });
 });
+
+describe("searchKeyword en el DSL", () => {
+  const parse = (piece: string) =>
+    parseMus3oDSL(`ROOM: r1 | Sala | ancient | #112233 | #000000 | torus |\n${piece}`).rooms[0].pieces[0];
+
+  it("normaliza tildes, mayúsculas, signos y limita a 3 palabras", () => {
+    expect(parse("PIECE: A | box | cue | Hourglass.").searchKeyword).toBe("hourglass");
+    expect(parse('PIECE: A | box | cue | "Ancient  Roman   Shield Extra"').searchKeyword).toBe("ancient roman shield");
+    expect(parse("PIECE: A | box | cue | Péndulo").searchKeyword).toBe("pendulo");
+  });
+
+  it("ignora '-' o valores inservibles y deja el glifo", () => {
+    expect(parse("PIECE: A | box | cue | -").searchKeyword).toBeUndefined();
+    expect(parse("PIECE: A | box | cue | ¿¿ ??").searchKeyword).toBeUndefined();
+    expect(parse("PIECE: A | box | cue").searchKeyword).toBeUndefined();
+  });
+
+  it("un '|' dentro del anclaje no corre los campos", () => {
+    const p = parse("PIECE: A | box | idea | con barra | anvil");
+    expect(p.searchKeyword).toBe("anvil");
+    expect(p.mnemonicCue).toBe("idea con barra");
+  });
+});

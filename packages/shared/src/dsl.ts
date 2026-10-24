@@ -69,6 +69,26 @@ function sanitizeSlug(raw: string, fallback: string): string {
   return clean.length > 0 ? clean : fallback;
 }
 
+/**
+ * Normaliza la palabra clave de búsqueda que propone la IA: minúsculas, sin tildes ni signos, máx. 3 palabras.
+ * Devuelve undefined si no queda un sustantivo usable (así la pieza conserva su glifo).
+ */
+export function normalizeSearchKeyword(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const words = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((w) => w.length > 1)
+    .slice(0, 3);
+  const keyword = words.join(" ");
+  const parsed = SearchKeywordSchema.safeParse(keyword);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export interface ParseDslOptions {
   title?: string;
 }
@@ -160,9 +180,12 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       const concept = parts[0] || `Concepto ${pieceCountInRoom}`;
       const rawGlyph = (parts[1] || "box").toLowerCase();
       const glyphShape: Glyph = GLYPH_MAP[rawGlyph] ?? (GlyphShape.safeParse(rawGlyph).success ? (rawGlyph as Glyph) : "box");
-      const mnemonicCue = parts[2] || `Visualiza ${concept} anclado en este pedestal.`;
+      // Un "|" dentro del anclaje no debe correr los campos: la palabra clave es siempre el último campo.
+      const hasKeyword = parts.length > 3;
+      const cueParts = hasKeyword ? parts.slice(2, -1) : parts.slice(2);
+      const mnemonicCue = cueParts.filter(Boolean).join(" ") || `Visualiza ${concept} anclado en este pedestal.`;
 
-      const keyword = SearchKeywordSchema.safeParse(parts[3] ?? "");
+      const keyword = normalizeSearchKeyword(hasKeyword ? parts[parts.length - 1] : undefined);
 
       const pieceId = `${currentRoom.id}-p${pieceCountInRoom}`;
 
@@ -176,7 +199,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
           type: "glyph",
           shape: glyphShape,
         },
-        ...(keyword.success ? { searchKeyword: keyword.data } : {}),
+        ...(keyword ? { searchKeyword: keyword } : {}),
       };
 
       currentRoom.pieces.push(piece);
