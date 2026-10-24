@@ -7,6 +7,7 @@ import { DioramaScene } from '../diorama/DioramaScene'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import type { Diorama } from '@mus3o/shared'
 import { warmDioramaModel } from '../diorama/model'
+import { capTextureSize } from '../lib/capTexture'
 import { LitePortal } from './LitePortal'
 
 const FONT_BODY = '/fonts/HankenGrotesk.ttf'
@@ -59,8 +60,9 @@ function usePaintingTexture(url: string | undefined, aspect: number) {
       url,
       (t) => {
         if (dead) return t.dispose()
+        capTextureSize(t)
         t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 8
+        t.anisotropy = 4
         // recorte tipo "cover" para no deformar la obra
         const img = t.image as { width: number; height: number }
         const ia = img.width / img.height
