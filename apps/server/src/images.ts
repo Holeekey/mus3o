@@ -98,7 +98,7 @@ async function upstream<T>(url: string, accept: string, handle: (res: Response) 
   });
 }
 
-async function getJson(url: string): Promise<any | null> {
+export async function getJson(url: string): Promise<any | null> {
   return upstream(url, "application/json", async (res) => {
     if (res.status === 404) return null;
     if (!res.ok) throw new UpstreamError(String(res.status));
@@ -106,7 +106,7 @@ async function getJson(url: string): Promise<any | null> {
   });
 }
 
-const normalize = (s: string) =>
+export const normalize = (s: string) =>
   s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
 
 const stripTags = (html: unknown) =>
@@ -223,7 +223,7 @@ async function fromCommons(query: string): Promise<ResolvedImage | null> {
 const STOP = new Set(
   "a al con de del el en la las lo los por para que se sin sobre su un una y o the of and in on to for".split(" "),
 );
-const words = (s: string) => normalize(s).replace(/[^a-z0-9ñ]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w));
+export const words = (s: string) => normalize(s).replace(/[^a-z0-9ñ]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w));
 
 /** Palabras abstractas que nunca son un artículo con imagen útil ("Fecha", "Consecuencia"...). */
 const GENERIC_WORDS = new Set(
@@ -244,7 +244,7 @@ export function genericKind(title: string): "strict" | "weak" | null {
 }
 
 /** Búsqueda en Wikipedia: el mejor resultado cuyo título comparte palabras significativas con la consulta. */
-async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
+export async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
   const q = [title, context].filter(Boolean).join(" ");
   const data = await getJson(
     `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=3&format=json`,

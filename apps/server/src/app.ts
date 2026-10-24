@@ -16,6 +16,7 @@ import {
 } from "@mus3o/shared";
 import { AiUnavailableError, digestSources, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
+import { infoRouter } from "./info";
 import { ttsRouter } from "./tts";
 import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
@@ -50,10 +51,11 @@ const jsonParserFor = (path: string) =>
   path === "/api/generate-museum" ? generateJson : path === "/api/digest-sources" ? digestJson : smallJson;
 app.use((req, res, next) => jsonParserFor(req.path)(req, res, next));
 // Las imágenes se piden por decenas al entrar a un museo: límite aparte y más alto.
-app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
+app.use(["/api/image", "/api/info"], rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
+app.use("/api", infoRouter);
 app.use("/api", ttsRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
