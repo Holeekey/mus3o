@@ -246,7 +246,8 @@ export function buildLayout(palace: Museum): PalaceLayout {
       d,
       height,
       monument: room.monument || MONUMENTS[i % MONUMENTS.length],
-      centerpiece: chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title), hasDiorama: !!room.diorama }),
+      // Sin hasDiorama: ahora todas las salas llevan cuadro vivo, así que ya no distingue nada.
+      centerpiece: chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title) }),
       doors: doorsOf[i],
       walls: roomWalls(x, z, w, d, height, doorsOf[i]),
       pedestals,
