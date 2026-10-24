@@ -2,8 +2,9 @@ import { Canvas } from '@react-three/fiber'
 import { useMemo } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
+import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { Player } from './Player'
-import { Room, Wall } from './Room'
+import { Room } from './Room'
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ layout, theme }: { layout: PalaceLayout; theme: Theme }) {
@@ -53,17 +54,28 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       {layout.rooms.map((r, i) => (
         <Room key={r.id} room={r} palette={palettes[i]} theme={theme} />
       ))}
-      {layout.corridors.map((c, i) => (
-        <group key={i}>
-          <mesh position={[c.floor.x, -0.05, c.floor.z]} receiveShadow>
-            <boxGeometry args={[c.floor.w, 0.1, c.floor.d]} />
-            <meshStandardMaterial color={scene.corridor.floor} flatShading roughness={1} />
-          </mesh>
-          {c.walls.map((w, j) => (
-            <Wall key={j} box={w} color={scene.corridor.wall} />
-          ))}
-        </group>
-      ))}
+      {layout.corridors.map((c, i) => {
+        const isHorizontal = c.floor.w > c.floor.d
+        const rotY = isHorizontal ? Math.PI / 2 : 0
+        const doorPosA: [number, number, number] = isHorizontal
+          ? [c.floor.x - c.floor.w / 2, 0, c.floor.z]
+          : [c.floor.x, 0, c.floor.z - c.floor.d / 2]
+        const doorPosB: [number, number, number] = isHorizontal
+          ? [c.floor.x + c.floor.w / 2, 0, c.floor.z]
+          : [c.floor.x, 0, c.floor.z + c.floor.d / 2]
+
+        return (
+          <group key={i}>
+            <AssetFloor box={c.floor} color={scene.corridor.floor} />
+            {c.walls.map((w, j) => (
+              <AssetWall key={j} box={w} color={scene.corridor.wall} />
+            ))}
+            {/* Puertas / arcos de conexión entre salas y pasillos */}
+            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} />
+            <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isGated={i % 2 === 1} />
+          </group>
+        )
+      })}
       <Player layout={layout} />
     </Canvas>
   )
