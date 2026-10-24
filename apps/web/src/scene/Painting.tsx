@@ -1,8 +1,8 @@
-import { Text } from '@react-three/drei'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
 import { creditLine, useResolvedImage } from '../lib/images'
+import { LabelPlate } from './LabelPlate'
 import type { PaintingSlot } from '../palace/layout'
 import type { RoomPalette, Theme } from '../theme'
 
@@ -117,17 +117,18 @@ export function Painting({
         </group>
       ))}
       <Suspense fallback={null}>
-        <Text
-          position={[0, bottom - 0.12, WALL_Z + 0.02]}
-          font={FONT_BODY}
-          fontSize={slot.main ? 0.095 : 0.075}
-          maxWidth={Math.max(slot.maxWidth + 0.4, 1.8)}
-          textAlign="center"
-          anchorY="top"
-          color={palette.ink}
-        >
-          {creditLine(image)}
-        </Text>
+        {/* Cartela de yeso bajo el cuadro: legible sobre cualquier pared. */}
+        <group position={[0, bottom - 0.22, WALL_Z + 0.03]}>
+          <LabelPlate
+            font={FONT_BODY}
+            fontSize={slot.main ? 0.085 : 0.07}
+            maxWidth={Math.max(slot.maxWidth, 1.6)}
+            surface={theme.ui.tokens.surface}
+            ink={theme.ui.tokens.ink}
+          >
+            {creditLine(image)}
+          </LabelPlate>
+        </group>
       </Suspense>
     </group>
     {diorama && (

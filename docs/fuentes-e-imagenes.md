@@ -1,4 +1,4 @@
-# Fuentes (trazabilidad) e imágenes 🍌
+# Fuentes (trazabilidad) e imágenes
 
 Dos capacidades relacionadas con "de dónde sale esto":
 

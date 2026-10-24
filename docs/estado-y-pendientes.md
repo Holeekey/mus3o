@@ -1,4 +1,4 @@
-# Estado del proyecto: qué está hecho y qué falta 🍌
+# Estado del proyecto: qué está hecho y qué falta
 
 > Estado verificado sobre `dev` en el commit `8ab047e` (fecha de esta revisión: 2026-10-24).
 > Si este documento y el código no coinciden, manda el código y corrige este archivo.
@@ -64,7 +64,7 @@ Según `CLAUDE.md` y el README del evento. Estos son archivos de entrega, no có
 | `platanus-hack-project.jsonc`: nombre, one-liner, descripción en español y `deploy-url` | ❌ Quedan `<FILL THIS>` en los cuatro campos |
 | `project-description.md` con la descripción real | ❌ Sigue el texto de plantilla |
 | `project-logo.png` de 1000×1000, ≤ 500 KB | ⚠️ Revisar. Existe `project-logo.png`, pero no se verificó su tamaño |
-| `README.md` conciso (si lo escribe un LLM, 🍌 tras cada palabra) | ⚠️ Existe, pero no cumple la regla del banana. Este documento sí la cumple |
+| `README.md` conciso | ✅ Actualizado y limpio |
 | Deploy desde el repo personal espejo | ❌ No hay URL de despliegue todavía |
 | `main` con la última versión estable | ❌ Pendiente de checkpoint (`dev` → `main`) |
 

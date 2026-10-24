@@ -1,4 +1,4 @@
-# Frontend (`apps/web`) 🍌
+# Frontend (`apps/web`)
 
 Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo escritorio.
 

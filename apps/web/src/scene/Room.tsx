@@ -1,4 +1,4 @@
-import { Billboard, Text } from '@react-three/drei'
+import { Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import type { Mesh, Object3D } from 'three'
@@ -68,19 +68,18 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
   const rotY = side === 'n' ? 0 : side === 's' ? Math.PI : side === 'e' ? -Math.PI / 2 : Math.PI / 2
   return (
     <Suspense fallback={null}>
-      <Text
-        position={pos}
-        rotation={[0, rotY, 0]}
-        font={FONT_DISPLAY}
-        fontSize={0.48}
-        color={palette.ink}
-        anchorY="middle"
-        maxWidth={Math.min(room.w, room.d) * 0.6}
-        textAlign="center"
-        letterSpacing={0.04}
-      >
-        {room.title}
-      </Text>
+      {/* Placa pintada con el pigmento de la sala: se lee sobre piedra oscura o fresco. */}
+      <group position={pos} rotation={[0, rotY, 0]}>
+        <LabelPlate
+          font={FONT_DISPLAY}
+          fontSize={0.42}
+          maxWidth={Math.min(room.w, room.d) * 0.6}
+          surface={palette.wall}
+          ink={palette.ink}
+        >
+          {room.title}
+        </LabelPlate>
+      </group>
     </Suspense>
   )
 }

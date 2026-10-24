@@ -6,6 +6,7 @@ import { Vector3 } from 'three'
 import type { Piece } from '@mus3o/shared'
 import { canOpenDoor } from '../palace/keys'
 import { handleDioramaKey, isDioramaActive } from '../diorama/dioramaStore'
+import { canListen } from '../lib/voice'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import { inExamScope, isDoorOpen, playerPose, useStore } from '../store'
@@ -57,15 +58,16 @@ export function Player({ layout }: { layout: PalaceLayout }) {
             s.pickupKey()
           }
           s.set({ openId: s.focusedId })
-          // En el examen hay que escribir, así que se libera el puntero.
-          if (inExamScope(s, s.focusedId) && !s.exam[s.focusedId]) controls.current?.unlock()
+          // Con dictado el puntero sigue bloqueado y se responde en voz alta; sin él hay que escribir.
+          if (inExamScope(s, s.focusedId) && !s.exam[s.focusedId] && !canListen()) controls.current?.unlock()
         }
       }
       if (e.code === 'KeyM' && s.mode === 'explore') {
         const id = s.openId ?? s.focusedId
         if (id) s.toggleMemorized(id)
       }
-      if (e.code === 'KeyT' && !s.arisPromptOpen) {
+      // Con la tarjeta de examen abierta no se consulta a Aris (T ya no se usa ahí; escribir es Y).
+      if (e.code === 'KeyT' && !s.arisPromptOpen && !(s.openId && inExamScope(s, s.openId))) {
         s.setArisPromptOpen(true)
         controls.current?.unlock()
       }

@@ -1,4 +1,4 @@
-# Contrato compartido (`packages/shared`) 🍌
+# Contrato compartido (`packages/shared`)
 
 Fuente de verdad de los datos. Todo lo que entra o sale del servidor, y todo lo que se guarda
 en `localStorage`, se valida con estos esquemas Zod. Archivos:

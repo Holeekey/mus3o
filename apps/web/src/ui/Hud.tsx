@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
-import { isCorrectAnswer } from '../palace/match'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
@@ -16,7 +15,9 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
+import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
+import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
 
 function wallVars(p: RoomPalette) {
@@ -63,56 +64,6 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
             <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
           </span>
         </div>
-      </div>
-    </aside>
-  )
-}
-
-function ExamCard({ concept, palette }: { concept: Concept; palette: RoomPalette }) {
-  const result = useStore((s) => s.exam[concept.id])
-  const recordExam = useStore((s) => s.recordExam)
-  const [answer, setAnswer] = useState('')
-  const [hint, setHint] = useState(false)
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!answer.trim()) return
-    recordExam(concept.id, isCorrectAnswer(answer, concept.title) ? 'ok' : 'fail')
-  }
-  const back = () => {
-    useStore.getState().set({ openId: null })
-    pointerLock.lock()
-  }
-
-  return (
-    <aside className="card card-exam" style={wallVars(palette)}>
-      <p className="card-tag">Modo examen</p>
-      <div className="card-inner">
-        {!result ? (
-          <form onSubmit={submit}>
-            <h2>¿Qué concepto estaba en este pedestal?</h2>
-            {concept.text && <p className="card-body">Pista del contenido: “{concept.text}”</p>}
-            {hint && concept.mnemonicCue && (
-              <p className="card-meta">Anclaje visual: “{concept.mnemonicCue}”</p>
-            )}
-            {hint && <p className="card-meta">Empieza con “{concept.title.slice(0, 2)}…” · {concept.title.length} letras</p>}
-            <input autoFocus value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Escribe tu respuesta" maxLength={120} aria-label="Tu respuesta" />
-            <div className="card-actions">
-              <button type="submit" className="btn btn-primary">Responder</button>
-              {!hint && <button type="button" className="btn btn-ghost" onClick={() => setHint(true)}>Ver pista</button>}
-            </div>
-          </form>
-        ) : (
-          <>
-            <h2 className={result === 'ok' ? 'ok' : 'fail'}>{result === 'ok' ? 'Recordado' : 'No era ese'}</h2>
-            <p className="card-body">
-              Respuesta: <strong>{concept.title}</strong>
-            </p>
-            <div className="card-actions">
-              <button className="btn btn-primary" onClick={back}>Seguir recorriendo</button>
-            </div>
-          </>
-        )}
       </div>
     </aside>
   )
@@ -246,6 +197,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         <ExamCard key={open.concept.id} concept={open.concept} palette={palettes[open.room.index]} />
       ))}
 
+      <Narrator layout={layout} />
+
       <p className="hud-legend">
         <kbd>W A S D</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>T</kbd> hablar con Aris · <kbd>Mouse</kbd> mirar · <kbd>Esc</kbd> pausa
       </p>
@@ -279,6 +232,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                   ? 'Solo se preguntan los conceptos que se están olvidando. Acércate a cada pedestal roto y di qué había.'
                   : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
                 : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
+            </p>
+            <p className="pause-keys">
+              <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
+              {mode === 'exam' && (
+                <>
+                  <br />
+                  Responde en voz alta · <kbd>Y</kbd> para escribir
+                </>
+              )}
             </p>
             <div className="pause-actions">
               <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
