@@ -24,18 +24,40 @@ export class DungeonPalaceAdapter {
       }
     }
 
-    // Split pieces into thematic chambers (max 12 pieces per room)
+    // Divide en cámaras temáticas conectadas por pasillos y puertas
     const rooms: Room[] = [];
-    const chunkSize = 8;
-    for (let i = 0; i < Math.max(pieces.length, 1); i += chunkSize) {
-      const roomPieces = pieces.slice(i, i + chunkSize);
-      const roomIndex = rooms.length + 1;
+    const doorIndex = pieces.findIndex((p) => p.id.startsWith("door"));
+
+    if (doorIndex !== -1 && pieces.length > 2) {
+      // Divide por compuerta: Cámara 1 (Entrada y Llave) y Cámara 2 (Santuario del Cofre)
+      const chamber1Pieces = pieces.slice(0, doorIndex);
+      const chamber2Pieces = pieces.slice(doorIndex);
+
       rooms.push({
-        id: `chamber-${roomIndex}`,
-        name: `Cámara ${roomIndex}: ${roomIndex === 1 ? "Entrada y Llave" : "Santuario del Cofre"}`,
-        description: `Sector ${roomIndex} del laberinto procedural.`,
-        pieces: roomPieces,
+        id: "chamber-1",
+        name: "Cámara 1: Entrada y Llave",
+        description: "Primera sección de la mazmorra. Explora el entorno y recupera la llave.",
+        pieces: chamber1Pieces.length > 0 ? chamber1Pieces : [pieces[0]],
       });
+
+      rooms.push({
+        id: "chamber-2",
+        name: "Cámara 2: Santuario del Cofre",
+        description: "Cámara sellada tras la compuerta que resguarda el cofre del conocimiento.",
+        pieces: chamber2Pieces.length > 0 ? chamber2Pieces : pieces.slice(1),
+      });
+    } else {
+      const chunkSize = Math.max(1, Math.ceil(pieces.length / 2));
+      for (let i = 0; i < Math.max(pieces.length, 1); i += chunkSize) {
+        const roomPieces = pieces.slice(i, i + chunkSize);
+        const roomIndex = rooms.length + 1;
+        rooms.push({
+          id: `chamber-${roomIndex}`,
+          name: `Cámara ${roomIndex}: ${roomIndex === 1 ? "Entrada y Llave" : "Santuario del Cofre"}`,
+          description: `Sector ${roomIndex} del laberinto procedural.`,
+          pieces: roomPieces,
+        });
+      }
     }
 
     // If no interactive pieces found, ensure at least one placeholder piece

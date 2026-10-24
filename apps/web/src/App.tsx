@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { demoMuseum } from './mocks'
 import { dungeonDemoMuseum } from './mocks/dungeon'
 import { EXAMPLE_TEXT } from './palace/example'
@@ -24,6 +24,13 @@ import { Landing } from './ui/Landing'
 export default function App() {
   const screen = useStore((s) => s.screen)
   const layout = useStore((s) => s.layout)
+
+  useEffect(() => {
+    const demoParam = new URLSearchParams(window.location.search).get('demo')
+    if (demoParam === 'dungeon') {
+      useStore.getState().enterPalace(dungeonDemoMuseum)
+    }
+  }, [])
 
   if (screen === 'palace' && layout) {
     return (
