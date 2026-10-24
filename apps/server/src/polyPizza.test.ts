@@ -27,6 +27,12 @@ describe("relevance y selección", () => {
     expect(pickCandidate("shield", [r("a", "CC0", "Round Shield Pack"), r("b", "CC-BY 3.0", "Shield")])?.id).toBe("b");
     expect(pickCandidate("shield", [r("a", "CC-BY 3.0", "Shield"), r("b", "CC0 1.0", "Shield")])?.id).toBe("b");
   });
+  it("lee la licencia de la atribución real de la API (URL de Creative Commons)", () => {
+    const cc0 = { ID: "srN1KGAO7f", Title: "Shield", Download: "https://static.poly.pizza/x.glb", Attribution: '"Shield" by Quaternius. Licence at https://creativecommons.org/publicdomain/zero/1.0/' };
+    const by = { ID: "b1", Title: "Shield", Download: "https://static.poly.pizza/y.glb", Attribution: "Licence at https://creativecommons.org/licenses/by/3.0/" };
+    const nc = { ID: "n1", Title: "Shield", Download: "https://static.poly.pizza/z.glb", Attribution: "https://creativecommons.org/licenses/by-nc/4.0/" };
+    expect(rankCandidates("shield", [by, nc, cc0]).map((c) => [c.id, c.license])).toEqual([["srN1KGAO7f", "CC0"], ["b1", "CC-BY"]]);
+  });
   it("cae a CC-BY si no hay CC0", () => {
     expect(pickCandidate("key", [r("a", "CC-BY 3.0", "Key")])).toMatchObject({ id: "a", license: "CC-BY" });
   });

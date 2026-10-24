@@ -16,6 +16,7 @@ export type PolyResult = {
   Title?: string;
   Download?: string;
   Licence?: string;
+  Attribution?: string;
   Category?: string;
   Tags?: string[];
   Creator?: { Username?: string };
@@ -29,7 +30,10 @@ export const polyEnabled = () => Boolean(process.env.POLY_PIZZA_API_KEY);
 
 function licenseOf(raw: string | undefined): "CC0" | "CC-BY" | null {
   const l = (raw ?? "").toLowerCase();
-  if (l.includes("cc0") || l.includes("public domain")) return "CC0";
+  // La atribución real de la API trae la URL de la licencia: ".../publicdomain/zero/1.0/" o ".../licenses/by/3.0/".
+  if (l.includes("publicdomain/zero") || l.includes("cc0") || l.includes("public domain")) return "CC0";
+  const url = /creativecommons\.org\/licenses\/([a-z-]+)\//.exec(l)?.[1];
+  if (url) return url === "by" ? "CC-BY" : null;
   // CC-BY puro: se excluyen variantes NC/ND/SA que no podemos cumplir con un simple crédito.
   if (/^cc[- ]by([- ]\d|$|\s)/.test(l) && !/-(nc|nd|sa)/.test(l)) return "CC-BY";
   return null;
@@ -66,7 +70,7 @@ export function relevance(keyword: string, r: PolyResult): number {
 export function rankCandidates(keyword: string, results: PolyResult[]): PolyCandidate[] {
   const usable: PolyCandidate[] = [];
   for (const r of results) {
-    const license = licenseOf(r.Licence);
+    const license = licenseOf(r.Licence) ?? licenseOf(r.Attribution);
     if (!license || !r.ID || !ID_RE.test(r.ID) || !r.Download) continue;
     const score = relevance(keyword, r);
     if (score === 0) continue;
