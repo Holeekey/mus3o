@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXAMPLE_TEXT } from './example'
 import { buildLayout, moveWithCollisions, roomAt } from './layout'
-import { isCorrectAnswer } from './match'
+import { answerAliases, isCorrectAnswer, isCorrectAny } from './match'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace } from './parse'
 import { LIMITS, type Graph } from '@mus3o/shared'
 
@@ -228,5 +228,30 @@ describe('isCorrectAnswer', () => {
     expect(isCorrectAnswer('ATR', 'ATP')).toBe(false)
     expect(isCorrectAnswer('nucleo', 'Ciclo de Krebs')).toBe(false)
     expect(isCorrectAnswer('a', 'Transcripción')).toBe(false)
+  })
+})
+
+describe('respuestas dictadas', () => {
+  it('acepta cualquier parte de un título compuesto', () => {
+    expect(isCorrectAnswer('negro primero', 'Pedro Camejo, Negro Primero')).toBe(true)
+    expect(isCorrectAnswer('pedro camejo', 'Pedro Camejo, Negro Primero')).toBe(true)
+    expect(isCorrectAnswer('adenosin trifosfato', 'ATP / adenosín trifosfato')).toBe(true)
+    expect(isCorrectAnswer('ATP', 'ATP / adenosín trifosfato')).toBe(true)
+  })
+  it('ignora el paréntesis', () => {
+    expect(isCorrectAnswer('batalla de boyaca', 'Batalla de Boyacá (1819)')).toBe(true)
+  })
+  it('mantiene la exactitud en siglas', () => {
+    expect(isCorrectAnswer('ADN', 'ATP')).toBe(false)
+    expect(isCorrectAnswer('ADN', 'ATP / adenosín trifosfato')).toBe(false)
+  })
+  it('genera alias sin duplicados', () => {
+    expect(answerAliases('Batalla de Boyacá (1819)')).toEqual(['Batalla de Boyacá (1819)', 'Batalla de Boyacá'])
+    expect(answerAliases('ATP')).toEqual(['ATP'])
+  })
+  it('revisa todas las alternativas del reconocedor', () => {
+    expect(isCorrectAny(['negro premero', 'negro primero'], 'Pedro Camejo, Negro Primero')).toBe(true)
+    expect(isCorrectAny(['algo distinto', 'otra cosa'], 'Pedro Camejo, Negro Primero')).toBe(false)
+    expect(isCorrectAny([], 'ATP')).toBe(false)
   })
 })
