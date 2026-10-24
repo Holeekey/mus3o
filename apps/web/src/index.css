@@ -432,3 +432,173 @@ kbd {
 .toggle span { display: grid; gap: 2px; }
 .toggle small { font-size: 0.85rem; opacity: 0.85; }
 .landing .toggle { color: var(--bg-ink); }
+
+/* ---------- ARIS DIALOG & PROMPT ---------- */
+.aris-bubble {
+  position: absolute;
+  bottom: 84px;
+  right: 28px;
+  max-width: 380px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 6px 6px 0 var(--shadow);
+  padding: 14px 18px;
+  color: var(--ink);
+  z-index: 40;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aris-bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.aris-avatar {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.aris-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #2ee6d6;
+  text-shadow: 0 0 8px rgba(46, 230, 214, 0.4);
+}
+.aris-close-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.aris-close-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--ink);
+}
+.aris-bubble-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.aris-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-content: center;
+  z-index: 100;
+}
+.aris-modal {
+  width: 90vw;
+  max-width: 520px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 8px 8px 0 var(--shadow);
+  padding: 24px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aris-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.aris-modal-header h3 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+}
+.aris-modal-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.aris-input-row {
+  display: flex;
+  gap: 8px;
+}
+.aris-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #111;
+}
+.aris-input:focus {
+  outline: none;
+  border-color: #2ee6d6;
+}
+.aris-mic-btn {
+  padding: 0 14px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 1.15rem;
+}
+.aris-mic-btn:hover {
+  background: rgba(46, 230, 214, 0.15);
+}
+.aris-mic-btn.listening {
+  background: #ff3da5;
+  color: #fff;
+  animation: pulse 1s infinite alternate;
+}
+.aris-quick-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.aris-trigger-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--shadow);
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  z-index: 30;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.aris-trigger-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+.aris-trigger-btn kbd {
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.75rem;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
