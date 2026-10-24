@@ -1370,7 +1370,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 /* En táctil el botón 🤖 de la botonera reemplaza al de escritorio, y el narrador sube sobre el joystick. */
 :root[data-touch] .aris-trigger-btn { display: none; }
 :root[data-touch] .narrator { left: 16px; bottom: 150px; z-index: 36; }
-@media (max-height: 520px) { :root[data-touch] .narrator { left: 14px; bottom: 108px; } }
+@media (max-height: 520px) { :root[data-touch] .narrator { left: 14px; bottom: 124px; } }
 :root[data-touch] .hud-legend { display: none; }
 /* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
 :root[data-touch] .hint { bottom: 30% !important; }
@@ -1426,4 +1426,12 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   .minimap-wrapper.minimap-inline { display: flex; }
   .minimap-inline .minimap-header { display: none; }
   .minimap-inline .minimap { width: 96px !important; height: 96px !important; }
+}
+
+/* Teléfonos angostos (≤380px): la placa deja lugar a los contadores de la derecha. */
+@media (max-width: 380px) {
+  .plaque { max-width: calc(100vw - 160px); }
+  .plaque-title { font-size: 1rem; }
+  .plaque-meta, .plaque-memory { display: none; }
+  .hud-due:not(.hud-due-on) { display: none; }
 }
