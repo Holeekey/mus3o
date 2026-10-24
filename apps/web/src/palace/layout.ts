@@ -6,6 +6,18 @@ export type Side = 'n' | 's' | 'e' | 'w'
 export type Monument = 'icosahedron' | 'torusKnot' | 'octahedron' | 'dodecahedron' | 'cone' | 'torus'
 export type Shape = Glyph
 
+/** Hueco en un muro interior para colgar un cuadro. El plano mira a +Z local, girado `rotationY`. */
+export type PaintingSlot = {
+  x: number
+  y: number
+  z: number
+  rotationY: number
+  maxWidth: number
+  maxHeight: number
+  main: boolean
+  side: Side
+}
+
 export type PedestalLayout = { concept: Piece; x: number; z: number; shape: Shape; facing: number }
 
 export type RoomLayout = {
@@ -22,6 +34,7 @@ export type RoomLayout = {
   doors: Side[]
   walls: Box[]
   pedestals: PedestalLayout[]
+  paintingSlots: PaintingSlot[]
 }
 
 export type CorridorLayout = { floor: Box; walls: Box[] }
@@ -43,6 +56,79 @@ const DOOR_W = 2.8
 const CORRIDOR_LEN = 6
 const PEDESTAL_SPACING = 2.6
 const PEDESTAL_SIZE = 0.9
+
+export const SLOT_Y = 2.3
+export const SLOT_OFFSET = 0.06 // separación del muro
+export const SLOT_DOOR_MARGIN = 0.6 // mínimo entre un cuadro y el borde de una puerta
+export const SLOT_GAP = 0.4 // mínimo entre cuadros
+const SLOT_CORNER = 0.5
+const MAIN_W = 2.6
+const MAIN_H = 1.5
+const SMALL_W = 1.4
+const SMALL_H = 1.2
+const MAX_SLOTS = 16
+
+type Span = { side: Side; lo: number; hi: number; doorless: boolean; wallLen: number }
+
+// Cuadros sobre las caras interiores de los muros, fuera de las puertas. Determinista.
+function paintingSlots(x: number, z: number, w: number, d: number, doors: Side[]): PaintingSlot[] {
+  const half = (side: Side) => ((side === 'n' || side === 's' ? w : d) - WALL_T) / 2
+  const spans: Span[] = []
+  for (const side of ['n', 's', 'w', 'e'] as Side[]) {
+    const h = half(side)
+    const edge = h - SLOT_CORNER
+    if (!doors.includes(side)) {
+      spans.push({ side, lo: -edge, hi: edge, doorless: true, wallLen: h * 2 })
+    } else {
+      const inner = DOOR_W / 2 + SLOT_DOOR_MARGIN
+      spans.push({ side, lo: -edge, hi: -inner, doorless: false, wallLen: h * 2 })
+      spans.push({ side, lo: inner, hi: edge, doorless: false, wallLen: h * 2 })
+    }
+  }
+  const usable = spans.filter((s) => s.hi - s.lo >= SMALL_W)
+  if (usable.length === 0) return []
+
+  const doorless = usable.filter((s) => s.doorless)
+  const pool = doorless.length > 0 ? doorless : usable
+  // Gana la pared más larga (o el tramo más ancho); el empate lo decide el orden n, s, w, e.
+  const key = (s: Span) => (doorless.length > 0 ? s.wallLen : s.hi - s.lo)
+  const mainSpan = pool.reduce((best, s) => (key(s) > key(best) + 1e-9 ? s : best))
+  const mainW = Math.min(MAIN_W, mainSpan.hi - mainSpan.lo)
+  const mainT = (mainSpan.lo + mainSpan.hi) / 2
+
+  const place = (span: Span, t: number, width: number, height: number, main: boolean): PaintingSlot => {
+    switch (span.side) {
+      case 'n':
+        return { x: x + t, y: SLOT_Y, z: z - d / 2 + WALL_T / 2 + SLOT_OFFSET, rotationY: 0, maxWidth: width, maxHeight: height, main, side: 'n' }
+      case 's':
+        return { x: x + t, y: SLOT_Y, z: z + d / 2 - WALL_T / 2 - SLOT_OFFSET, rotationY: Math.PI, maxWidth: width, maxHeight: height, main, side: 's' }
+      case 'e':
+        return { x: x + w / 2 - WALL_T / 2 - SLOT_OFFSET, y: SLOT_Y, z: z + t, rotationY: -Math.PI / 2, maxWidth: width, maxHeight: height, main, side: 'e' }
+      default:
+        return { x: x - w / 2 + WALL_T / 2 + SLOT_OFFSET, y: SLOT_Y, z: z + t, rotationY: Math.PI / 2, maxWidth: width, maxHeight: height, main, side: 'w' }
+    }
+  }
+
+  const slots = [place(mainSpan, mainT, mainW, MAIN_H, true)]
+  const mainLo = mainT - mainW / 2 - SLOT_GAP
+  const mainHi = mainT + mainW / 2 + SLOT_GAP
+  for (const span of usable) {
+    // El tramo del cuadro principal se parte en dos, a ambos lados.
+    const parts: [number, number][] =
+      span === mainSpan ? [[span.lo, mainLo], [mainHi, span.hi]] : [[span.lo, span.hi]]
+    for (const [lo, hi] of parts) {
+      const len = hi - lo
+      const n = Math.floor((len + SLOT_GAP) / (SMALL_W + SLOT_GAP))
+      if (n < 1) continue
+      const total = n * SMALL_W + (n - 1) * SLOT_GAP
+      const start = lo + (len - total) / 2
+      for (let k = 0; k < n; k++) {
+        slots.push(place(span, start + SMALL_W / 2 + k * (SMALL_W + SLOT_GAP), SMALL_W, SMALL_H, false))
+      }
+    }
+  }
+  return slots.slice(0, MAX_SLOTS)
+}
 
 export function hash(s: string): number {
   let h = 2166136261
@@ -141,6 +227,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       doors: doorsOf[i],
       walls: roomWalls(x, z, w, d, height, doorsOf[i]),
       pedestals,
+      paintingSlots: paintingSlots(x, z, w, d, doorsOf[i]),
     }
   })
 
