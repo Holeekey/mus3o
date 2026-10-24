@@ -78,7 +78,7 @@ export const useStore = create<State>()(
       set: (patch) => set(patch),
     }),
     {
-      name: 'locigen-v1',
+      name: 'mus3o-v1',
       storage: safeStorage,
       // Solo el contenido y el progreso; el layout se recalcula.
       partialize: (s) => ({ palace: s.palace, memorized: s.memorized }),

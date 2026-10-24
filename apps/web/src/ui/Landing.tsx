@@ -71,7 +71,7 @@ export function Landing() {
     <main className="landing">
       <section className="landing-left">
         <p className="brand">
-          <span className="brand-mark" aria-hidden /> LociGen
+          <span className="brand-mark" aria-hidden /> mus3o
         </p>
         <h1>
           Convierte tus apuntes en un <em>palacio de la memoria</em>
