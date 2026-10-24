@@ -82,6 +82,15 @@ export const ResolvedImageSchema = z.object({
   kind: z.enum(["painting", "diagram", "photo"]),
 });
 
+/** Respuesta de GET /api/info: resumen de Wikipedia con su atribución. */
+export const WikiInfoSchema = z.object({
+  title: z.string().min(1),
+  extract: z.string().min(1),
+  url: z.string().min(1),
+  license: z.literal("CC BY-SA 4.0"),
+  source: z.literal("Wikipedia"),
+});
+
 /** Dónde, en los apuntes del usuario, aparece la idea de una pieza. */
 export const PieceSourceSchema = z.object({
   /** Fragmento copiado de los apuntes (≤ 240 caracteres). */
@@ -564,6 +573,7 @@ export type Model = z.infer<typeof ModelSchema>;
 export type Glyph = z.infer<typeof GlyphShape>;
 export type ImageSearch = z.infer<typeof ImageSearchSchema>;
 export type ResolvedImage = z.infer<typeof ResolvedImageSchema>;
+export type WikiInfo = z.infer<typeof WikiInfoSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type PieceSource = z.infer<typeof PieceSourceSchema>;
 export type Piece = z.infer<typeof PieceSchema>;

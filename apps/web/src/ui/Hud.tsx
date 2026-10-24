@@ -15,6 +15,7 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
+import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
@@ -75,6 +76,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         )}
         {/* Mientras se resuelve, reserva el lugar para que la ficha no salte. */}
         {image === undefined && <div className="card-figure card-figure-loading" aria-hidden />}
+        <ConceptInfo concept={concept} image={image} />
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
