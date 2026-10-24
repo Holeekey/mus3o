@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { moveWithCollisions, type PalaceLayout } from '../palace/layout'
-import { allConcepts, useStore } from '../store'
+import { allConcepts, playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
@@ -297,6 +297,10 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
     const targetY = EYE + Math.max(ground, model.field.waterLevel ?? -99)
     const cy = Math.abs(camera.position.y - targetY) > 4 ? targetY : camera.position.y + (targetY - camera.position.y) * Math.min(1, dt * 10)
     camera.position.set(DIORAMA_ORIGIN.x + p.x, cy, DIORAMA_ORIGIN.z + p.z)
+    // Pose local para el minimapa del diorama (Player no la escribe mientras se está dentro).
+    playerPose.x = p.x
+    playerPose.z = p.z
+    playerPose.yaw = Math.atan2(f.x, f.z)
 
     // Marco de regreso
     const nearGate = p.z > 9.2 && Math.abs(p.x) < 3.2
