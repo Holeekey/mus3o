@@ -3,15 +3,22 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { createHash } from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
 import { GenerateMuseumRequestSchema, ImprovePromptRequestSchema, LIMITS, type Museum } from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { getCached, setCached } from "./cache";
 
 export const app = express();
-const WEB_ORIGIN = process.env.WEB_ORIGIN || "http://localhost:5173";
+const WEB_ORIGIN = process.env.WEB_ORIGIN;
 
-app.use(cors({ origin: WEB_ORIGIN }));
+app.use(cors(WEB_ORIGIN ? { origin: WEB_ORIGIN } : undefined));
+
+// Health check endpoint for Render and uptime monitoring
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: Date.now() });
+});
 // Los apuntes pueden ocupar hasta LIMITS.maxNotesChars caracteres (UTF-8: hasta ~4 bytes c/u).
 const smallJson = express.json({ limit: "100kb" });
 // generate-museum además recibe hasta LIMITS.maxImages imágenes en base64 (≤ 1024 px, en memoria).
@@ -110,6 +117,36 @@ app.post("/api/improve-prompt", async (req, res) => {
     res.status(502).json({ error: "No se pudo mejorar el pedido" });
   }
 });
+
+// Serve frontend SPA in production if built
+const webDistCandidates = [
+  path.resolve(process.cwd(), "apps/web/dist"),
+  path.resolve(__dirname, "../../web/dist"),
+  path.resolve(__dirname, "../web/dist"),
+];
+const webDistPath = webDistCandidates.find((dir) => fs.existsSync(dir));
+
+if (webDistPath) {
+  app.use(
+    express.static(webDistPath, {
+      maxAge: "1d",
+      setHeaders: (res, filePath) => {
+        // Hashed assets in assets/ can be safely cached for 1 year
+        if (filePath.includes("/assets/")) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }),
+  );
+
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+    res.sendFile(path.join(webDistPath, "index.html"));
+  });
+}
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   res.status(400).json({ error: "Solicitud inválida" });
