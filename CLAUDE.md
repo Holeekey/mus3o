@@ -2,6 +2,12 @@
 
 Gitflow simplificado. Solo tres tipos de rama, sin release branches ni hotfix branches.
 
+## Documentación técnica
+
+Antes de tocar código, lee `docs/README.md` (índice). Ahí está el mapa de módulos, contratos, endpoints,
+controles, reglas de memoria y estado real de lo implementado y lo pendiente. Si cambias algo que esa
+documentación describe, actualiza el documento correspondiente en el mismo PR (tabla en `docs/desarrollo.md` §10).
+
 ## Ramas
 
 - `main`: siempre desplegable. Solo recibe merges desde `dev` en checkpoints. Es lo que se entrega.
