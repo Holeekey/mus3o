@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLayout, SLOT_DOOR_MARGIN, SLOT_GAP, SLOT_OFFSET, SLOT_Y, type PaintingSlot, type RoomLayout } from './layout'
+import { assignPaintings, buildLayout, SLOT_DOOR_MARGIN, SLOT_GAP, SLOT_OFFSET, SLOT_Y, type PaintingSlot, type RoomLayout } from './layout'
 import { parsePalace } from './parse'
 
 const palaceOf = (n: number, pieces = 4) => {
@@ -70,6 +70,27 @@ describe('paintingSlots', () => {
             const gap = Math.abs(along(r, a).t - along(r, b).t) - (a.maxWidth + b.maxWidth) / 2
             expect(gap).toBeGreaterThanOrEqual(SLOT_GAP - 1e-9)
           }
+  })
+
+  it('assigns the room search to the main slot and each piece to a distinct free slot', () => {
+    const palace = palaceOf(1, 3)
+    palace.rooms[0].imageSearch = { wikiTitle: 'Sala' }
+    palace.rooms[0].pieces[0].imageSearch = { wikiTitle: 'A' }
+    palace.rooms[0].pieces[2].imageSearch = { commonsQuery: 'c' }
+    const room = buildLayout(palace).rooms[0]
+    const assigned = assignPaintings(room)
+    expect(assigned.map((a) => a.key)).toEqual(['room:' + room.id, 'piece:' + palace.rooms[0].pieces[0].id, 'piece:' + palace.rooms[0].pieces[2].id])
+    expect(assigned[0].slot.main).toBe(true)
+    expect(new Set(assigned.map((a) => a.slot)).size).toBe(3)
+    expect(assigned.slice(1).every((a) => !a.slot.main)).toBe(true)
+  })
+
+  it('hangs nothing without imageSearch and never exceeds the slots', () => {
+    expect(assignPaintings(buildLayout(palaceOf(1, 3)).rooms[0])).toEqual([])
+    const palace = palaceOf(1, 12)
+    palace.rooms[0].pieces.forEach((p) => (p.imageSearch = { wikiTitle: p.id }))
+    const room = buildLayout(palace).rooms[0]
+    expect(assignPaintings(room).length).toBeLessThanOrEqual(room.paintingSlots.length)
   })
 
   it('is deterministic', () => {
