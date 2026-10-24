@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { GenerateMuseumRequestSchema, ImprovePromptRequestSchema, LIMITS, type Museum } from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
+import { imageRouter } from "./images";
 import { getCached, setCached } from "./cache";
 
 export const app = express();
@@ -16,7 +17,10 @@ const smallJson = express.json({ limit: "100kb" });
 // generate-museum además recibe hasta LIMITS.maxImages imágenes en base64 (≤ 1024 px, en memoria).
 const generateJson = express.json({ limit: "8mb" });
 app.use((req, res, next) => (req.path === "/api/generate-museum" ? generateJson : smallJson)(req, res, next));
-app.use("/api/", rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+// Las imágenes se piden por decenas al entrar a un museo: límite aparte y más alto.
+app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
+app.use("/api", imageRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
