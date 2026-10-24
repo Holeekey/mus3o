@@ -45,6 +45,7 @@ export function getDioramaModel(d: Diorama): DioramaModel {
           pattern: pl.prop.pattern,
           seed: seed + pl.index * 7919,
           terrain: d.terrain,
+          prop: pl.prop, // science-kit
         },
         v,
         pl.prop.parts,

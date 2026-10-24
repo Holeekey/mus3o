@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { applyDemoCamera, applyDemoJump, applyDemoSeed } from './memory/demo'
 import { demoMuseum } from './mocks'
 import { dungeonDemoMuseum } from './mocks/dungeon'
+import { medicinaMuseum } from './mocks/medicina' // science-kit
 import { historiaMuseum } from './mocks/historia'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
@@ -18,6 +19,7 @@ const demo = new URLSearchParams(window.location.search).get('demo')
 if (demo === 'ia') useStore.getState().enterPalace(demoMuseum)
 else if (demo === 'historia') useStore.getState().enterPalace(historiaMuseum)
 else if (demo === 'dungeon') useStore.getState().enterPalace(dungeonDemoMuseum)
+else if (demo === 'medicina') useStore.getState().enterPalace(medicinaMuseum) // science-kit
 else if (demo !== null) {
   const r = parsePalace(EXAMPLE_TEXT)
   if (r.ok) useStore.getState().enterPalace(r.palace, EXAMPLE_TEXT)

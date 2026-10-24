@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { DioramaTerrain } from '@mus3o/shared'
 import { clamp01, rgb, smooth } from './geo'
 import { fbm, hashStr, noise2, ridged } from './random'
+import { buildScienceTerrain, isScienceTerrain, scienceHeightField } from './terrain/science' // science-kit
 
 export const TERRAIN_EXTENT = 130 // medio lado del suelo, en m
 const SEGMENTS = 160
@@ -18,6 +19,7 @@ const riverZ = (x: number) => -1.5 + 3.4 * Math.sin(x * 0.2) + 1.4 * Math.sin(x 
 const shoreZ = (x: number) => -11 + 2.2 * Math.sin(x * 0.17) + 1.1 * Math.sin(x * 0.41 + 2)
 
 export function heightField(terrain: DioramaTerrain, seed: number): HeightField {
+  if (isScienceTerrain(terrain)) return scienceHeightField(terrain, seed) // science-kit
   const s = seed & 0xffff
   // Margen de la "mesa" jugable: la zona central es casi plana y el relieve crece hacia afuera,
   // más hacia el fondo (-z) para que el horizonte tenga composición.
@@ -141,6 +143,7 @@ function terrainColor(out: THREE.Color, r: Ramp, terrain: DioramaTerrain, x: num
 
 /** Suelo facetado: un triángulo = un color plano, para el aspecto low-poly. */
 export function buildTerrainGeometry(terrain: DioramaTerrain, ground: string, accent: string, seedStr: string): { geometry: THREE.BufferGeometry; field: HeightField } {
+  if (isScienceTerrain(terrain)) return buildScienceTerrain(terrain, ground, accent, seedStr) // science-kit
   const seed = hashStr(seedStr)
   const field = heightField(terrain, seed)
   const grid = new THREE.PlaneGeometry(TERRAIN_EXTENT * 2, TERRAIN_EXTENT * 2, SEGMENTS, SEGMENTS)
