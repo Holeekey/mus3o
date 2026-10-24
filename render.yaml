@@ -1,12 +1,17 @@
 # Render Blueprint Specification for Mus3o
 # https://render.com/docs/blueprint-spec
+#
+# Dos servicios: la API (Express + Claude) y el frontend como Static Site (CDN, gratis).
+# El frontend llama a la API con rutas relativas (/api/...); el rewrite las reenvía a mus3o-api.
+# Si cambias el nombre "mus3o-api", actualiza el destination del rewrite.
 services:
+  # API
   - type: web
-    name: mus3o
+    name: mus3o-api
     runtime: node
     plan: starter # $7/month (Active 24/7, No cold starts, 512MB RAM, 0.5 vCPU)
     region: oregon
-    branch: dev
+    branch: main
     # El repo es npm workspaces (package-lock.json); pnpm no resuelve los paquetes internos.
     buildCommand: npm ci --include=dev && npm run build
     startCommand: node apps/server/dist/index.js
@@ -24,3 +29,29 @@ services:
         value: "200"
       - key: ANTHROPIC_API_KEY
         sync: false
+
+  # Frontend 3D
+  - type: web
+    name: mus3o
+    runtime: static
+    region: oregon
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build -w @mus3o/shared && npm run build -w @mus3o/web
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://mus3o-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
