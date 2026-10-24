@@ -6,7 +6,7 @@ import * as THREE from 'three'
 // ni re-renderiza React: escribe en un div propio una vez por segundo.
 
 /** Contadores que otros módulos (portales) actualizan para que el overlay los muestre. */
-export const perfFlags = { portalsRendering: 0 }
+export const perfFlags = { portalLast: -1e9 }
 
 export const perfEnabled = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('perf')
 
@@ -86,7 +86,7 @@ export function PerfOverlay() {
         textures: gl.info.memory.textures,
         lights,
         shadowLights: shadow,
-        portals: perfFlags.portalsRendering,
+        portals: performance.now() - perfFlags.portalLast < 1000 ? 1 : 0,
       }
       window.__perf = snap
       el.textContent =
