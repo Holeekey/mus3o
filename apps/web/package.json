@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@mus3o/dungeon-core": "*",
     "@mus3o/shared": "*",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",

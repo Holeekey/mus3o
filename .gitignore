@@ -6,6 +6,11 @@ dist
 *.log
 .DS_Store
 
+# Assets externos y temporales
+/Public/
+/assets/
+/apps/web/public/models/dungeon/
+
 # Config local de cada dev (no compartida)
 .claude/*
 !.claude/skills/

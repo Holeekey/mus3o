@@ -5,6 +5,7 @@ import type { Mesh, Object3D } from 'three'
 import type { Box, PedestalLayout, RoomLayout, Side } from '../palace/layout'
 import { useStore } from '../store'
 import type { RoomPalette, Theme } from '../theme'
+import { AssetWall } from './DungeonAssets'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 
@@ -15,13 +16,7 @@ const CORNICE_H = 0.28
 const PLINTH_H = 0.35
 
 export function Wall({ box, color }: { box: Box; color: string }) {
-  const y = box.y ?? 0
-  return (
-    <mesh position={[box.x, y + box.h / 2, box.z]} castShadow receiveShadow>
-      <boxGeometry args={[box.w, box.h, box.d]} />
-      <meshStandardMaterial color={color} flatShading roughness={1} />
-    </mesh>
-  )
+  return <AssetWall box={box} color={color} />
 }
 
 // Cornisa (arriba) y zócalo (abajo): dos molduras del color de "trim" que enmarcan el muro.

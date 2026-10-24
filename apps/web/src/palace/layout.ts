@@ -26,10 +26,21 @@ export type RoomLayout = {
 
 export type CorridorLayout = { floor: Box; walls: Box[] }
 
+export type DoorLayout = {
+  id: string
+  corridorIndex: number
+  x: number
+  z: number
+  w: number
+  d: number
+  rotY: number
+}
+
 export type PalaceLayout = {
   rooms: RoomLayout[]
   corridors: CorridorLayout[]
   colliders: Box[]
+  doors: DoorLayout[]
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
   spawn: { x: number; z: number; yaw: number }
 }
@@ -145,6 +156,8 @@ export function buildLayout(palace: Museum): PalaceLayout {
   })
 
   const corridors: CorridorLayout[] = []
+  const doors: DoorLayout[] = []
+  let corridorIndex = 0
   for (const [i, j] of links) {
     const a = rooms[i]
     const b = rooms[j]
@@ -162,6 +175,16 @@ export function buildLayout(palace: Museum): PalaceLayout {
           { x: cx, z: a.z + DOOR_W / 2 + WALL_T / 2, w: len, d: WALL_T, h },
         ],
       })
+      const doorX = side === 'e' ? a.x + a.w / 2 : a.x - a.w / 2
+      doors.push({
+        id: `door-${corridorIndex}-entrance`,
+        corridorIndex,
+        x: doorX,
+        z: a.z,
+        w: 0.6,
+        d: DOOR_W,
+        rotY: Math.PI / 2,
+      })
     } else {
       const z1 = side === 's' ? a.z + a.d / 2 : b.z + b.d / 2
       const z2 = side === 's' ? b.z - b.d / 2 : a.z - a.d / 2
@@ -174,7 +197,18 @@ export function buildLayout(palace: Museum): PalaceLayout {
           { x: a.x + DOOR_W / 2 + WALL_T / 2, z: cz, w: WALL_T, d: len, h },
         ],
       })
+      const doorZ = side === 's' ? a.z + a.d / 2 : a.z - a.d / 2
+      doors.push({
+        id: `door-${corridorIndex}-entrance`,
+        corridorIndex,
+        x: a.x,
+        z: doorZ,
+        w: DOOR_W,
+        d: 0.6,
+        rotY: 0,
+      })
     }
+    corridorIndex++
   }
 
   const colliders: Box[] = [
@@ -196,6 +230,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
     rooms,
     corridors,
     colliders,
+    doors,
     bounds: { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) },
     spawn,
   }

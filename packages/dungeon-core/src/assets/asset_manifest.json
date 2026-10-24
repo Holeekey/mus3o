@@ -1,0 +1,36 @@
+{
+  "name": "KayKit Dungeon Pack Manifest",
+  "version": "1.1",
+  "basePath": "./assets/kaykit_dungeon",
+  "tileSize": 2.0,
+  "mappings": {
+    "WALL": {
+      "mesh": "wall.gltf",
+      "corner": "wall_corner.gltf",
+      "doorway": "wall_doorway.gltf",
+      "height": 2.0
+    },
+    "FLOOR": {
+      "mesh": "floor_tile_large.gltf",
+      "height": 0.0
+    },
+    "DOOR_LOCKED": {
+      "mesh": "wall_gated.gltf",
+      "alias": "door_gate.gltf",
+      "openMesh": "wall_doorway.gltf"
+    },
+    "KEY": {
+      "mesh": "key.gltf",
+      "elevation": 0.5
+    },
+    "SPIKE_TRAP": {
+      "mesh": "floor_tile_big_spikes.gltf",
+      "alias": "trap_spikes.gltf",
+      "height": 0.0
+    },
+    "CHEST_GOAL": {
+      "mesh": "chest.gltf",
+      "elevation": 0.0
+    }
+  }
+}
