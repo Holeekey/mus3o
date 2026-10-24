@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDioramaStore } from '../diorama/dioramaStore'
+import { fetchWikiInfo, firstSentence, peekWikiInfo } from '../lib/info'
 import { canSpeak, speak, stopSpeaking } from '../lib/voice'
 import type { PalaceLayout } from '../palace/layout'
-import { useStore } from '../store'
+import { inExamScope, useStore } from '../store'
 
 const KEY = 'mus3o-narrator'
 
@@ -99,7 +100,25 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
     }
     const concept = palace?.rooms.flatMap((r) => r.pieces).find((p) => p.id === openId)
     if (!concept) return
-    speak(`${concept.title}.${concept.text ? ` ${concept.text}` : ''}`)
+    // Tras el concepto, la primera oración del resumen de Wikipedia (si llega pronto; nunca en un examen).
+    const base = `${concept.title}.${concept.text ? ` ${concept.text}` : ''}`
+    if (inExamScope(useStore.getState(), openId)) {
+      speak(base)
+      return
+    }
+    let cancelled = false
+    const known = peekWikiInfo(concept.imageSearch)
+    const info =
+      known !== undefined
+        ? Promise.resolve(known)
+        : Promise.race([fetchWikiInfo(concept.imageSearch ?? {}), new Promise<null>((r) => setTimeout(() => r(null), 1_200))])
+    void info.then((found) => {
+      if (cancelled || useStore.getState().openId !== openId) return
+      speak(found ? `${base} ${firstSentence(found.extract)}` : base)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [active, openId, palace])
 
   if (!supported || mode !== 'explore') return null

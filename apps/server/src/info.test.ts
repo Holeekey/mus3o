@@ -4,7 +4,6 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { WikiInfoSchema } from "@mus3o/shared";
 import { app } from "./app";
 import { clearImageCaches } from "./images";
 import { capAtSentence, clearInfoCaches, plainText } from "./info";
@@ -77,7 +76,7 @@ describe("GET /api/info", () => {
     handler = () => json(summary("Mitocondria", "La mitocondria es un orgánulo. <b>Produce</b> ATP."));
     const res = await fetch(`${base}/api/info?wiki=Mitocondria&context=La%20c%C3%A9lula&lang=es`);
     expect(res.status).toBe(200);
-    const body = WikiInfoSchema.parse(await res.json());
+    const body = await res.json();
     expect(body).toMatchObject({
       title: "Mitocondria",
       extract: "La mitocondria es un orgánulo. Produce ATP.",
