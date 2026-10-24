@@ -31,7 +31,7 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 |---|---|
 | **Dónde** | `apps/web/src/diorama/DioramaRuntime.tsx:314` |
 | **Costo actual** | `new Set(allConcepts(st.palace).map((c) => c.id))` se ejecuta en cada frame (~60/s) mientras `phase === 'inside'` (hay un `return` temprano en la línea 265 para las demás fases). Reserva un arreglo y un `Set` por frame: presión de GC con el jugador dentro del diorama. |
-| **Cambio** | Calcular el `Set` fuera del `useFrame`, una vez por `palace` (`useMemo` o una caché por referencia del `Museum`), y leerlo desde el callback. La lógica de búsqueda del enlace más cercano no cambia. |
+| **Cambio** | Calcular el `Set` una vez por `palace` y leerlo desde el callback. Conviene una caché por referencia (`WeakMap<Museum, Set<string>>`) y no un `useMemo`: el callback lee `useStore.getState().palace`, y un `useMemo` obligaría a suscribir el componente al store (re-renders nuevos). La lógica de búsqueda del enlace más cercano no cambia. |
 | **Por qué es seguro** | Es un dato derivado puro de `palace`. El resultado de `ids.has(...)` es idéntico. |
 | **Cómo comprobarlo** | `npm run typecheck -w @mus3o/web`. No hay prueba automática del runtime: recorrido manual con `?demo=historia`, entrar a un cuadro con `E` y confirmar que al mirar un personaje enlazado sigue abriéndose su ficha. |
 | **Impacto** | Medio en el diorama (solo allí). Bajo en el resto. |
@@ -44,7 +44,7 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 | **Costo actual** | Con hasta 8 salas × 12 piezas = 96 piezas y apuntes de hasta 20 000 caracteres, se normaliza el mismo texto hasta 96 veces. Además, la búsqueda del fragmento común más largo (cuando la cita no aparece completa) prueba ventanas de tamaño `ceil(0.6·len)` sobre cada pieza. Es CPU del servidor en cada generación que no está en caché. |
 | **Cambio** | Normalizar los apuntes **una vez** por llamada a `verifySources` y reutilizar `{ norm, map }` en cada búsqueda. Mantener la firma pública de `locateFragment(text, fragment, from)`: añadir un parámetro opcional o una función interna que reciba lo ya normalizado. |
 | **Por qué es seguro** | Mismas entradas, mismas salidas. Es memoización de un cálculo puro. |
-| **Cómo comprobarlo** | `npm test -w @mus3o/shared` (`sources.test.ts`) y `npm test -w @mus3o/server` (`sources.test.ts`). Ambas suites ya cubren coincidencia exacta, parcial ≥ 60 %, y citas no encontradas. |
+| **Cómo comprobarlo** | `npm test -w @mus3o/shared` y `npm test -w @mus3o/server`. `packages/shared/src/sources.test.ts` cubre la coincidencia exacta con su línea (línea 55) y el respaldo por fragmento común ≥ 60 % (línea 82); `apps/server/src/sources.test.ts` cubre la integración en el servidor. |
 | **Impacto** | Medio en CPU del servidor. La latencia total la domina la llamada a Claude, así que el usuario casi no lo nota; sí ayuda bajo carga concurrente. |
 
 ### 3. La caché de museos expulsa por orden de inserción (FIFO), no por uso (LRU)
@@ -66,7 +66,7 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 | **Costo actual** | Dos peticiones iguales que llegan a la vez (dos usuarios abriendo el mismo museo, o un cliente con la pestaña recargada) hacen cada una su llamada a Wikimedia y ocupan cada una uno de los 3 cupos de concurrencia (`slot`). El cliente ya deduplica (`apps/web/src/lib/images.ts`), pero el servidor no. |
 | **Cambio** | Un `Map<clave, Promise>` de peticiones en vuelo: si la clave ya está, devolver la misma promesa; limpiarla en `finally`. |
 | **Por qué es seguro** | La clave de resolución ya existe (`lang|wiki|commons`). Al limpiar en `finally`, un `UpstreamError` no queda cacheado, igual que hoy. Todos los que esperaban reciben el mismo resultado o el mismo error. |
-| **Cómo comprobarlo** | `npm test -w @mus3o/server` (`images.test.ts`, que ya usa `clearImageCaches`). Añadir una prueba: dos llamadas simultáneas, un solo fetch simulado. |
+| **Cómo comprobarlo** | `npm test -w @mus3o/server`. `images.test.ts` ya usa `clearImageCaches` y ya prueba que un error transitorio no se cachea (línea 92): esa prueba debe seguir pasando. Añadir una nueva: dos llamadas simultáneas, un solo fetch simulado. |
 | **Impacto** | Medio ante Wikimedia con límite de tasa; casi nulo con un solo usuario. |
 
 ### 5. `dueCountFor(saved)` se evalúa 3 veces por render en la landing
@@ -88,14 +88,14 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 | **Costo actual** | El HUD se suscribe a `focusedId`, que cambia al mover la mirada entre objetos, así que se vuelve a renderizar con frecuencia. Cada render recorre las salas y reconstruye arreglos. |
 | **Cambio** | Una sola llamada a `allConcepts` por render (`const concepts = allConcepts(palace)`), y `useMemo` por `palace` para la lista de ids en `useDueCount`. |
 | **Por qué es seguro** | Datos derivados de `palace`, que no cambia durante el recorrido. |
-| **Cómo comprobarlo** | `npm run typecheck -w @mus3o/web` y `npm test -w @mus3o/web` (`model.test.ts`, `keys.test.ts` cubren la lógica que alimenta estos contadores). Visual: los contadores del HUD no cambian. |
+| **Cómo comprobarlo** | `npm run typecheck -w @mus3o/web` y `npm test -w @mus3o/web` (`model.test.ts` ya prueba `dueIds` y `roomMemory`, que alimentan estos contadores). Visual: los contadores del HUD no cambian. |
 | **Impacto** | Bajo. Se suma a la mejora 5 como limpieza de trabajo repetido. |
 
 ---
 
 ## 2. Mejoras de riesgo bajo (no cuentan en las 6, pero son las de más impacto)
 
-### A. El chunk de entrada incluye three.js aunque la landing no lo necesita
+### A. three.js está dentro del chunk de entrada y bloquea el primer render
 
 **Medido** con `npm run build -w @mus3o/web`:
 
@@ -107,6 +107,7 @@ Lo que no cumple va a la sección 2 (riesgo bajo, no nulo) o a la 3 (descartado)
 
 La entrada baja unos **749 kB sin comprimir y unos 200 kB gzip (−64 % gzip)**.
 
+- **Qué mejora y qué no:** la landing **sigue descargando three.js**, porque arranca con el texto de ejemplo cargado y monta de inmediato la vista previa 3D (`Landing.tsx:194`, `Preview` es `lazy` e importa three). Lo que cambia es que three.js sale del **camino crítico**: el código de la landing (React, store, formulario) se parsea y se pinta con 112 kB gzip en lugar de 312 kB, y three.js llega en paralelo con la vista previa. Los bytes totales de la landing casi no bajan; el beneficio es el primer render y la interactividad. Para el resto de la sesión (pantalla del palacio) no cambia nada. No se midió el tiempo real de carga, solo el tamaño de los chunks.
 - **Causa:** `App.tsx` importa `Hud` y `DioramaOverlay` de forma estática. `Hud.tsx` importa `DioramaMinimap`, que importa `diorama/model`, que arrastra three.js y todos los constructores de props. Aunque `World` ya es `lazy`, three.js entra por este otro camino.
 - **Cambio de prueba (revertido):** cargar `Hud` y `DioramaOverlay` con `lazy(() => import(...))` y envolverlos en un `<Suspense fallback={null}>`, igual que ya se hace con `World`. Solo se muestran en la pantalla del palacio.
 - **Por qué no está en las 6:** introduce una frontera asíncrona. Hay que comprobar a mano que el HUD aparece sin parpadeo y que el arranque sincrónico con `?demo=` (arriba de `App.tsx`) sigue igual. El build y el typecheck pasaron en la prueba, pero **no se probó en el navegador**.
