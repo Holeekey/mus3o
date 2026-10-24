@@ -7,6 +7,7 @@ import { useConceptLevel } from '../memory/hooks'
 import { spinOf } from '../memory/shown'
 import { inExamScope, useStore } from '../store'
 import { DecayWrap, FadingFloor, WallFlakes } from './Decay'
+import { LabelPlate } from './LabelPlate'
 import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import { AssetWall } from './DungeonAssets'
@@ -161,22 +162,28 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
       )}
       </DecayWrap>
       <Suspense fallback={null}>
-        <Billboard position={[0, model ? 2.25 : 2.1, 0]}>
-          <Text
+        <Billboard position={[0, model ? 2.3 : 2.15, 0]}>
+          <LabelPlate
             font={FONT_BODY}
-            fontSize={0.2}
-            maxWidth={2.2}
-            textAlign="center"
-            anchorY="bottom"
-            color={palette.ink}
-            fillOpacity={focused ? 1 : LABEL_OPACITY[level]}
+            fontSize={0.17}
+            maxWidth={2}
+            surface={theme.ui.tokens.surface}
+            ink={theme.ui.tokens.ink}
+            opacity={focused ? 1 : Math.max(LABEL_OPACITY[level], 0.75)}
           >
             {label}
-          </Text>
+          </LabelPlate>
           {!hidden && (level === 'new' || level === 'forgotten') && (
-            <Text font={FONT_BODY} fontSize={0.12} anchorY="top" position={[0, -0.03, 0]} color={palette.ink} fillOpacity={0.7}>
-              {level === 'new' ? 'nuevo' : 'olvidado'}
-            </Text>
+            <group position={[0, -0.27, 0]}>
+              <LabelPlate
+                font={FONT_BODY}
+                fontSize={0.1}
+                surface={level === 'forgotten' ? theme.ui.tokens.danger : theme.ui.tokens.accent}
+                ink={level === 'forgotten' ? theme.ui.tokens['bg-ink'] : theme.ui.tokens.ink}
+              >
+                {level === 'new' ? 'nuevo' : 'olvidado'}
+              </LabelPlate>
+            </group>
           )}
         </Billboard>
       </Suspense>
