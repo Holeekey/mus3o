@@ -353,6 +353,9 @@ kbd {
 .card h2.fail { color: var(--danger); }
 .card-body { margin: 0 0 10px; color: var(--ink); line-height: 1.55; }
 .card-meta { margin: 0 0 10px; color: var(--ink-muted); font-size: 0.95rem; }
+.card-figure { margin: 0 0 10px; }
+.card-figure img { display: block; width: 100%; max-height: 150px; object-fit: contain; background: rgba(255, 255, 255, 0.4); border-radius: var(--radius); }
+.card-figure figcaption { margin-top: 4px; font-size: 0.75rem; color: var(--ink-muted); line-height: 1.35; }
 .card-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .card input {
   width: 100%;

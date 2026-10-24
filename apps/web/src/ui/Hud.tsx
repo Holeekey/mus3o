@@ -3,6 +3,7 @@ import type { PalaceLayout } from '../palace/layout'
 import { isCorrectAnswer } from '../palace/match'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
+import { creditLine, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
 import { allConcepts, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
@@ -22,6 +23,7 @@ function findConcept(layout: PalaceLayout, id: string | null) {
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
+  const image = useResolvedImage(concept.imageSearch)
   return (
     <aside className="card" style={wallVars(palette)}>
       <p className="card-tag">{roomName}</p>
@@ -29,6 +31,12 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
         {concept.fact && <p className="card-meta">{concept.fact}</p>}
+        {image && (
+          <figure className="card-figure">
+            <img src={image.src} alt={image.title} loading="lazy" />
+            <figcaption>{creditLine(image)}</figcaption>
+          </figure>
+        )}
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
