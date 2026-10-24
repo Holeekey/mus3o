@@ -16,7 +16,7 @@ services:
       - key: PORT
         value: 10000
       - key: ANTHROPIC_MODEL
-        value: claude-sonnet-4-20250514
+        value: claude-sonnet-5-5
       - key: MAX_DAILY_GENERATIONS
         value: "200"
       - key: ANTHROPIC_API_KEY

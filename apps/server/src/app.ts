@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import {
   GenerateMuseumRequestSchema,
@@ -149,6 +150,8 @@ app.post("/api/improve-prompt", async (req, res) => {
 });
 
 // Serve frontend SPA in production if built
+// En ESM (build de producción) no existe __dirname.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webDistCandidates = [
   path.resolve(process.cwd(), "apps/web/dist"),
   path.resolve(__dirname, "../../web/dist"),

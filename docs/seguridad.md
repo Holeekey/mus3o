@@ -138,4 +138,7 @@ Cobertura de la matriz V1–V6 y cambios de esta revisión:
 - **CORS:** en producción sin `WEB_ORIGIN` no se habilita CORS (el servidor sirve el frontend en el mismo origen); en desarrollo queda abierto.
 - **Arranque:** si `ANTHROPIC_API_KEY` está definida con formato inválido, el proceso se detiene (vacía sigue permitiendo el modo mock).
 - **Tests:** payloads de `testbench-cases.md` convertidos en regresión en `packages/shared/src/security.test.ts`.
-- **Pendiente:** `render.yaml` fija `ANTHROPIC_MODEL=claude-sonnet-4-20250514` (decisión de despliegue, no tocada); `listen` enlaza a todas las interfaces (necesario en Render).
+- **Verificado en ejecución (build `dist`, Node 24):** clave inválida → el proceso sale con código 1; en producción un origen ajeno no recibe `Access-Control-Allow-Origin`, y en desarrollo sí; con `X-Forwarded-For` distintos cada IP tiene su propio contador (429 en la petición 11); las cabeceras `nosniff` y `Referrer-Policy` están presentes.
+- **Bug de despliegue corregido:** el build ESM de producción fallaba con `__dirname is not defined`; ahora se calcula con `import.meta.url`.
+- **`render.yaml`:** `ANTHROPIC_MODEL` pasa a `claude-sonnet-5-5`.
+- **Decisión consciente:** `listen` enlaza a todas las interfaces porque Render necesita que el servicio sea alcanzable por su proxy; la exposición se limita con rate limit, tope diario y la validación de entrada.
