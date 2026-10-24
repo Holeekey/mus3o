@@ -475,11 +475,33 @@ function hits(x: number, z: number, b: Box) {
 
 // Mueve por ejes separados para poder deslizarse contra las paredes.
 export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: number, dz: number) {
+  // Si ya está dentro de algo (volver de un cuadro, aparecer o teletransportarse encima de un pedestal),
+  // esa caja se ignora para que pueda salir caminando en vez de quedar trabado.
+  const solid = colliders.some((b) => hits(x, z, b)) ? colliders.filter((b) => !hits(x, z, b)) : colliders
   let nx = x + dx
-  if (colliders.some((b) => hits(nx, z, b))) nx = x
+  if (solid.some((b) => hits(nx, z, b))) nx = x
   let nz = z + dz
-  if (colliders.some((b) => hits(nx, nz, b))) nz = z
+  if (solid.some((b) => hits(nx, nz, b))) nz = z
   return { x: nx, z: nz }
+}
+
+/**
+ * Punto libre delante de un cuadro (dirección `nx, nz`) para devolver al jugador al salir de él.
+ * Prueba primero a `dist` metros y luego más cerca, más lejos y hacia los lados; si nada sirve, devuelve el punto ideal.
+ */
+export function freeSpotInFront(layout: Pick<PalaceLayout, 'colliders' | 'rooms'>, x: number, z: number, nx: number, nz: number, dist = 2.7) {
+  const room = layout.rooms.find((r) => Math.abs(x - r.x) <= r.w / 2 + 0.5 && Math.abs(z - r.z) <= r.d / 2 + 0.5)
+  const inside = (px: number, pz: number) =>
+    !room || (Math.abs(px - room.x) <= room.w / 2 - PLAYER_R - 0.1 && Math.abs(pz - room.z) <= room.d / 2 - PLAYER_R - 0.1)
+  for (const d of [dist, dist - 0.6, dist + 0.7, dist - 1.1, dist + 1.5, dist + 2.3]) {
+    for (const side of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
+      // Lateral: perpendicular a la normal del cuadro.
+      const px = x + nx * d - nz * side
+      const pz = z + nz * d + nx * side
+      if (inside(px, pz) && !layout.colliders.some((b) => hits(px, pz, b))) return { x: px, z: pz }
+    }
+  }
+  return { x: x + nx * dist, z: z + nz * dist }
 }
 
 /** Imagen subida por el usuario y asignada por la IA a una pieza (vive solo en memoria). */
