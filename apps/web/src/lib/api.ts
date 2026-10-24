@@ -78,3 +78,17 @@ export async function generateMuseumFromFiles(
   const body = { mode: "exploration", prompt, sources, images: input.images };
   return toMuseum(await postJson("/api/generate-museum", body, signal));
 }
+
+/** Ayuda de Haiku para lo que las reglas de Aris no entienden. Devuelve null si no hay respuesta usable. */
+export async function askArisHelp(
+  query: string,
+  context: { palaceTitle?: string; roomName?: string; topics: string[] },
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const data = (await postJson('/api/aris-help', { query: query.slice(0, 200), ...context }, signal)) as { answer?: unknown }
+    return typeof data.answer === 'string' && data.answer.trim() ? data.answer.trim().slice(0, 300) : null
+  } catch {
+    return null
+  }
+}

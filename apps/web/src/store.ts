@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { earnedRoomKeys } from './palace/keys'
 import { buildLayout, type PalaceLayout } from './palace/layout'
-import { evaluateArisQuery, speakAris } from './palace/arisBrain'
+import { arisHelpContext, evaluateArisQuery, speakAris } from './palace/arisBrain'
+import { askArisHelp } from './lib/api'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
 import { resetDioramaState } from './diorama/dioramaStore'
@@ -198,20 +199,34 @@ export const useStore = create<State>()(
           const exam = { ...s.exam, [id]: result }
           return { exam, ...withEarnedKeys(s, s.memorized, exam) }
         }),
-      askAris: (query) =>
-        set((s) => {
-          const res = evaluateArisQuery(query, {
-            palace: s.palace,
-            currentRoomId: s.currentRoomId,
-            memorized: s.memorized,
-            hasKey: s.hasKey,
-            unlockedDoors: s.unlockedDoors,
-            roomKeys: s.roomKeys,
-            mode: s.mode,
-          })
+      askAris: (query) => {
+        const s = get()
+        const ctx = {
+          palace: s.palace,
+          currentRoomId: s.currentRoomId,
+          memorized: s.memorized,
+          hasKey: s.hasKey,
+          unlockedDoors: s.unlockedDoors,
+          roomKeys: s.roomKeys,
+          mode: s.mode,
+        }
+        const res = evaluateArisQuery(query, ctx)
+        if (!res.needsHelp || !s.palace) {
           speakAris(res.text, s.arisMuted)
-          return { arisMessage: res.text, arisPromptOpen: false }
-        }),
+          set({ arisMessage: res.text, arisPromptOpen: false })
+          return
+        }
+        // Las reglas no entendieron: Haiku responde corto con la sala como contexto; si falla, el respaldo guiado.
+        const waiting = 'Aris: Déjame pensarlo un momento…'
+        set({ arisMessage: waiting, arisPromptOpen: false })
+        void askArisHelp(query, arisHelpContext(ctx)).then((answer) => {
+          // Si el jugador cerró el globo o hizo otra pregunta mientras tanto, no se pisa.
+          if (get().arisMessage !== waiting) return
+          const text = answer ? `Aris: ${answer}` : res.text
+          speakAris(text, get().arisMuted)
+          set({ arisMessage: text })
+        })
+      },
       setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
       closeArisDialog: () => set({ arisMessage: null }),
       toggleArisMute: () => set((s) => ({ arisMuted: !s.arisMuted })),

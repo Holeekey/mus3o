@@ -169,6 +169,7 @@ Asistente de estudio **sin IA**, por reglas:
 - Tolerancia a errores tipográficos con distancia de Levenshtein.
 - Saludos, presentación, orientación hacia la siguiente sala, conteo de conceptos pendientes, pistas.
 - `speakAris(text)` usa la síntesis de voz del navegador (sin librerías).
+- **Ayuda de Haiku:** cuando ninguna regla coincide, `evaluateArisQuery` devuelve `needsHelp: true` y `askAris` (store) muestra "Déjame pensarlo…" y llama a `POST /api/aris-help` (`lib/api.ts` → `askArisHelp`) con la pregunta, el título del palacio, la sala actual y hasta 12 títulos de conceptos (nunca los apuntes). Si falla o no hay IA, se muestra el respaldo guiado de siempre. Si el jugador cierra el globo o pregunta otra cosa mientras tanto, la respuesta tardía se descarta.
 
 ## 8. Otras piezas
 

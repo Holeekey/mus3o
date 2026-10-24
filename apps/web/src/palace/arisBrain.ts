@@ -4,6 +4,8 @@ import { playArisVoice } from './arisAudio'
 export type ArisResponse = {
   text: string
   targetCoords?: [number, number] // [x, z] en el mundo si aplica para guiar la mirada
+  /** Las reglas no entendieron la pregunta: el texto es solo el respaldo guiado y se puede pedir ayuda a Haiku. */
+  needsHelp?: boolean
 }
 
 type BrainContext = {
@@ -164,6 +166,17 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   // 10. Fallback guiado e interactivo con ejemplos reales
   return {
     text: 'Aris: No estoy seguro de entenderte del todo, pero puedes consultarme:\n• "¿Qué me falta memorizar?"\n• "¿Adónde voy ahora?"\n• "¿Dónde está la llave?"\n• "¿Cómo va mi progreso?"',
+    needsHelp: true,
+  }
+}
+
+/** Lo único que Aris le pasa a Haiku: la sala actual y los títulos de sus conceptos (nunca los apuntes). */
+export function arisHelpContext(ctx: Pick<BrainContext, 'palace' | 'currentRoomId'>) {
+  const room = ctx.palace?.rooms.find((r) => r.id === ctx.currentRoomId) ?? ctx.palace?.rooms[0]
+  return {
+    palaceTitle: ctx.palace?.title,
+    roomName: room?.name,
+    topics: (room?.pieces ?? []).slice(0, 12).map((p) => p.title.slice(0, 80)),
   }
 }
 
