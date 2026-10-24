@@ -138,3 +138,50 @@ PIECE: Y | box | c | key | e`);
     expect(m.rooms.every((r) => r.pieces.length === LIMITS.maxPiecesPerRoom)).toBe(true);
   });
 });
+
+describe("DSL del flujo completo (modo, período, quiz, imágenes)", () => {
+  const rooms = (extra = "") => `TITLE: Roma
+ROOM: a | Origen | ancient | #112233 | #000000 | torus |
+${extra}PIECE: Rómulo | box | cue | wolf | Fundador legendario
+ROOM: b | República | ancient | #112233 | #000000 | torus | a
+PIECE: Senado | box | cue | column | Órgano de gobierno
+ROOM: c | Imperio | ancient | #112233 | #000000 | torus | a
+PIECE: Augusto | box | cue | statue | Primer emperador`;
+
+  it("exploration: árbol de n-1 aristas 'related' y título del DSL", () => {
+    const m = parseMus3oDSL(rooms(), { mode: "exploration" });
+    expect(m.title).toBe("Roma");
+    expect(m.graph?.edges).toEqual([
+      { from: "a", to: "b", kind: "related" },
+      { from: "a", to: "c", kind: "related" },
+    ]);
+  });
+
+  it("education: cadena next por todas las salas más prerrequisitos", () => {
+    const m = parseMus3oDSL(rooms(), { mode: "education" });
+    expect(m.graph?.edges.filter((e) => e.kind === "next")).toHaveLength(2);
+  });
+
+  it("biography: exige PERIOD en cada sala", () => {
+    expect(() => parseMus3oDSL(rooms(), { mode: "biography" })).toThrow();
+    const withPeriod = rooms().replace(/(ROOM: \w \| [^\n]*\n)/g, "$1PERIOD: 100–200\n");
+    const m = parseMus3oDSL(withPeriod, { mode: "biography" });
+    expect(m.rooms.every((r) => r.period === "100–200")).toBe(true);
+  });
+
+  it("quiz: toma QUIZ de la pieza anterior y falla si falta en alguna", () => {
+    expect(() => parseMus3oDSL(rooms(), { mode: "quiz" })).toThrow();
+    const quiz = "QUIZ: ¿Quién fundó Roma? | Rómulo | Remo | Numa | 0\n";
+    const all = (rooms() + "\n").replace(/(PIECE: [^\n]*\n)/g, `$1${quiz}`);
+    const m = parseMus3oDSL(all, { mode: "quiz" });
+    expect(m.rooms[0].pieces[0].quiz).toEqual({ question: "¿Quién fundó Roma?", options: ["Rómulo", "Remo", "Numa"], answerIndex: 0 });
+  });
+
+  it("IMAGE: acepta solo ids del request y una vez", () => {
+    const raw = (rooms() + "\n").replace(/(PIECE: [^\n]*\n)/g, "$1IMAGE: img-1\n");
+    const m = parseMus3oDSL(raw, { mode: "exploration", imageIds: ["img-1"] });
+    expect(m.rooms.flatMap((r) => r.pieces).filter((p) => p.image).length).toBe(1);
+    const none = parseMus3oDSL(raw, { mode: "exploration", imageIds: [] });
+    expect(none.rooms.flatMap((r) => r.pieces).some((p) => p.image)).toBe(false);
+  });
+});

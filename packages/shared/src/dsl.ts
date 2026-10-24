@@ -5,6 +5,8 @@ import {
   type RoomTheme,
   type MonumentType,
   type Glyph,
+  type MuseumMode,
+  QuizSchema,
   GlyphShape,
   LIMITS,
   SearchKeywordSchema,
@@ -53,7 +55,7 @@ const GLYPH_MAP: Record<string, Glyph> = {
   pointer: "cone",
 };
 
-const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE)\**\s*:\s*\**/i;
+const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE)\**\s*:\s*\**/i;
 
 const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -94,6 +96,43 @@ export function normalizeSearchKeyword(raw: string | undefined): string | undefi
 
 export interface ParseDslOptions {
   title?: string;
+  /** Flujo completo: define la forma del grafo y los campos obligatorios (period, quiz). Sin modo, el grafo es el de siempre. */
+  mode?: MuseumMode;
+  /** Ids de imagen del request: una línea IMAGE con otro id (o repetido) se ignora. */
+  imageIds?: string[];
+  /** Recibe los ids de sala que el modelo marcó como "diorama" (octavo campo de ROOM). */
+  onDioramaRooms?: (roomIds: string[]) => void;
+}
+
+/** Grafo por modo: exploration y quiz son árboles; education y biography, un camino `next` por todas las salas. */
+function buildGraph(rooms: Array<Room & { requires?: string[] }>, mode: MuseumMode | undefined) {
+  const ids = new Set(rooms.map((r) => r.id));
+  const edges: Array<{ from: string; to: string; kind: "next" | "prerequisite" | "related" }> = [];
+  const keys = new Set<string>();
+  const add = (from: string, to: string, kind: "next" | "prerequisite" | "related") => {
+    const key = `${from}->${to}:${kind}`;
+    if (from === to || !ids.has(from) || !ids.has(to) || keys.has(key) || edges.length >= 16) return;
+    keys.add(key);
+    edges.push({ from, to, kind });
+  };
+  const chain = () => rooms.slice(0, -1).forEach((r, i) => add(r.id, rooms[i + 1].id, "next"));
+
+  if (mode === "exploration" || mode === "quiz") {
+    // Árbol (n-1 aristas): cada sala cuelga de su primer prerrequisito válido anterior o, si no, de la sala inicial.
+    rooms.slice(1).forEach((room, i) => {
+      const earlier = new Set(rooms.slice(0, i + 1).map((r) => r.id));
+      add(room.requires?.find((q) => earlier.has(q)) ?? rooms[0].id, room.id, "related");
+    });
+  } else if (mode === "education" || mode === "biography") {
+    chain();
+    // Prerrequisitos extra solo en education (en biography el grafo es la cadena pura).
+    if (mode === "education") rooms.forEach((r) => r.requires?.forEach((q) => add(q, r.id, "prerequisite")));
+  } else {
+    // Comportamiento original (sin modo): prerrequisitos primero y luego la cadena.
+    rooms.forEach((r) => r.requires?.forEach((q) => add(q, r.id, "prerequisite")));
+    chain();
+  }
+  return { start: rooms[0].id, edges };
 }
 
 /**
@@ -111,6 +150,10 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
   let roomCount = 0;
   let pieceCountInRoom = 0;
   let skippingRoom = false;
+  let docTitle: string | undefined;
+  const dioramaRooms: string[] = [];
+  let lastPiece: Piece | null = null;
+  const usedImages = new Set<string>();
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -121,7 +164,34 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
     const kind = tag?.[1].toUpperCase();
     const body = tag ? trimmed.slice(tag[0].length).replace(/｜/g, "|") : "";
 
+    if (kind === "TITLE") {
+      docTitle = body.trim().slice(0, LIMITS.maxTitle) || docTitle;
+      continue;
+    }
+    if (kind === "PERIOD") {
+      if (currentRoom && body.trim()) currentRoom.period = body.trim().slice(0, 40);
+      continue;
+    }
+    if (kind === "QUIZ") {
+      // QUIZ: <pregunta> | <opción> | <opción> [| <opción> | <opción>] | <índice 0-based de la correcta>
+      const q = body.split("|").map((x) => x.trim()).filter((x) => x.length > 0);
+      const answer = Number(q[q.length - 1]);
+      const quiz = QuizSchema.safeParse({ question: q[0], options: q.slice(1, -1).slice(0, 4), answerIndex: answer });
+      if (lastPiece && quiz.success && quiz.data.answerIndex < quiz.data.options.length) lastPiece.quiz = quiz.data;
+      continue;
+    }
+    if (kind === "IMAGE") {
+      const id = body.trim().replace(/^["']|["']$/g, "");
+      // Solo ids que llegaron en el request y como mucho una pieza por imagen.
+      if (lastPiece && options.imageIds?.includes(id) && !usedImages.has(id)) {
+        usedImages.add(id);
+        lastPiece.image = { imageId: id };
+      }
+      continue;
+    }
+
     if (kind === "ROOM") {
+      lastPiece = null;
       if (rooms.length >= LIMITS.maxRooms) {
         currentRoom = null;
         skippingRoom = true;
@@ -149,6 +219,8 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         .split(",")
         .map((r) => sanitizeSlug(r, ""))
         .filter((r) => r.length > 0);
+
+      if ((parts[7] || "").toLowerCase() === "diorama") dioramaRooms.push(roomId);
 
       pieceCountInRoom = 0;
       currentRoom = {
@@ -227,6 +299,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       };
 
       currentRoom.pieces.push(piece);
+      lastPiece = piece;
     }
   }
 
@@ -267,38 +340,11 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
   }
 
   // Build connected graph topology
-  const start = rooms[0].id;
-  const roomIds = new Set(rooms.map((r) => r.id));
-  const edges: Array<{ from: string; to: string; kind: "next" | "prerequisite" | "related" }> = [];
-  const edgeKeys = new Set<string>();
-
-  const addEdge = (from: string, to: string, kind: "next" | "prerequisite" | "related") => {
-    if (from === to || !roomIds.has(from) || !roomIds.has(to)) return;
-    const key = `${from}->${to}:${kind}`;
-    if (!edgeKeys.has(key) && edges.length < 16) {
-      edgeKeys.add(key);
-      edges.push({ from, to, kind });
-    }
-  };
-
-  // Add prerequisites from requires
-  for (const room of rooms as Array<Room & { requires?: string[] }>) {
-    if (room.requires) {
-      for (const req of room.requires) {
-        if (roomIds.has(req)) {
-          addEdge(req, room.id, "prerequisite");
-        }
-      }
-    }
-  }
-
-  // Ensure all rooms are reachable sequentially from start to guarantee reachability
-  for (let i = 0; i < rooms.length - 1; i++) {
-    addEdge(rooms[i].id, rooms[i + 1].id, "next");
-  }
+  options.onDioramaRooms?.(dioramaRooms.slice(0, 2));
+  const graph = buildGraph(rooms as Array<Room & { requires?: string[] }>, options.mode);
 
   const museumPayload = {
-    title: options.title || rooms[0].name || "Palacio de la Memoria",
+    title: options.title || docTitle || rooms[0].name || "Palacio de la Memoria",
     theme: {
       palette: [rooms[0].palette?.primary || "#3b82f6", rooms[0].palette?.fogColor || "#0f172a"],
       ambience: rooms[0].theme || "cathedral",
@@ -307,11 +353,8 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       const { requires: _, ...cleanRoom } = r as Room & { requires?: string[] };
       return cleanRoom;
     }),
-    mode: "education" as const,
-    graph: {
-      start,
-      edges,
-    },
+    mode: options.mode ?? ("education" as const),
+    graph,
   };
 
   return MuseumSchema.parse(museumPayload);

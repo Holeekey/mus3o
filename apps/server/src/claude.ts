@@ -4,6 +4,7 @@ import {
   DigestSourcesResponseSchema,
   findImageAssignmentIssues,
   LIMITS,
+  parseDiorama,
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
@@ -30,7 +31,11 @@ import {
   IMPROVE_SYSTEM_PROMPT,
   improvePrompt as improvePromptText,
   notesPrompt,
+  DIORAMA_SYSTEM_PROMPT,
+  dioramaPrompt,
   FALLBACK_MODEL_SYSTEM_PROMPT,
+  FLOW_DSL_SYSTEM_PROMPT,
+  flowDslPrompt,
   FLOW_STATIC_RULES,
   SYSTEM_PROMPT,
   SYSTEM_PROMPT_LIGHT,
@@ -44,6 +49,10 @@ const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
 /** Modelo barato para dibujar el respaldo de las piezas sin asset. */
 const FALLBACK_MODEL = () => process.env.ANTHROPIC_FALLBACK_MODEL || "claude-haiku-5-5";
+/** Los dioramas piden props y posiciones coherentes: por defecto el modelo principal. */
+const DIORAMA_MODEL = () => process.env.ANTHROPIC_DIORAMA_MODEL || MODEL();
+/** "dsl" (por defecto) o "json" (formato anterior, más caro). */
+const flowFormat = () => (process.env.FLOW_FORMAT === "json" ? "json" : "dsl");
 const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
@@ -178,7 +187,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
-export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.ContentBlockParam[] {
+export function buildFlowContent(request: GenerateMuseumRequest, format: "json" | "dsl" = "json"): Anthropic.ContentBlockParam[] {
   const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => {
     const safeName = image.name.replace(/[<>\r\n]/g, "").slice(0, 80);
     return [
@@ -186,11 +195,52 @@ export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.Cont
       { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
     ];
   });
-  return [...images, { type: "text", text: flowPrompt(request, { staticRules: false }) }];
+  const text = format === "dsl" ? flowDslPrompt(request) : flowPrompt(request, { staticRules: false });
+  return [...images, { type: "text", text }];
+}
+
+/** Salida DSL del flujo completo: valida el formato y las imágenes asignadas contra el request. */
+export function parseFlowDsl(raw: string, request: GenerateMuseumRequest, onDioramaRooms?: (ids: string[]) => void): Museum {
+  const imageIds = request.images.map((i) => i.id);
+  const museum = repairAndSanitizeMuseum(parseMus3oDSL(stripFence(raw), { mode: request.mode, imageIds, onDioramaRooms }));
+  const issues = findImageAssignmentIssues(museum, imageIds);
+  if (issues.length > 0) throw new Error(issues.join("; "));
+  return museum;
+}
+
+/**
+ * Los dioramas van en una llamada aparte y SOLO para las salas que el modelo marcó como representables
+ * (sin marcas no hay llamada). Un fallo no bloquea el museo.
+ */
+export async function addDioramas(museum: Museum, roomIds: string[]): Promise<Museum> {
+  const wanted = roomIds.filter((id) => museum.rooms.some((r) => r.id === id)).slice(0, 2);
+  if (wanted.length === 0) return museum;
+  try {
+    const res = await getClient().messages.create(
+      {
+        model: DIORAMA_MODEL(),
+        thinking: { type: "disabled" },
+        max_tokens: 4000,
+        system: [{ type: "text", text: DIORAMA_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: dioramaPrompt(museum, wanted) }],
+      },
+      { timeout: 60_000, maxRetries: 0 },
+    );
+    console.log(`tokens (diorama): entrada ${res.usage.input_tokens}, salida ${res.usage.output_tokens}, caché leída ${res.usage.cache_read_input_tokens ?? 0}`);
+    const raw = JSON.parse(stripFence(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""))) as Record<string, unknown>;
+    const ids = new Set(museum.rooms.map((r) => r.id));
+    const chosen = Object.keys(raw).filter((id) => ids.has(id) && wanted.includes(id));
+    if (chosen.length === 0) return museum;
+    return { ...museum, rooms: museum.rooms.map((r) => (chosen.includes(r.id) ? { ...r, diorama: parseDiorama(raw[r.id]) } : r)) };
+  } catch (err) {
+    console.error(`dioramas fallaron: ${(err as Error).name}`);
+    return museum;
+  }
 }
 
 export async function generateFlowMuseum(request: GenerateMuseumRequest): Promise<Museum> {
   if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("IA no configurada");
+  if (flowFormat() === "dsl") return generateFlowMuseumDsl(request);
   const imageIds = request.images.map((i) => i.id);
   // Con Poly Pizza activo el modelo 3D lo trae el servidor: la IA solo elige un glifo de respaldo y emite
   // bastante menos salida. Las reglas fijas van en el system prompt con caché (se leen a ~10 % del precio).
@@ -204,6 +254,24 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
     (raw) => parseFlowMuseum(raw, imageIds),
   );
   return resolveModels(enrichMuseum(museum, flowNotesText(request)));
+}
+
+/**
+ * Flujo completo por DSL: una salida de ~2-4 mil tokens en lugar de un JSON de hasta 16 mil. El servidor deriva
+ * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas, en paralelo.
+ */
+async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Museum> {
+  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: FLOW_DSL_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
+  let dioramaRooms: string[] = [];
+  const museum = await askForJson(
+    { system, content: buildFlowContent(request, "dsl"), maxTokens: 5000 },
+    (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)),
+  );
+  const enriched = enrichMuseum(museum, flowNotesText(request));
+  const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms)]);
+  // Cada tarea devuelve el museo completo: se combinan por sala/pieza.
+  const dioramaByRoom = new Map(withDioramas.rooms.map((r) => [r.id, r.diorama]));
+  return { ...withModels, rooms: withModels.rooms.map((r) => (dioramaByRoom.get(r.id) ? { ...r, diorama: dioramaByRoom.get(r.id) } : r)) };
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {

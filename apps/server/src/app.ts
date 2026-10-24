@@ -78,6 +78,9 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 // La clave de caché no guarda los apuntes en claro.
 const cacheKey = (input: GenerateInput) => ("notes" in input ? "notes:" + sha256(input.notes) : input.topic);
 
+// Pedidos idénticos simultáneos comparten UNA generación (y un solo cupo diario) en lugar de pagarla varias veces.
+const inFlight = new Map<string, Promise<Museum>>();
+
 async function respondWithMuseum(res: express.Response, key: string, generate: () => Promise<Museum>) {
   const started = Date.now();
   try {
@@ -86,13 +89,21 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
       res.json(cached);
       return;
     }
-    if (!takeDailySlot()) {
-      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
-      return;
+    let pending = inFlight.get(key);
+    if (!pending) {
+      if (!takeDailySlot()) {
+        res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+        return;
+      }
+      pending = generate()
+        .then((m) => {
+          setCached(key, m);
+          return m;
+        })
+        .finally(() => inFlight.delete(key));
+      inFlight.set(key, pending);
     }
-    const museum = await generate();
-    setCached(key, museum);
-    res.json(museum);
+    res.json(await pending);
   } catch (err) {
     if (err instanceof AiUnavailableError) {
       res.status(503).json({ error: "IA no configurada" });

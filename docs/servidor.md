@@ -216,3 +216,20 @@ sin ella `text` repite el concepto). Palabra clave y explicación se leen **desd
 palabra clave. `parseMus3oDSL` tolera viñetas, numeración, negritas, `room:`/`piece:` en minúsculas y `｜` de ancho completo; desambigua ids de
 sala repetidos (`a`, `a-2`); recorta a `LIMITS.maxRooms` / `maxPiecesPerRoom` sin lanzar (las piezas de una sala omitida se descartan).
 `max_tokens` sube a 2000 (tema) y 3500 (apuntes) por la explicación (~35 tokens por pieza).
+
+## Flujo completo por DSL (por defecto) y consumo de API
+
+`generateFlowMuseum` usa el DSL salvo `FLOW_FORMAT=json` (formato anterior, hasta 16 000 tokens de salida). El modelo solo **elige y ordena**;
+el servidor arma el resto:
+
+| Qué | Quién |
+|---|---|
+| Salas, piezas, anclaje, `searchKeyword`, explicación; `PERIOD` (biography), `QUIZ` (quiz), `IMAGE` (opcional) | IA, una salida DSL de ~2-4 mil tokens (`max_tokens` 5000) |
+| Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
+| Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
+| Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
+| Dioramas | Llamada aparte **solo** para las salas que la IA marcó con `diorama` (8.º campo de `ROOM`, máx. 2); sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal) |
+
+Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
+simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
+en quiz) se reintenta una vez con el error, como antes. Cada llamada registra sus tokens en el log.
