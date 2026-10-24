@@ -50,3 +50,15 @@ Extensión de Mus3o para dotar a los pedestales de modelos 3D low-poly (.glb) de
 - **Rendimiento:** Límite de 4 MB por asset y caché de larga duración en disco y navegador.
 - **Aislamiento en Scene Graph:** Uso de `scene.clone()` para evitar mutaciones cruzadas en mallas compartidas.
 - **Cuota de LocalStorage:** Almacenamiento exclusivo de URLs relativas en `mus3o-v1`, delegando los binarios al Disk Cache HTTP.
+
+---
+
+## Estado de implementación (2026-10-24)
+
+Implementado en `feature/poly-pizza-3d-assets` (PR #56). Desviaciones respecto al plan:
+
+- `DynamicAssetSchema` usa `url` relativa (`/api/assets/<id>.glb`), `title`, `author`, `license`, `sourceUrl` (no `glbUrl`).
+- `<Center bottom>` en lugar de `<Center top>` (con `top` el modelo quedaba bajo el pedestal).
+- La atribución CC-BY está en `ui/Hud.tsx` (no existe `ConceptCard.tsx` como archivo).
+- Se agregaron: relevancia por coincidencia, descarte por triángulos, reparto sin repetir, respaldo creado por Haiku solo para las piezas sin asset, revisión (`/api/assets-review`) y cortacircuito.
+- **Bloqueo conocido:** `static.poly.pizza` responde con un desafío anti-bots a las descargas desde el servidor; ver `servidor.md` y `estado-y-pendientes.md`.

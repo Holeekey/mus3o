@@ -103,13 +103,13 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 `buildLayout(palace)` convierte el `Museum` en geometría determinista (función pura, testeable):
 
 - Todo en metros, plano XZ; `Y` es la altura.
-- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`.
+- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`. Hasta 12 salas y grafos no lineales (ramas, convergencias): además del árbol de recorrido, toda arista entre salas vecinas en la grilla tiene puerta (bucles y atajos).
 - Tamaño de sala según el número de piezas (`sizes`). Muros con hueco de puerta; cada pared con puerta se divide en dos tramos.
 - **Puertas** (`DoorLayout`): `fromRoomId` determina qué llave abre cada puerta.
 - **Corredores** (`CorridorLayout`): piso y muros entre salas.
 - **Pedestales** (`PedestalLayout`): una pieza por pedestal, con forma `Glyph` (o modelo, en la escena).
 - **Cuadros** (`PaintingSlot`): huecos en muros interiores, fuera de las puertas. `SLOT_Y = 2.3`, `SLOT_GAP = 0.4`, `SLOT_DOOR_MARGIN = 0.6`, máx. 16 por sala.
-- **Colores de sala:** `ROOM_COLORS` (8 colores de neón) en orden de sala.
+- **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
 
@@ -124,6 +124,7 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `Player.tsx` | Controles FPS: **WASD** (o flechas), **Shift** correr, **mouse** mirar (pointer lock), colisiones, foco del concepto |
 | `ProceduralModel.tsx` | Dibuja modelos `procedural` con primitivas (cotas de tamaño) |
 | `Shapes.tsx` | Dibuja `glyph` (formas geométricas simples) |
+| `DynamicTotem.tsx` | Modelo `.glb` externo (`piece.dynamicAsset`, Poly Pizza): `useGLTF` + `scene.clone`, `Resize` 0,7 m + `Center bottom`, `ErrorBoundary` y `Suspense` con respaldo (el glifo o modelo procedural de siempre) |
 | `DungeonAssets.tsx` | Carga modelos de `catalog.json` (`type: "catalog"`) |
 | `Painting.tsx` | Cuadro con imagen real (`useResolvedImage`) |
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
@@ -153,7 +154,7 @@ En el examen, responder exige escribir, así que se libera el puntero.
 
 | Componente | Función |
 |---|---|
-| `Hud` | Panel de concepto (`ConceptCard`), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |
