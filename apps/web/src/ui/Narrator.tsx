@@ -1,39 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { fetchWikiInfo, firstSentence, peekWikiInfo } from '../lib/info'
+import { readNarratorOn, saveNarratorOn } from '../lib/narratorPref'
 import { canSpeak, speak, stopSpeaking } from '../lib/voice'
 import type { PalaceLayout } from '../palace/layout'
 import { inExamScope, useStore } from '../store'
 import { KeyHint } from './KeyHint'
 
-const KEY = 'mus3o-narrator'
-
-function readSaved(): boolean {
-  try {
-    return window.localStorage.getItem(KEY) === '1'
-  } catch {
-    return false
-  }
-}
-function save(on: boolean) {
-  try {
-    window.localStorage.setItem(KEY, on ? '1' : '0')
-  } catch {
-    /* sin almacenamiento: solo dura la sesión */
-  }
-}
-
 /** El guía: lee en voz alta las salas y los conceptos al explorar. Apagado por defecto. */
 export function Narrator({ layout }: { layout: PalaceLayout }) {
-  const [on, setOn] = useState(readSaved)
+  const [on, setOn] = useState(readNarratorOn)
   const mode = useStore((s) => s.mode)
   const locked = useStore((s) => s.locked)
   const palace = useStore((s) => s.palace)
   const currentRoomId = useStore((s) => s.currentRoomId)
   const openId = useStore((s) => s.openId)
   const dioramaPhase = useDioramaStore((s) => s.phase)
-  const dioramaActiveId = useDioramaStore((s) => s.activeId)
-  const portals = useDioramaStore((s) => s.portals)
   const supported = canSpeak()
   // Durante la transición al cuadro (entrar o salir) no se habla.
   const inTransition = dioramaPhase === 'entering' || dioramaPhase === 'leaving'
@@ -41,7 +23,7 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
 
   const toggle = useCallback(() => {
     setOn((v) => {
-      save(!v)
+      saveNarratorOn(!v)
       if (v) stopSpeaking()
       return !v
     })
@@ -79,16 +61,7 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
     speak(`Sala ${room.index + 1}: ${room.title}.${description ? ` ${description}` : ''}`)
   }, [active, currentRoomId, layout, palace])
 
-  // Al terminar de entrar a un cuadro se anuncia su título.
-  const dioramaTitle = dioramaActiveId ? portals[dioramaActiveId]?.diorama.title : undefined
-  const spokenDiorama = useRef<string | null>(null)
-  useEffect(() => {
-    if (dioramaPhase === 'room') spokenDiorama.current = null
-    if (!active || dioramaPhase !== 'inside' || !dioramaActiveId) return
-    if (spokenDiorama.current === dioramaActiveId) return
-    spokenDiorama.current = dioramaActiveId
-    speak(`Dentro del cuadro: ${dioramaTitle ?? 'sin título'}`)
-  }, [active, dioramaPhase, dioramaActiveId, dioramaTitle])
+  // Al entrar a un cuadro habla la guía de Aris (diorama/guideStore.ts), con la misma voz y el mismo interruptor.
 
   const prevOpen = useRef<string | null>(null)
   useEffect(() => {

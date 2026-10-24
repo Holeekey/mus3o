@@ -938,6 +938,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   font-size: 0.92rem;
   line-height: 1.45;
 }
+@media (prefers-reduced-motion: reduce) { .aris-bubble { animation: none; } }
 
 .aris-modal-overlay {
   position: fixed;

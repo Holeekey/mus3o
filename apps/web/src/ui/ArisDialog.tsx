@@ -11,10 +11,10 @@ export function ArisDialog() {
 
   useEffect(() => {
     if (!message) return
-    // Auto-cierre a los 10 segundos si el usuario no lo cierra antes
+    // Auto-cierre a los 10 segundos (más si el mensaje es largo, como la guía dentro de un cuadro)
     const timer = setTimeout(() => {
       close()
-    }, 10000)
+    }, Math.max(10000, message.length * 70))
     return () => clearTimeout(timer)
   }, [message, close])
 
