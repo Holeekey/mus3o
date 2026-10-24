@@ -7,16 +7,44 @@ const TIMEOUT_MS = 8_000;
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_HOSTS = new Set(["upload.wikimedia.org", "thumb.wikimedia.org"]);
 
-const upstream = (url: string) =>
-  fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+/** Error transitorio de Wikimedia (límite de tasa, 5xx, timeout): no debe cachearse como "sin imagen". */
+export class UpstreamError extends Error {}
+
+// Máximo 3 llamadas simultáneas a Wikimedia: entrar a un museo pide decenas de imágenes a la vez.
+let active = 0;
+const waiting: (() => void)[] = [];
+async function slot<T>(run: () => Promise<T>): Promise<T> {
+  if (active >= 3) await new Promise<void>((resolve) => waiting.push(resolve));
+  active++;
+  try {
+    return await run();
+  } finally {
+    active--;
+    waiting.shift()?.();
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getJson(url: string): Promise<any | null> {
-  try {
-    const res = await upstream(url);
-    return res.ok ? await res.json() : null;
-  } catch {
-    return null;
-  }
+  return slot(async () => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      } catch {
+        throw new UpstreamError("timeout");
+      }
+      if (res.status === 429 && attempt === 0) {
+        await sleep(1_200);
+        continue;
+      }
+      if (res.status === 404) return null;
+      if (!res.ok) throw new UpstreamError(String(res.status));
+      return res.json();
+    }
+    throw new UpstreamError("429");
+  });
 }
 
 const normalize = (s: string) =>
@@ -52,7 +80,10 @@ function toResolved(page: CommonsPage, displayTitle?: string): ResolvedImage | n
   const fileName = (page.title ?? "").replace(/^File:/, "").replace(/\.[a-z0-9]+$/i, "").replace(/_/g, " ");
   const description = stripTags(meta.ImageDescription?.value);
   const date = stripTags(meta.DateTimeOriginal?.value);
-  const artist = stripTags(meta.Artist?.value).slice(0, 80);
+  let artist = stripTags(meta.Artist?.value);
+  const half = artist.length / 2;
+  if (artist.length % 2 === 0 && artist.slice(0, half) === artist.slice(half)) artist = artist.slice(0, half);
+  artist = artist.slice(0, 80);
   const year = /\b(\d{4})\b/.exec(date)?.[1];
   return {
     src: `/api/image/file?u=${encodeURIComponent(url)}`,
@@ -70,6 +101,17 @@ function toResolved(page: CommonsPage, displayTitle?: string): ResolvedImage | n
 const COMMONS = "https://commons.wikimedia.org/w/api.php";
 const IIPROP = "prop=imageinfo&iiprop=url%7Cextmetadata%7Cmime%7Csize&iiurlwidth=960";
 
+/** Nombre del archivo en una URL de upload: `.../a/ab/X.jpg` o `.../thumb/a/ab/X.jpg/330px-X.jpg`. */
+function fileNameOf(source: string): string {
+  try {
+    const parts = new URL(source).pathname.split("/");
+    const name = parts.includes("thumb") ? parts[parts.length - 2] : parts[parts.length - 1];
+    return decodeURIComponent(name ?? "");
+  } catch {
+    return "";
+  }
+}
+
 async function fromWikipedia(title: string, lang: string): Promise<ResolvedImage | null> {
   const slug = encodeURIComponent(title.trim().replace(/\s+/g, "_"));
   const summary = await getJson(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${slug}`);
@@ -78,7 +120,7 @@ async function fromWikipedia(title: string, lang: string): Promise<ResolvedImage
   const thumb = summary.thumbnail?.source as string | undefined;
   if (!original && !thumb) return null;
 
-  const file = original ? decodeURIComponent(original.split("/").pop() ?? "") : "";
+  const file = fileNameOf((original ?? thumb)!);
   if (file) {
     const data = await getJson(
       `${COMMONS}?action=query&format=json&titles=${encodeURIComponent("File:" + file)}&${IIPROP}`,
@@ -188,7 +230,14 @@ export const imageRouter: Router = express.Router();
 
 imageRouter.get("/image", async (req, res) => {
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
-  const image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang) });
+  let image: ResolvedImage | null;
+  try {
+    image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang) });
+  } catch (err) {
+    if (!(err instanceof UpstreamError)) throw err;
+    res.status(502).json({ error: "Wikimedia no disponible" });
+    return;
+  }
   if (!image) {
     res.status(404).json({ error: "Sin imagen" });
     return;

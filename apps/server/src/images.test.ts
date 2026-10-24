@@ -79,6 +79,25 @@ describe("image endpoints", () => {
     expect(calls.every((u) => /wikipedia\.org|commons\.wikimedia\.org/.test(u))).toBe(true);
   });
 
+  it("finds the Commons file from a thumbnail-only summary", async () => {
+    handler = (url) =>
+      url.includes("wikipedia.org")
+        ? json({ type: "standard", title: "Carabobo", thumbnail: { source: "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Batalla%20Carabobo.JPG/330px-Batalla%20Carabobo.JPG" } })
+        : json(commonsPage());
+    const res = await fetch(`${base}/api/image?wiki=Carabobo`);
+    expect(res.status).toBe(200);
+    expect(calls.some((u) => u.includes("titles=File%3ABatalla%20Carabobo.JPG"))).toBe(true);
+  });
+
+  it("does not cache transient upstream errors", async () => {
+    handler = () => json({}, 500);
+    expect((await fetch(`${base}/api/image?wiki=Roma`)).status).toBe(502);
+    const first = calls.length;
+    handler = () => json({}, 404);
+    expect((await fetch(`${base}/api/image?wiki=Roma`)).status).toBe(404);
+    expect(calls.length).toBeGreaterThan(first);
+  });
+
   it("falls back to Commons when the Wikipedia page is a disambiguation", async () => {
     handler = (url) => (url.includes("wikipedia.org") ? json({ type: "disambiguation", title: "X" }) : json(commonsPage()));
     const res = await fetch(`${base}/api/image?wiki=Batalla&commons=Carabobo%20Tovar`);

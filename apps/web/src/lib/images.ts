@@ -16,11 +16,16 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
     params.set('lang', search.lang ?? 'es')
     pending = fetch(`/api/image?${params}`)
       .then(async (res) => {
+        // Un error del servidor o de Wikimedia es transitorio: no se recuerda, se reintentará.
+        if (res.status >= 500) cache.delete(key)
         if (!res.ok) return null
         const parsed = ResolvedImageSchema.safeParse(await res.json())
         return parsed.success ? parsed.data : null
       })
-      .catch(() => null)
+      .catch(() => {
+        cache.delete(key)
+        return null
+      })
     cache.set(key, pending)
   }
   return pending
