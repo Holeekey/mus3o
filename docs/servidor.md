@@ -158,10 +158,17 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 
 ## Modelos 3D dinámicos (Poly Pizza)
 
-Tras enriquecer el museo, `hydrateMuseumAssets` (`polyPizza.ts`) resuelve en paralelo (`Promise.allSettled`, máx. 24 piezas)
-el `searchKeyword` de cada pieza: busca en Poly Pizza (CC0 primero, CC-BY de respaldo; se descartan NC/ND/SA),
-descarga el `.glb` a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`) y rellena
-`piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`). Timeout de 2500 ms por pieza (`AbortController`); ante
-cualquier fallo la pieza conserva su glifo procedural. Sin `POLY_PIZZA_API_KEY` la etapa no hace nada.
-El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra el crédito
-en la ficha (`Hud.tsx`) cuando la licencia es CC-BY.
+Tras enriquecer el museo, `hydrateMuseumAssets` (`polyPizza.ts`) asigna a cada pieza con `searchKeyword` (máx. 24)
+el modelo que mejor **coincide**:
+
+1. **Búsqueda** en paralelo (una por palabra clave distinta, con respaldo a su última palabra: "rusty shield" → "shield").
+2. **Relevancia** (`relevance`): título igual (6) > contiene todas las palabras (4) > alguna palabra (2) > etiqueta/categoría (1).
+   Sin coincidencia (0) se descarta: mejor el glifo procedural que un objeto equivocado. A igual coincidencia, CC0 antes que CC-BY
+   (se excluyen NC/ND/SA).
+3. **Reparto**: piezas con la misma palabra reciben modelos distintos si hay alternativas.
+4. **Descarga** en paralelo a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`; prueba hasta 3 candidatos)
+   y rellena `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`).
+
+Timeout de 2500 ms por fase (`AbortController`); ante cualquier fallo la pieza conserva su glifo. Sin `POLY_PIZZA_API_KEY`
+la etapa no hace nada. El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra
+el crédito en la ficha (`Hud.tsx`) si la licencia es CC-BY.
