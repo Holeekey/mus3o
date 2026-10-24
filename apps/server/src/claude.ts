@@ -126,7 +126,7 @@ export type GenerateInput = { topic: string } | { notes: string };
 
 export class AiUnavailableError extends Error {}
 
-function getClient(): Anthropic {
+export function getClient(): Anthropic {
   // Las keys de organización sin workspace exigen el header anthropic-workspace-id.
   const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
   client ??= new Anthropic({

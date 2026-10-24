@@ -169,6 +169,9 @@ Asistente de estudio **sin IA**, por reglas:
 - Tolerancia a errores tipográficos con distancia de Levenshtein.
 - Saludos, presentación, orientación hacia la siguiente sala, conteo de conceptos pendientes, pistas.
 - `speakAris(text)` usa la síntesis de voz del navegador (sin librerías).
+- **Menos fallback:** además de las reglas de navegación, Aris reconoce conceptos y salas **por nombre** (tildes ignoradas y un typo de tolerancia) y responde con el texto o la asociación mnemotécnica de la pieza; lista los conceptos de la sala, cuenta salas, explica los controles y el método de Loci. Las coincidencias por subcadena o Levenshtein exigen palabras de 4+ letras (evita que "escolástica" salude). Preguntas sin letras reales (`??`) no llaman a Haiku.
+- **Límite de esfuerzo de la ayuda:** `askArisHelp` (`lib/api.ts`) responde con el respaldo, sin red, si ya hay una consulta en curso, si pasaron menos de 4 s desde la anterior o si se llegó a 10 por sesión; repite desde caché la misma pregunta en la misma sala.
+- **Ayuda de Haiku:** cuando ninguna regla coincide, `evaluateArisQuery` devuelve `needsHelp: true` y `askAris` (store) muestra "Déjame pensarlo…" y llama a `POST /api/aris-help` (`lib/api.ts` → `askArisHelp`) con la pregunta, el título del palacio, la sala actual y hasta 12 títulos de conceptos (nunca los apuntes). Si falla o no hay IA, se muestra el respaldo guiado de siempre. Si el jugador cierra el globo o pregunta otra cosa mientras tanto, la respuesta tardía se descarta.
 
 ## 8. Otras piezas
 

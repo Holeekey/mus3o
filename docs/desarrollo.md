@@ -43,6 +43,8 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `PORT` | No | `3001` |
 | `WEB_ORIGIN` | No | `http://localhost:5173` |
 | `MAX_DAILY_GENERATIONS` | No | `200` |
+| `MAX_DAILY_ARIS_HELP` | No | `150` |
+| `ANTHROPIC_ARIS_MODEL` | No | `claude-haiku-5-5` |
 | `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt` y `/api/assets-review`) |
 | `POLY_PIZZA_API_KEY` | No | — (sin ella no se buscan modelos 3D; los pedestales usan glifos) |
 | `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
