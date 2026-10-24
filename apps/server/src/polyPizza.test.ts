@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sampleMuseum, type DynamicAsset, type Museum } from "@mus3o/shared";
-import { findCandidates, hydrateMuseumAssets, keywordVariants, pickCandidate, rankCandidates, relevance, type PolyCandidate } from "./polyPizza";
+import { findCandidates, hydrateMuseumAssets, polyBlocked, resetPolyBreaker, keywordVariants, pickCandidate, rankCandidates, relevance, type PolyCandidate } from "./polyPizza";
 import { isAllowedDownload, isGlb } from "./assetStore";
 
 const r = (ID: string, Licence: string, Title = ID, extra: object = {}) => ({ ID, Licence, Title, Download: `https://static.poly.pizza/${ID}.glb`, Creator: { Username: "ana" }, ...extra });
@@ -122,5 +122,28 @@ describe("hydrateMuseumAssets", () => {
     vi.stubEnv("POLY_PIZZA_API_KEY", "");
     const m = withKeywords(["key"]);
     expect(await hydrateMuseumAssets(m)).toBe(m);
+  });
+});
+
+describe("cortacircuito de descargas", () => {
+  it("tras un bloqueo 403 deja de buscar y descargar", async () => {
+    resetPolyBreaker();
+    vi.stubEnv("POLY_PIZZA_API_KEY", "k");
+    let searches = 0;
+    vi.stubGlobal("fetch", async (u: string) => {
+      if (u.includes("api.poly.pizza")) {
+        searches++;
+        return new Response(JSON.stringify({ results: [r("blk1", "CC0 1.0", "Key")] }), { status: 200 });
+      }
+      return new Response("<html>Just a moment...</html>", { status: 403, headers: { "content-type": "text/html" } });
+    });
+    const m = { ...sampleMuseum, rooms: [{ ...sampleMuseum.rooms[0], pieces: [{ ...sampleMuseum.rooms[0].pieces[0], id: "p0", searchKeyword: "key" }] }] };
+    const out = await hydrateMuseumAssets(m);
+    expect(out.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
+    expect(polyBlocked()).toBe(true);
+    const before = searches;
+    await hydrateMuseumAssets(m);
+    expect(searches).toBe(before);
+    resetPolyBreaker();
   });
 });

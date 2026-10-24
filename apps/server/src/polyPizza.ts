@@ -1,5 +1,5 @@
 import type { DynamicAsset, Museum, Piece } from "@mus3o/shared";
-import { ensureAsset } from "./assetStore";
+import { DownloadBlockedError, ensureAsset } from "./assetStore";
 import { isRejected, recordAssignment } from "./assetReview";
 
 /**
@@ -105,6 +105,17 @@ export function keywordVariants(keyword: string): string[] {
   return [...new Set([words.join(" "), words[words.length - 1]].filter(Boolean))];
 }
 
+/**
+ * Cortacircuito: si el host de descargas bloquea (403/429/HTML), se deja de buscar y descargar por unos minutos.
+ * Así un bloqueo no suma 2,5 s de espera por generación; las piezas usan su respaldo creado.
+ */
+const BLOCK_COOLDOWN_MS = 10 * 60_000;
+let blockedUntil = 0;
+export const polyBlocked = () => Date.now() < blockedUntil;
+export const resetPolyBreaker = () => {
+  blockedUntil = 0;
+};
+
 const found = new Map<string, PolyCandidate[]>();
 
 /** Candidatos ordenados para una palabra clave (con respaldo a su última palabra). [] ante fallo o timeout. */
@@ -152,6 +163,11 @@ export async function downloadFirst(candidates: PolyCandidate[], timeoutMs = POL
         if (await ensureAsset(c.id, c.downloadUrl, ctrl.signal)) return toAsset(c);
       } catch (err) {
         console.error(`poly.pizza descarga falló: ${(err as Error).name}`);
+        if (err instanceof DownloadBlockedError) {
+          blockedUntil = Date.now() + BLOCK_COOLDOWN_MS;
+          console.error(`poly.pizza bloquea las descargas (${err.message}): se pausa ${BLOCK_COOLDOWN_MS / 60_000} min`);
+          break;
+        }
         if (ctrl.signal.aborted) break;
       }
     }
@@ -175,6 +191,7 @@ export async function hydrateMuseumAssets(
   download: Downloader = downloadFirst,
 ): Promise<Museum> {
   if (!polyEnabled() && find === findCandidates) return museum;
+  if (polyBlocked()) return museum;
   const targets: Piece[] = [];
   for (const room of museum.rooms) {
     for (const piece of room.pieces) {

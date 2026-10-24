@@ -41,13 +41,18 @@ async function exists(id: string) {
   }
 }
 
+/** El host de descargas rechazó la petición (desafío anti-bots, límite de uso): reintentar enseguida solo gasta tiempo. */
+export class DownloadBlockedError extends Error {}
+
 /** Garantiza que el .glb esté en disco. false si no se pudo (red, tamaño, formato). */
 export async function ensureAsset(id: string, downloadUrl: string, signal?: AbortSignal): Promise<boolean> {
   if (!isValidAssetId(id)) return false;
   if (await exists(id)) return true;
   if (!isAllowedDownload(downloadUrl)) return false;
   const res = await fetch(downloadUrl, { signal, redirect: "error" });
+  if (res.status === 403 || res.status === 429 || res.status === 503) throw new DownloadBlockedError(`HTTP ${res.status}`);
   if (!res.ok || !res.body) return false;
+  if ((res.headers.get("content-type") ?? "").includes("text/html")) throw new DownloadBlockedError("respuesta HTML");
   const declared = Number(res.headers.get("content-length"));
   if (declared > MAX_ASSET_BYTES) return false;
   // Se lee por trozos para cortar en cuanto se pasa del tope aunque no haya content-length.

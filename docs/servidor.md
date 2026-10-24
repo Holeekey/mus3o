@@ -250,3 +250,10 @@ Hallazgo de la medición: sin la instrucción explícita de marcar salas con `di
 - **Clave de caché del flujo** ignora mayúsculas y espacios del pedido (`"Roma  "` = `"roma"`).
 - **Modos probados con IA real** (Sonnet 5.5, sin Poly Pizza): biography → 5 salas / 25 piezas / 5 períodos, 3 453 + 1 665 tokens de salida; quiz → 4 salas / 20 piezas / 20 quiz, 4 360 + 1 932. Ninguno necesitó reintento. La segunda generación leyó la caché del prompt (1 393 tokens de entrada leídos en vez de escritos).
 - **Dioramas con Haiku: descartado.** Con razonamiento (por defecto) gastó 3 359 tokens de salida (el doble que Sonnet, 1 632); sin razonamiento devolvió dioramas sin props válidos (0 props tras validar). Se queda Sonnet para los dioramas.
+
+### Validación con la API real de Poly Pizza (2026-10-24)
+
+- **Búsqueda: funciona.** `x-auth-token` válido, respuesta en 0,15-0,5 s y campos confirmados (ver `estado-y-pendientes.md`).
+- **Descarga del `.glb`: bloqueada.** `static.poly.pizza` responde 403 con una página de desafío anti-bots de Cloudflare ("Just a moment...") a las peticiones del servidor. Resultado en una generación real: 0 de 18 piezas con asset; todas usaron el respaldo creado / glifo.
+- **Cortacircuito** (`DownloadBlockedError`, `polyBlocked`): ante 403/429/503 o una respuesta HTML se dejan de buscar y descargar durante 10 min, para no sumar ~2,5 s de espera por generación mientras dure el bloqueo.
+- **Pendiente (decisión de producto):** no se intentó saltar el desafío (falsear navegador/Referer). Opciones legítimas: pedir a Poly Pizza que habilite descargas desde servidor para la clave, o que el **navegador** descargue el `.glb` directamente desde `static.poly.pizza` (el cliente ya recibe la URL) en vez de pasar por el proxy del servidor.
