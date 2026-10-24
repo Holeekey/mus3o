@@ -56,6 +56,7 @@ export function introPose(layout: PalaceLayout, t: number, descentStart: number,
 export function IntroCamera({ layout }: { layout: PalaceLayout }) {
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
+  const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const baseFog = useRef<{ near: number; far: number } | null>(null)
   const tmp = useMemo(() => new Vector3(), [])
@@ -88,9 +89,18 @@ export function IntroCamera({ layout }: { layout: PalaceLayout }) {
     camera.rotation.set(0, layout.spawn.yaw, 0)
   }
 
-  // Antes del primer pintado: la cámara ya está arriba, no en el punto de entrada.
+  // Antes del primer pintado: la cámara ya está arriba y precalentamos shaders.
   useLayoutEffect(() => {
-    if (introState.active) place()
+    if (introState.active) {
+      place()
+      try {
+        // Pre-warming de shaders: compila materiales y sombras antes del primer frame
+        // de movimiento para evitar el tirón inicial por shader compilation.
+        gl.compile(scene, camera)
+      } catch {
+        // En entornos sin soporte WebGL (p. ej. tests) no bloquea.
+      }
+    }
     return () => {
       if (introState.active) restore()
     }
@@ -101,7 +111,11 @@ export function IntroCamera({ layout }: { layout: PalaceLayout }) {
     const tl = introState.timeline
     if (!introState.active || !tl) return
     if (introState.frozenAt != null) introState.t = introState.frozenAt
-    else introState.t = Math.min(tl.total, introState.t + Math.min(dt, 0.1))
+    else {
+      // Clampeo a 50ms para evitar saltos bruscos si el navegador pierde frames.
+      const safeDt = Math.min(Math.max(0, dt), 0.05)
+      introState.t = Math.min(tl.total, introState.t + safeDt)
+    }
     if (introState.t >= tl.total) {
       restore()
       finishIntro()
