@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
 import { buildFlowContent, parseFlowMuseum } from "./claude";
-import { flowPrompt } from "./prompts";
+import { flowPrompt, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -39,6 +39,14 @@ describe("flowPrompt", () => {
 
   it("forbids image assignments when no images are sent", () => {
     expect(flowPrompt(request())).toContain('No hay imágenes: no incluyas "image"');
+  });
+});
+
+describe("userPrompt", () => {
+  it("asks for real image searches for every room of a topic museum", () => {
+    const text = userPrompt("Volcanes");
+    expect(text).toContain('Tema del mus3o: "Volcanes"');
+    expect(text).toContain('agrega a CADA sala "imageSearch"');
   });
 });
 

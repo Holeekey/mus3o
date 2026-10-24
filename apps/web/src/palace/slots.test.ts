@@ -6,6 +6,11 @@ const palaceOf = (n: number, pieces = 4) => {
   const text = Array.from({ length: n }, (_, i) => `# Sala ${i}\n${Array.from({ length: pieces }, (_, k) => `- c${k}`).join('\n')}`).join('\n')
   const r = parsePalace(text)
   if (!r.ok) throw new Error(r.error)
+  // El parser ya pide imágenes por título; cada test define las suyas.
+  for (const room of r.palace.rooms) {
+    delete room.imageSearch
+    for (const piece of room.pieces) delete piece.imageSearch
+  }
   return r.palace
 }
 

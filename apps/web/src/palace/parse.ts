@@ -155,6 +155,9 @@ function parseCsv(input: string): DraftRoom[] {
   return [...byRoom.values()]
 }
 
+// Sin IA, el título del tema o concepto se usa como título de Wikipedia; si no hay artículo, no hay cuadro.
+const imageSearchFor = (title: string) => ({ wikiTitle: clip(title.trim(), 120), lang: 'es' })
+
 export function detectFormat(input: string): InputFormat {
   const t = input.trim()
   if (t.startsWith('{') || t.startsWith('[')) return 'json'
@@ -207,6 +210,7 @@ export function parsePalace(input: string, format: InputFormat = detectFormat(in
         id: `r${ri}`,
         name: clip(r.title, LIMITS.maxTitle),
         description: '',
+        imageSearch: imageSearchFor(r.title),
         pieces: r.concepts
           .slice(0, LIMITS.maxPiecesPerRoom)
           .filter((c) => c.title.trim())
@@ -216,6 +220,7 @@ export function parsePalace(input: string, format: InputFormat = detectFormat(in
             text: clip(c.detail, LIMITS.maxText),
             // Sin IA no hay dato curioso; la metáfora (si viene) ocupa ese lugar.
             fact: c.metaphor ? clip(c.metaphor, LIMITS.maxText) : '',
+            imageSearch: imageSearchFor(c.title),
           })),
       }
     }),
