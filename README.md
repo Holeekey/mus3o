@@ -56,3 +56,9 @@ Monorepo npm workspaces: `apps/web` (Vite + R3F), `apps/server` (Express + Claud
 cp .env.example .env   # añade ANTHROPIC_API_KEY (sin ella el servidor devuelve un mus3o mock)
 npm install && npm run dev   # web :5173, server :3001
 ```
+
+## 🎨 Assets y Atribución
+
+- **KayKit Dungeon Asset Pack (1.1)**: Creado por **Kay Lousberg** ([www.kaylousberg.com](https://www.kaylousberg.com)), licenciado bajo [Creative Commons Zero (CC0)](https://creativecommons.org/publicdomain/zero/1.0/).
+- **Archivos Binarios (Git LFS)**: Todos los modelos 3D (`.bin`, `.gltf`, `.glb`, `.fbx`, `.obj`), texturas (`.png`) y fuentes (`.ttf`) son archivos binarios gestionados mediante **Git LFS**.
+- Ver detalle completo en [ASSETS.md](./ASSETS.md).
