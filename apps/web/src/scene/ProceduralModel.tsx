@@ -19,13 +19,14 @@ function Geometry({ part }: { part: Part }) {
   }
 }
 
-export default function ProceduralModel({ parts, emissive }: { parts: Part[]; emissive?: number }) {
+// Conserva los colores de cada parte, pero mates y sin brillo propio: la forma la dibuja la luz.
+export default function ProceduralModel({ parts }: { parts: Part[] }) {
   return (
     <group>
       {parts.map((p, i) => (
-        <mesh key={i} position={p.pos} rotation={p.rot}>
+        <mesh key={i} position={p.pos} rotation={p.rot} castShadow receiveShadow>
           <Geometry part={p} />
-          <meshStandardMaterial color={p.color} emissive={p.color} emissiveIntensity={emissive ?? 0.15} flatShading />
+          <meshStandardMaterial color={p.color} roughness={0.9} flatShading />
         </mesh>
       ))}
     </group>
