@@ -57,6 +57,10 @@ export function Player({ layout }: { layout: PalaceLayout }) {
         const id = s.openId ?? s.focusedId
         if (id) s.toggleMemorized(id)
       }
+      if (e.code === 'KeyT' && !s.arisPromptOpen) {
+        s.setArisPromptOpen(true)
+        controls.current?.unlock()
+      }
     }
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false

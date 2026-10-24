@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { buildLayout, type PalaceLayout } from './palace/layout'
+import { evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { MuseumSchema, type Museum } from '@mus3o/shared'
 
 export type Screen = 'landing' | 'palace'
@@ -24,6 +25,8 @@ type State = {
   locked: boolean
   hasKey: boolean
   unlockedDoors: Record<string, true>
+  arisMessage: string | null
+  arisPromptOpen: boolean
 
   enterPalace: (palace: Museum) => void
   resume: () => void
@@ -33,7 +36,10 @@ type State = {
   pickupKey: () => void
   unlockDoor: (doorId: string) => void
   recordExam: (id: string, result: ExamResult) => void
-  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked'>>) => void
+  askAris: (query: string) => void
+  setArisPromptOpen: (open: boolean) => void
+  closeArisDialog: () => void
+  set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'arisMessage' | 'arisPromptOpen'>>) => void
 }
 
 const safeStorage = createJSONStorage(() => {
@@ -60,6 +66,8 @@ export const useStore = create<State>()(
       locked: false,
       hasKey: false,
       unlockedDoors: {},
+      arisMessage: null,
+      arisPromptOpen: false,
 
       enterPalace: (palace) =>
         set({
@@ -88,6 +96,21 @@ export const useStore = create<State>()(
           return { memorized }
         }),
       recordExam: (id, result) => set((s) => ({ exam: { ...s.exam, [id]: result } })),
+      askAris: (query) =>
+        set((s) => {
+          const res = evaluateArisQuery(query, {
+            palace: s.palace,
+            currentRoomId: s.currentRoomId,
+            memorized: s.memorized,
+            hasKey: s.hasKey,
+            unlockedDoors: s.unlockedDoors,
+            mode: s.mode,
+          })
+          speakAris(res.text)
+          return { arisMessage: res.text, arisPromptOpen: false }
+        }),
+      setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
+      closeArisDialog: () => set({ arisMessage: null }),
       set: (patch) => set(patch),
     }),
     {

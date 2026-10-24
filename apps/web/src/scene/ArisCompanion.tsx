@@ -120,12 +120,14 @@ function ArisModelInner() {
     const followFactor = 1 - Math.exp(-6.0 * dt)
     currentPos.current.lerp(_targetPos, followFactor)
 
-    // 6. Micro-animaciones: Flotación (Bobbing) y Respiración (Squash & Stretch)
+    // 6. Micro-animaciones: Flotación (Bobbing), Respiración y animación de habla
+    const isSpeaking = !!useStore.getState().arisMessage
     const bobbing = Math.sin(t * 2.4) * 0.07
     const breathing = Math.sin(t * 3.2) * 0.025
+    const talkBob = isSpeaking ? Math.sin(t * 9) * 0.035 : 0
 
     group.position.x = currentPos.current.x
-    group.position.y = currentPos.current.y + bobbing
+    group.position.y = currentPos.current.y + bobbing + talkBob
     group.position.z = currentPos.current.z
 
     // 7. Estimación de velocidad para alternar entre modo vuelo y curioseo en reposo
@@ -134,9 +136,9 @@ function ArisModelInner() {
     const speed = _velocity.length()
 
     // 8. Mirada y orientación: La mayoría de las veces enfocado en el usuario
-    // Ciclo de 8 segundos: 6s (75%) mirando al jugador a los ojos, 2s (25%) curioseando hacia donde apunta la cámara
+    // Si está hablando, mantiene 100% de atención fija en el usuario
     const cycleTime = t % 8.0
-    const looksAtUser = cycleTime < 6.0
+    const looksAtUser = isSpeaking || cycleTime < 6.0
 
     if (speed > 0.8) {
       // En desplazamiento rápido: se orienta hacia el vector de avance
