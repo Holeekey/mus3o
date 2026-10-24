@@ -98,6 +98,20 @@ describe("image endpoints", () => {
     expect(calls.length).toBeGreaterThan(first);
   });
 
+  it("keeps the Wikipedia thumbnail when the Commons license lookup fails", async () => {
+    handler = (url) =>
+      url.includes("wikipedia.org")
+        ? json({ type: "standard", title: "Codón", thumbnail: { source: "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Codon.png/330px-Codon.png", width: 330, height: 200 } })
+        : json({}, 500);
+    const res = await fetch(`${base}/api/image?wiki=Cod%C3%B3n`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      src: "/api/image/file?u=" + encodeURIComponent("https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Codon.png/330px-Codon.png"),
+      title: "Codón",
+      license: "Ver fuente",
+    });
+  });
+
   it("falls back to Commons when the Wikipedia page is a disambiguation", async () => {
     handler = (url) => (url.includes("wikipedia.org") ? json({ type: "disambiguation", title: "X" }) : json(commonsPage()));
     const res = await fetch(`${base}/api/image?wiki=Batalla&commons=Carabobo%20Tovar`);

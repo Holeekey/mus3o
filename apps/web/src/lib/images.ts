@@ -7,6 +7,28 @@ const settled = new Map<string, ResolvedImage | null>()
 
 const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}`
 
+// Wikimedia limita la tasa cuando un museo pide muchas imágenes a la vez: se reintenta con espera.
+const RETRY_DELAYS_MS = [2_000, 5_000]
+class TransientError extends Error {}
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function requestImage(params: URLSearchParams): Promise<ResolvedImage | null> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(`/api/image?${params}`)
+      if (res.status < 500) {
+        if (!res.ok) return null
+        const parsed = ResolvedImageSchema.safeParse(await res.json())
+        return parsed.success ? parsed.data : null
+      }
+    } catch {
+      // Error de red: transitorio, igual que un 5xx.
+    }
+    if (attempt >= RETRY_DELAYS_MS.length) throw new TransientError()
+    await wait(RETRY_DELAYS_MS[attempt])
+  }
+}
+
 /** Pide la imagen al servidor; las peticiones iguales (también las simultáneas) comparten una sola. */
 export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage | null> {
   const key = keyOf(search)
@@ -16,22 +38,17 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
     if (search.wikiTitle?.trim()) params.set('wiki', search.wikiTitle.trim())
     if (search.commonsQuery?.trim()) params.set('commons', search.commonsQuery.trim())
     params.set('lang', search.lang ?? 'es')
-    pending = fetch(`/api/image?${params}`)
-      .then(async (res) => {
-        // Un error del servidor o de Wikimedia es transitorio: no se recuerda, se reintentará.
-        if (res.status >= 500) cache.delete(key)
-        if (!res.ok) return null
-        const parsed = ResolvedImageSchema.safeParse(await res.json())
-        return parsed.success ? parsed.data : null
-      })
-      .then((image) => {
-        if (cache.get(key) === pending) settled.set(key, image)
+    pending = requestImage(params).then(
+      (image) => {
+        settled.set(key, image)
         return image
-      })
-      .catch(() => {
+      },
+      () => {
+        // Agotados los reintentos, no se recuerda el fallo: se volverá a pedir más adelante.
         cache.delete(key)
         return null
-      })
+      },
+    )
     cache.set(key, pending)
   }
   return pending

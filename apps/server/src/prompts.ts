@@ -30,7 +30,7 @@ Ejemplo de receta (columna):
 /** Pistas para colgar imágenes reales de dominio público (Wikipedia / Commons) como cuadros. */
 export const IMAGE_SEARCH_RULES = `- Imágenes reales: agrega a CADA sala "imageSearch": { "wikiTitle": string, "commonsQuery": string, "lang": "código de 2 letras del idioma de los apuntes" } (su cuadro principal) y también a las piezas con un referente real y dibujable (personaje histórico, evento, obra de arte, lugar, organismo, estructura anatómica, instrumento, proceso representable en un diagrama). "wikiTitle" es el título EXACTO del artículo de Wikipedia en el idioma de los apuntes, con calificador si hay ambigüedad (ej. "Batalla de Carabobo (1821)"); "commonsQuery" son 2 a 4 palabras clave en inglés. Omite "imageSearch" en piezas abstractas. Sé compacto.`
 
-export const userPrompt = (topic: string) => `Tema del mus3o: ${JSON.stringify(topic)}`;
+export const userPrompt = (topic: string) => `Tema del mus3o: ${JSON.stringify(topic)}\n${IMAGE_SEARCH_RULES}`;
 
 /**
  * Modo apuntes: el museo es un palacio de la memoria construido con los apuntes del usuario.

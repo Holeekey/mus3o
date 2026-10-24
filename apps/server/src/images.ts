@@ -122,12 +122,17 @@ async function fromWikipedia(title: string, lang: string): Promise<ResolvedImage
 
   const file = fileNameOf((original ?? thumb)!);
   if (file) {
-    const data = await getJson(
-      `${COMMONS}?action=query&format=json&titles=${encodeURIComponent("File:" + file)}&${IIPROP}`,
-    );
-    const page = Object.values<CommonsPage>(data?.query?.pages ?? {})[0];
-    const resolved = page ? toResolved(page, summary.title) : null;
-    if (resolved) return resolved;
+    try {
+      const data = await getJson(
+        `${COMMONS}?action=query&format=json&titles=${encodeURIComponent("File:" + file)}&${IIPROP}`,
+      );
+      const page = Object.values<CommonsPage>(data?.query?.pages ?? {})[0];
+      const resolved = page ? toResolved(page, summary.title) : null;
+      if (resolved) return resolved;
+    } catch (err) {
+      // Si Commons limita la tasa, la miniatura del resumen sirve igual: no se pierde la imagen.
+      if (!(err instanceof UpstreamError)) throw err;
+    }
   }
   // El archivo no está en Commons (p. ej. subido localmente): usa la miniatura del resumen.
   const url = (thumb ?? original)!;
