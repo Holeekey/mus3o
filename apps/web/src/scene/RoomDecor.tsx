@@ -18,7 +18,7 @@ export function RoomDecor({ room, palette, theme }: { room: RoomLayout; palette:
   useLayoutEffect(() => () => geometry?.dispose(), [geometry])
   if (!geometry) return null
   return (
-    <mesh geometry={geometry} castShadow receiveShadow>
+    <mesh geometry={geometry} receiveShadow>
       <meshStandardMaterial vertexColors flatShading roughness={0.95} />
     </mesh>
   )
