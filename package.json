@@ -8,6 +8,7 @@
     "dev:web": "npm run dev -w @mus3o/web",
     "dev:server": "npm run dev -w @mus3o/server",
     "build": "npm run build -w @mus3o/shared && npm run build -w @mus3o/server && npm run build -w @mus3o/web",
+    "test:dungeon": "npm run test -w @mus3o/dungeon-core",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
