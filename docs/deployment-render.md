@@ -97,3 +97,27 @@ Una vez activo en Render:
 - [ ] Accede a `https://tu-app.onrender.com/api/health` y verifica que responda `{"status":"ok", ...}`.
 - [ ] Carga la Landing y navega a uno de los palacios de ejemplo para verificar la fluidez de WebGL.
 - [ ] Prueba una generación de palacio con IA ingresando un tema para verificar la conexión con Anthropic.
+
+---
+
+## 6. Resolución de Problemas Frecuentes
+
+### 1. Build falla por falta de pnpm
+Render utiliza Node.js nativo. El comando de build debe incluir `corepack enable` para que Render reconozca `pnpm` sin instalaciones adicionales:
+```bash
+corepack enable && pnpm install && pnpm run build
+```
+Esto ya está configurado en `render.yaml`.
+
+### 2. Error 503 en generación con IA
+- **Causa:** `ANTHROPIC_API_KEY` no fue ingresada en el panel de Render o tiene caracteres invisibles.
+- **Solución:** Ir a **Dashboard -> mus3o -> Environment -> Edit** y volver a pegar la clave `sk-ant-api03-...`. La app se reiniciará automáticamente.
+
+### 3. Rutas SPA dan 404 al recargar el navegador
+- El servidor Express en `apps/server/src/app.ts` incluye un middleware fallback comodín (`app.get("*", ...)`), que redirige cualquier ruta del frontend al `index.html`.
+
+### 4. Consultar Logs en tiempo real
+Para inspeccionar errores en tiempo de ejecución o ver los tiempos de generación de palacios:
+- Ir a **Render Dashboard -> mus3o -> Logs**.
+- Todos los eventos del servidor y de Express se imprimen con formato estructurado.
+
