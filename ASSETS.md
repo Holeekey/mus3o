@@ -11,8 +11,9 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 | Nombre del Pack | Autor / Creador | Sitio Web | Licencia | Modificado en Repo |
 |---|---|---|---|---|
 | **KayKit: Dungeon Asset Pack (1.1)** | **Kay Lousberg** | [www.kaylousberg.com](https://www.kaylousberg.com) | [Creative Commons Zero (CC0)](https://creativecommons.org/publicdomain/zero/1.0/) | Extracción a `assets/kaykit_dungeon` y `apps/web/public/models/dungeon/` |
-| **Gloock** | Veronica Burian, Lisandro Murphy | [Google Fonts](https://fonts.google.com/specimen/Gloock) | SIL Open Font License, 1.1 | Fuente display para cartelas |
-| **Hanken Grotesk** | Hanken Design Co. | [Google Fonts](https://fonts.google.com/specimen/Hanken+Grotesk) | SIL Open Font License, 1.1 | Fuente de lectura en el entorno 3D |
+| **Public Sans** | U.S. Web Design System / Google Fonts | [Google Fonts](https://fonts.google.com/specimen/Public+Sans) | SIL Open Font License, 1.1 | Fuente variable autoalojada para toda la interfaz; licencia en `apps/web/public/fonts/PublicSans-OFL.txt` |
+| **Gloock** | Veronica Burian, Lisandro Murphy | [Google Fonts](https://fonts.google.com/specimen/Gloock) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
+| **Hanken Grotesk** | Hanken Design Co. | [Google Fonts](https://fonts.google.com/specimen/Hanken+Grotesk) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
 
 ---
 
