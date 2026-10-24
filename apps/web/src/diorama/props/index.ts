@@ -6,6 +6,7 @@ import { buildFlag } from './flag'
 import { buildHorse, buildRider } from './horse'
 import { buildRock, buildTree } from './nature'
 import { buildArch, buildCampfire, buildCannon, buildChurch, buildColumn, buildHouse, buildShip, buildTent } from './structures'
+import { buildScienceProp, SCIENCE_VARIED } from './science' // science-kit
 import type { Built, PropCtx } from './common'
 
 export type { Built, PropCtx } from './common'
@@ -46,7 +47,7 @@ export function buildCustom(parts: Part[]): Built {
 /** Cuántas variantes de geometría merecen la pena según el tipo y la cantidad. */
 export function variantsFor(kind: DioramaKind, count: number): number {
   const varied: DioramaKind[] = ['figure', 'rider', 'horse', 'tree', 'rock', 'house', 'column']
-  if (!varied.includes(kind)) return 1
+  if (!varied.includes(kind) && !(SCIENCE_VARIED as readonly DioramaKind[]).includes(kind)) return 1 // science-kit
   return count >= 7 ? 3 : count >= 3 ? 2 : 1
 }
 
@@ -82,5 +83,7 @@ export function buildProp(kind: DioramaKind, ctx: PropCtx, variant: number, part
       return buildCampfire(ctx)
     case 'custom':
       return buildCustom(parts ?? [])
+    default:
+      return buildScienceProp(kind, ctx, variant) // science-kit
   }
 }
