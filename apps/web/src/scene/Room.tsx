@@ -202,7 +202,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       </Reveal>
       {paintings.map((a) => (
         <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
-          <Painting slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} />
+          <Painting slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} title={room.title} />
         </Reveal>
       ))}
       <Reveal id={monumentKey(room.id)} mode="sink">

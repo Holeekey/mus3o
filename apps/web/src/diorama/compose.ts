@@ -150,6 +150,7 @@ function personOf(title: string, text: string, arch: Archetype): boolean {
     const w = fold(significant[0])
     if (w.length < 3 || w.length > 14) return false
     if (SUFFIX.test(w)) return false
+    if (w.endsWith('a') && !textSignal) return false // "Brújula", "Carabela": casi siempre cosas
     if (w.endsWith('s') && w.length > 6) return false
     return true
   }
@@ -195,24 +196,25 @@ export const MIN_LINK_SPACING = 3.4
 export const ENTRY_Z = 6
 export const MAX_LINKED = 12
 
-type Slot = { x: number; z: number; rotY: number }
+/** `row` 1 = arco trasero de la doble fila: sus props crecen un poco para que los rótulos no se pisen. */
+type Slot = { x: number; z: number; rotY: number; row?: number }
 
 const ARC_CZ = 4
 
 /** Hasta 6 piezas en un arco; de 7 a 12, en dos arcos concéntricos. Ordenadas de izquierda a derecha. */
 export function arcSlots(n: number): Slot[] {
-  const pts: { a: number; r: number }[] = []
-  const row = (count: number, r: number, maxSpan: number) => {
+  const pts: { a: number; r: number; row: number }[] = []
+  const row = (count: number, r: number, maxSpan: number, rowIdx = 0) => {
     const step = count > 1 ? Math.min(0.62, maxSpan / (count - 1)) : 0
-    for (let i = 0; i < count; i++) pts.push({ a: (i - (count - 1) / 2) * step, r })
+    for (let i = 0; i < count; i++) pts.push({ a: (i - (count - 1) / 2) * step, r, row: rowIdx })
   }
   if (n <= 6) row(n, 8.5, 2.6)
   else {
     row(Math.ceil(n / 2), 6.8, 2.7)
-    row(Math.floor(n / 2), 10.8, 2.7)
+    row(Math.floor(n / 2), 10.8, 2.7, 1)
   }
   pts.sort((p, q) => p.a - q.a || p.r - q.r)
-  return pts.map(({ a, r }) => ({ x: r * Math.sin(a), z: ARC_CZ - r * Math.cos(a), rotY: -a }))
+  return pts.map(({ a, r, row: rowIdx }) => ({ x: r * Math.sin(a), z: ARC_CZ - r * Math.cos(a), rotY: -a, row: rowIdx }))
 }
 
 /** Posiciones de la orilla (personas) y del agua (barcos) para el arquetipo naval. */
@@ -223,7 +225,7 @@ function navalSlots() {
     if (shoreZ(x) < -11.2) continue
     const z = Math.max(-14, shoreZ(x) - 3.2)
     if (!field.isWater(x, z) || !field.isWater(x, z + 1.2)) continue
-    if (water.every((s) => Math.hypot(s.x - x, s.z - z) >= 5.2)) water.push({ x, z, rotY: 0.5 })
+    if (water.every((s) => Math.hypot(s.x - x, s.z - z) >= 8.5)) water.push({ x, z, rotY: 0.5 })
   }
   const beach: Slot[] = []
   const xs = [0, 3.6, -3.6, 7.2, -7.2, 10.8, -10.8]
@@ -393,7 +395,7 @@ function linkedKind(arch: Archetype, info: Info, i: number, accent: string, offs
 // Ambiente por arquetipo
 // ---------------------------------------------------------------------------------------------
 
-type Ctx = { rng: Rng; accent: string; ground: string; hasKey: (re: RegExp) => boolean; terrain: Diorama['terrain'] }
+type Ctx = { waterUsed: number; rng: Rng; accent: string; ground: string; hasKey: (re: RegExp) => boolean; terrain: Diorama['terrain'] }
 
 /** Coloca un prop de ambiente cuidando que no invada la zona de entrada. */
 const amb = (kind: string, x: number, z: number, extra: Raw = {}): Raw => {
@@ -434,7 +436,7 @@ function ambientFor(arch: Archetype, ctx: Ctx): Raw[] {
       ]
     case 'naval': {
       const { water } = navalSlots()
-      const far = water.filter((w) => w.z <= -12).slice(-3)
+      const far = water.slice(ctx.waterUsed).filter((w) => w.z <= -12)
       return [
         ...far.map((w) => amb('ship', w.x, w.z - 0.3, { rotY: w.rotY + 0.4, scale: 0.7 })),
         amb('tree', -13, -3, { count: 3, spread: 1.4 }),
@@ -515,8 +517,8 @@ function ambientFor(arch: Archetype, ctx: Ctx): Raw[] {
       // Templo de las ideas: tarima central con una esfera luminosa, arquería al fondo y columnatas.
       const dais: Raw = {
         kind: 'custom',
-        pos: [0, ARC_CZ - 0.5],
-        scale: 1.6,
+        pos: [0, 2],
+        scale: 0.9,
         parts: [
           { shape: 'cylinder', args: [3.4, 3.6, 0.3, 28], pos: [0, 0.15, 0], color: STONE_DARK },
           { shape: 'cylinder', args: [2.5, 2.7, 0.3, 28], pos: [0, 0.45, 0], color: STONE },
@@ -572,7 +574,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
       ground = mix(def.ground, wall, 0.3)
       sky = mix(def.sky, wall, 0.22)
     }
-    const accent = science ? def.accent : trim
+    const accent = science ? def.accent : arch === 'abstract' ? mix(trim, '#e6c35a', 0.55) : trim
 
     let terrain = def.terrain
     const hay = fold(`${roomName} ${textOf(room?.description)} ${pieces.map((p) => p.title).join(' ')}`)
@@ -596,18 +598,20 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
     const linked: Raw[] = []
     const place = (info: Info, i: number, slot: Slot, forceKind?: Raw) => {
       const k = forceKind ?? linkedKind(arch, info, i, accent, costumeOffset)
+      const grow = slot.row === 1 && typeof k.scale === 'number' ? { scale: round(Math.min(3, k.scale * 1.45)) } : slot.row === 1 ? { scale: 1.45 } : {}
       linked.push({
         rotY: round(slot.rotY),
         ...k,
+        ...grow,
         pos: [round(slot.x), round(slot.z)],
         label: clip(info.title.trim() || `Pieza ${i + 1}`),
         pieceId: info.id,
       })
     }
 
+    let w = 0
     if (arch === 'naval') {
       const { water, beach } = navalSlots()
-      let w = 0
       let b = 0
       infos.forEach((info, i) => {
         if (!info.person && w < water.length) place(info, i, water[w++])
@@ -622,7 +626,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
     }
 
     // El ambiente se recorta para respetar el tope de props del esquema.
-    const ctx: Ctx = { rng, accent, ground, terrain, hasKey: (re) => infos.some((i) => re.test(i.key)) }
+    const ctx: Ctx = { waterUsed: w, rng, accent, ground, terrain, hasKey: (re) => infos.some((i) => re.test(i.key)) }
     const ambient = ambientFor(arch, ctx).slice(0, Math.max(0, MAX_PROPS - linked.length))
 
     return parseDiorama({
@@ -643,7 +647,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
  * `?dioramas=library` (depuración) lo desactiva.
  */
 export function attachComposedDioramas(museum: Museum, pigmentOf?: (roomIndex: number) => Pigment | undefined, seed: number | string = 0): Museum {
-  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dioramas') === 'library') return museum
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location?.search ?? '').get('dioramas') === 'library') return museum
   if (!museum.rooms.some((r) => !r.diorama)) return museum
   return {
     ...museum,

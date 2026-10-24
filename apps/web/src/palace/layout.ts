@@ -358,7 +358,7 @@ export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: n
   return { x: nx, z: nz }
 }
 
-export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string; roomId?: string; diorama?: Diorama }
+export type PaintingAssignment = { slot: PaintingSlot; /** Sin búsqueda, el cuadro principal de una sala con diorama es un lienzo de yeso con el título. */ search?: ImageSearch; key: string; roomId?: string; diorama?: Diorama }
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
 
@@ -370,8 +370,8 @@ export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
   const out: PaintingAssignment[] = []
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
-  if (main && hasSearch(room.imageSearch)) {
-    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
+  if (main && (hasSearch(room.imageSearch) || room.diorama)) {
+    out.push({ slot: main, search: hasSearch(room.imageSearch) ? room.imageSearch : undefined, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
     free.splice(free.indexOf(main), 1)
   }
   for (const p of room.pedestals) {

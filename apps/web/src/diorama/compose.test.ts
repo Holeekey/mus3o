@@ -4,6 +4,7 @@ import { attachComposedDioramas, classifyRoom, composeDiorama, ENTRY_Z, MAX_LINK
 import { historiaMuseum } from '../mocks/historia'
 import { medicinaMuseum } from '../mocks/medicina'
 import { attachLibraryDioramas } from './library'
+import { assignPaintings, buildLayout } from '../palace/layout'
 
 const room = (name: string, titles: string[] = [], description = ''): Room => ({
   id: name,
@@ -136,9 +137,9 @@ describe('composeDiorama', () => {
   })
 
   it('takes the accent from the fresco pigment', () => {
-    const d = composeDiorama(samples[2], 'Museo', 1, { wall: '#aa3322', trim: '#112233' })
+    const d = composeDiorama(samples[0], 'Museo', 1, { wall: '#aa3322', trim: '#112233' })
     expect(d.palette.accent).toBe('#112233')
-    expect(composeDiorama(samples[2], 'Museo', 1)).not.toEqual(d)
+    expect(composeDiorama(samples[0], 'Museo', 1)).not.toEqual(d)
   })
 })
 
@@ -157,6 +158,16 @@ describe('attachComposedDioramas', () => {
     for (const m of [historiaMuseum, medicinaMuseum]) {
       const out = attachComposedDioramas(attachLibraryDioramas(m))
       expect(out.rooms.every((r) => r.diorama)).toBe(true)
+    }
+  })
+
+  it('every room keeps a main painting slot (portal) even without an image search', () => {
+    const out = attachComposedDioramas(museum([room('Ilustración', ['Razón']), room('Batalla de Carabobo', ['Simón Bolívar'])]))
+    const layout = buildLayout(out)
+    for (const r of layout.rooms) {
+      const main = assignPaintings(r).find((a) => a.slot.main)
+      expect(main?.diorama).toBeDefined()
+      expect(main?.search).toBeUndefined()
     }
   })
 })

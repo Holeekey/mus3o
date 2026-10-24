@@ -18,6 +18,16 @@ const MOUNT_RANGE = 9 // más lejos que esto no se dibuja el diorama interior (e
 const PORTAL_VIEW_WIDTH = 14.6 // m de diorama visibles en el plano del cuadro
 const PORTAL_PLANE_Z = 5 // z del diorama que coincide con el plano del cuadro
 
+// Distancia de la cámara a cada cuadro-portal montado. Con un diorama por sala, solo el portal más
+// cercano monta su maqueta: así varias salas a la vez no multiplican el coste de dibujo.
+const portalDist = new Map<string, number>()
+const isNearestPortal = (id: string) => {
+  const mine = portalDist.get(id)
+  if (mine === undefined) return true
+  for (const [other, d] of portalDist) if (other !== id && (d < mine || (d === mine && other < id))) return false
+  return true
+}
+
 const smoothstep = (a: number, b: number, v: number) => {
   const t = Math.min(1, Math.max(0, (v - a) / (b - a)))
   return t * t * (3 - 2 * t)
@@ -182,7 +192,10 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
   useEffect(() => {
     const st = useDioramaStore.getState()
     st.registerPortal({ id, diorama, center: position, rotationY, width, height, roomId })
-    return () => useDioramaStore.getState().unregisterPortal(id)
+    return () => {
+      portalDist.delete(id)
+      useDioramaStore.getState().unregisterPortal(id)
+    }
   }, [id, diorama, position, rotationY, width, height, roomId])
 
   const _c = useMemo(() => new THREE.Vector3(), [])
@@ -202,7 +215,8 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
       fogRef.current.near = dist + atmo.fogNear * 0.45 * unit
       fogRef.current.far = dist + atmo.fogFar * 1.0 * unit
     }
-    const wantNear = dist < MOUNT_RANGE && phase !== 'inside'
+    portalDist.set(id, dist)
+    const wantNear = dist < MOUNT_RANGE && phase !== 'inside' && isNearestPortal(id)
     if (wantNear !== near) setNear(wantNear)
 
     // ¿Se puede entrar? Cerca, de frente al cuadro y mirándolo.
