@@ -36,3 +36,20 @@ export function consumeTouchLook(): { dx: number; dy: number } {
   touchInput.lookDy = 0
   return { dx, dy }
 }
+
+const touchListeners = new Set<() => void>()
+
+/** Marca el dispositivo como táctil (primer toque o puntero grueso) y avisa a la interfaz. */
+export function markTouchDevice() {
+  if (typeof document !== 'undefined') document.documentElement.dataset.touch = ''
+  if (touchInput.isTouchDevice) return
+  touchInput.isTouchDevice = true
+  touchListeners.forEach((fn) => fn())
+}
+
+export function subscribeTouchDevice(fn: () => void) {
+  touchListeners.add(fn)
+  return () => {
+    touchListeners.delete(fn)
+  }
+}

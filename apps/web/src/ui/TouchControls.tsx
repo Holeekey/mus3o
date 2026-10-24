@@ -1,21 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDioramaStore } from '../diorama/dioramaStore'
 import type { PalaceLayout } from '../palace/layout'
-import { canOpenDoor } from '../palace/keys'
-import { isDoorOpen, useStore } from '../store'
+import { interact, openAris, toggleMemorize } from '../scene/actions'
+import { useStore } from '../store'
 import { resetTouchMove, touchInput } from '../scene/touchInput'
+import { useIsTouch } from './useIsTouch'
 
 const RADIUS = 50
+const TIP_KEY = 'mus3o-touch-tip'
+
+function tipSeen(): boolean {
+  try {
+    return window.localStorage.getItem(TIP_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function TouchControls({ layout }: { layout: PalaceLayout }) {
-  const [touchReady, setTouchReady] = useState(false)
+  const touch = useIsTouch()
   const locked = useStore((s) => s.locked)
   const focusedId = useStore((s) => s.focusedId)
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const openId = useStore((s) => s.openId)
-  const hasKey = useStore((s) => s.hasKey)
-  const roomKeys = useStore((s) => s.roomKeys)
-  const unlockedDoors = useStore((s) => s.unlockedDoors)
-  const freeExplore = useStore((s) => s.freeExplore)
+  const paintingId = useDioramaStore((s) => s.hintId)
+  const [tip, setTip] = useState(() => !tipSeen())
 
   const joystickId = useRef<number | null>(null)
   const lookId = useRef<number | null>(null)
@@ -25,20 +34,7 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
   const baseRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Activa la capa si el dispositivo soporta coarse pointer o evento touch
-    if (touchInput.isTouchDevice || window.matchMedia?.('(pointer: coarse)').matches) {
-      setTouchReady(true)
-    }
-    const onTouch = () => {
-      touchInput.isTouchDevice = true
-      setTouchReady(true)
-    }
-    window.addEventListener('touchstart', onTouch, { once: true, passive: true })
-    return () => window.removeEventListener('touchstart', onTouch)
-  }, [])
-
-  if (!touchReady || !locked || !!openId) return null
+  if (!touch || !locked || !!openId) return null
 
   const onPointerDown = (e: React.PointerEvent) => {
     // Ignora si el toque fue sobre los botones de acción
@@ -53,9 +49,17 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
     const mid = window.innerWidth / 2
     if (e.clientX < mid && joystickId.current === null) {
       joystickId.current = e.pointerId
+      if (tip) {
+        setTip(false)
+        try {
+          window.localStorage.setItem(TIP_KEY, '1')
+        } catch {
+          /* sin almacenamiento: la ayuda vuelve en la próxima visita */
+        }
+      }
       center.current = { x: e.clientX, y: e.clientY }
       if (baseRef.current && knobRef.current) {
-        baseRef.current.style.display = 'block'
+        baseRef.current.classList.remove('is-idle')
         baseRef.current.style.transform = `translate3d(${e.clientX - RADIUS}px, ${e.clientY - RADIUS}px, 0)`
         knobRef.current.style.transform = 'translate3d(0, 0, 0)'
       }
@@ -107,37 +111,18 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
     if (e.pointerId === joystickId.current) {
       joystickId.current = null
       resetTouchMove()
-      if (baseRef.current) baseRef.current.style.display = 'none'
+      // El joystick vuelve a su lugar de reposo (abajo a la izquierda) y sigue visible.
+      if (baseRef.current) {
+        baseRef.current.style.transform = ''
+        baseRef.current.classList.add('is-idle')
+      }
+      if (knobRef.current) knobRef.current.style.transform = ''
     } else if (e.pointerId === lookId.current) {
       lookId.current = null
     }
   }
 
-  // Acciones táctiles
-  const handleActionE = () => {
-    const s = useStore.getState()
-    if (s.focusedDoorId && !isDoorOpen({ freeExplore, unlockedDoors }, s.focusedDoorId)) {
-      const door = layout.doors?.find((d) => d.id === s.focusedDoorId)
-      if (door && canOpenDoor(door, hasKey, roomKeys)) s.unlockDoor(door.id)
-      return
-    }
-    if (s.openId) s.set({ openId: null })
-    else if (s.focusedId) {
-      s.set({ openId: s.focusedId })
-    }
-  }
-
-  const handleActionM = () => {
-    const s = useStore.getState()
-    const id = s.openId ?? s.focusedId
-    if (id) s.toggleMemorized(id)
-  }
-
-  const handleActionT = () => {
-    useStore.getState().setArisPromptOpen(true)
-  }
-
-  const canInteract = !!(focusedId || focusedDoorId || openId)
+  const canInteract = !!(focusedId || focusedDoorId || openId || paintingId)
 
   return (
     <div
@@ -147,17 +132,19 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* Joystick dinámico */}
-      <div ref={baseRef} className="touch-joystick-base" style={{ display: 'none' }}>
+      {/* Joystick: visible en reposo abajo a la izquierda; al tocar la mitad izquierda se centra en el dedo. */}
+      <div ref={baseRef} className="touch-joystick-base is-idle" aria-hidden>
         <div ref={knobRef} className="touch-joystick-knob" />
       </div>
+
+      {tip && <p className="touch-tip">Arrastra a la izquierda para moverte · desliza a la derecha para mirar</p>}
 
       {/* Botones de acción táctiles en la esquina inferior derecha */}
       <div className="touch-actions-cluster">
         <button
           type="button"
           className="touch-action-btn touch-btn-aris"
-          onClick={handleActionT}
+          onClick={() => openAris({ unlock: false })}
           aria-label="Consultar a Aris"
         >
           🤖
@@ -165,7 +152,7 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
         <button
           type="button"
           className="touch-action-btn touch-btn-memorize"
-          onClick={handleActionM}
+          onClick={toggleMemorize}
           aria-label="Marcar memorizado"
         >
           ✓
@@ -173,7 +160,7 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
         <button
           type="button"
           className={`touch-action-btn touch-btn-primary ${canInteract ? 'is-active' : ''}`}
-          onClick={handleActionE}
+          onClick={() => interact(layout)}
           aria-label="Interactuar o examinar"
         >
           👁️

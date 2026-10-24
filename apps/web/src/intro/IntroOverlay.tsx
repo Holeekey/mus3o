@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { DEFAULT_THEME } from '../theme'
 import { skipIntro, useIntro } from './store'
+import { KeyHint } from '../ui/KeyHint'
 
 const FADE_MS = 450
 
@@ -56,7 +57,7 @@ export function IntroOverlay() {
   if (!canSkip) return null
   return (
     <button type="button" className="btn btn-ghost intro-skip" onClick={skipIntro} aria-label="Saltar la introducción">
-      Saltar <kbd>Espacio</kbd>
+      Saltar <KeyHint k="Espacio" />
     </button>
   )
 }

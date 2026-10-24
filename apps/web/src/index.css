@@ -1324,3 +1324,48 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   background: var(--accent);
   border-color: var(--ink);
 }
+/* Joystick en reposo: siempre visible abajo a la izquierda para que se note que ahí se mueve. */
+.touch-joystick-base.is-idle {
+  top: auto;
+  bottom: 28px;
+  left: 28px;
+  opacity: 0.6;
+}
+.touch-tip {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  max-width: 90vw;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 3px 3px 0 var(--shadow);
+  pointer-events: none;
+}
+
+/* Avisos del HUD que en táctil son botones (KeyHint): por encima de la capa de toques. */
+.key-hint-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.key-hint-btn::after { content: ' ›'; }
+.hint:has(> .key-hint-btn) { z-index: 36; pointer-events: auto; }
+
+/* En táctil el botón 🤖 de la botonera reemplaza al de escritorio, y el narrador sube sobre el joystick. */
+:root[data-touch] .aris-trigger-btn { display: none; }
+:root[data-touch] .narrator { left: 16px; bottom: 150px; z-index: 36; }
+:root[data-touch] .hud-legend { display: none; }
+/* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
+:root[data-touch] .hint { bottom: 30% !important; }
