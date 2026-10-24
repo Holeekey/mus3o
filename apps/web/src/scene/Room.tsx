@@ -13,6 +13,7 @@ import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import { AssetWall } from './DungeonAssets'
 import { Centerpiece } from './Centerpiece'
+import { RoomDecor } from './RoomDecor'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 import { StaticMerge } from './StaticMerge'
@@ -211,6 +212,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       </Reveal>
       <Reveal id={wallsKey(room.id)} mode="rise">
         <WallFlakes room={room} />
+        <RoomDecor room={room} palette={palette} theme={theme} />
         {/* Muros y molduras: estáticos, se unen en pocas mallas por sala (ver StaticMerge). */}
         <StaticMerge>
           {room.walls.map((w, i) => (
