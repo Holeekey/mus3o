@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { isCorrectAnswer } from '../palace/match'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
-import { creditLine, useResolvedImage } from '../lib/images'
+import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
 import { allConcepts, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
@@ -33,10 +33,12 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         {concept.fact && <p className="card-meta">{concept.fact}</p>}
         {image && (
           <figure className="card-figure">
-            <img src={image.src} alt={image.title} loading="lazy" />
+            <img src={image.src} alt={image.title} width={image.width} height={image.height} decoding="async" />
             <figcaption>{creditLine(image)}</figcaption>
           </figure>
         )}
+        {/* Mientras se resuelve, reserva el lugar para que la ficha no salte. */}
+        {image === undefined && <div className="card-figure card-figure-loading" aria-hidden />}
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
@@ -97,6 +99,10 @@ function ExamCard({ concept, palette }: { concept: Concept; palette: RoomPalette
 
 export function Hud({ layout }: { layout: PalaceLayout }) {
   const palace = useStore((s) => s.palace)
+  // Precarga las imágenes de todo el palacio para que las fichas se abran al instante.
+  useEffect(() => {
+    if (palace) void prefetchPalaceImages(palace)
+  }, [palace])
   const mode = useStore((s) => s.mode)
   const locked = useStore((s) => s.locked)
   const memorized = useStore((s) => s.memorized)

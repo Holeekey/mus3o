@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { ResolvedImageSchema, type ImageSearch, type ResolvedImage } from '@mus3o/shared'
+import { ResolvedImageSchema, type ImageSearch, type Museum, type ResolvedImage } from '@mus3o/shared'
 
 const cache = new Map<string, Promise<ResolvedImage | null>>()
+// Resultados ya resueltos: se leen de forma sincrónica para no mostrar "cargando" ni un instante.
+const settled = new Map<string, ResolvedImage | null>()
 
 const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}`
 
@@ -22,6 +24,10 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
         const parsed = ResolvedImageSchema.safeParse(await res.json())
         return parsed.success ? parsed.data : null
       })
+      .then((image) => {
+        if (cache.get(key) === pending) settled.set(key, image)
+        return image
+      })
       .catch(() => {
         cache.delete(key)
         return null
@@ -29,6 +35,36 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
     cache.set(key, pending)
   }
   return pending
+}
+
+const preloaded = new Set<string>()
+
+/** Descarga y decodifica la imagen en segundo plano para que el navegador la tenga lista al mostrarla. */
+function preload(src: string): Promise<void> {
+  if (preloaded.has(src)) return Promise.resolve()
+  preloaded.add(src)
+  const img = new Image()
+  img.src = src
+  return img.decode().catch(() => {
+    // Si falla la descarga, se reintentará al mostrarla.
+    preloaded.delete(src)
+  })
+}
+
+const hasSearch = (s?: ImageSearch): s is ImageSearch => !!(s?.wikiTitle?.trim() || s?.commonsQuery?.trim())
+
+/**
+ * Resuelve y precarga las imágenes de todas las salas y piezas al entrar al palacio,
+ * para que la ficha de un objeto las muestre al instante.
+ */
+export async function prefetchPalaceImages(palace: Museum): Promise<void> {
+  const searches = palace.rooms.flatMap((room) => [room.imageSearch, ...room.pieces.map((p) => p.imageSearch)])
+  await Promise.all(
+    searches.filter(hasSearch).map(async (search) => {
+      const image = await fetchResolvedImage(search)
+      if (image) await preload(image.src)
+    }),
+  )
 }
 
 /** `undefined` mientras carga, `null` si no hay imagen. */
@@ -45,8 +81,12 @@ export function useResolvedImage(search?: ImageSearch): ResolvedImage | null | u
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
   if (!search) return null
-  return state?.key === key ? state.image : undefined
+  if (state?.key === key) return state.image
+  return settled.has(key) ? settled.get(key) : undefined
 }
+
+/** Lo que ya se resolvió para esta búsqueda, sin esperar: `undefined` si todavía no se sabe. */
+export const peekResolvedImage = (search: ImageSearch) => settled.get(keyOf(search))
 
 /** Texto de la licencia para la placa, en español cuando es la más común. */
 export function creditLine(image: ResolvedImage): string {
