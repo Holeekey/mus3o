@@ -5,7 +5,7 @@ const cache = new Map<string, Promise<ResolvedImage | null>>()
 // Resultados ya resueltos: se leen de forma sincrónica para no mostrar "cargando" ni un instante.
 const settled = new Map<string, ResolvedImage | null>()
 
-const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}`
+const keyOf = (s: ImageSearch) => `${s.lang ?? 'es'}|${s.wikiTitle?.trim() ?? ''}|${s.commonsQuery?.trim() ?? ''}|${s.context?.trim() ?? ''}`
 
 // Wikimedia limita la tasa cuando un museo pide muchas imágenes a la vez: se reintenta con espera.
 const RETRY_DELAYS_MS = [2_000, 5_000]
@@ -37,6 +37,7 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
     const params = new URLSearchParams()
     if (search.wikiTitle?.trim()) params.set('wiki', search.wikiTitle.trim())
     if (search.commonsQuery?.trim()) params.set('commons', search.commonsQuery.trim())
+    if (search.context?.trim()) params.set('context', search.context.trim())
     params.set('lang', search.lang ?? 'es')
     pending = requestImage(params).then(
       (image) => {
@@ -70,18 +71,33 @@ function preload(src: string): Promise<void> {
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!(s?.wikiTitle?.trim() || s?.commonsQuery?.trim())
 
+const PREFETCH_CONCURRENCY = 4
+
 /**
  * Resuelve y precarga las imágenes de todas las salas y piezas al entrar al palacio,
- * para que la ficha de un objeto las muestre al instante.
+ * para que la ficha de un objeto las muestre al instante. Como mucho 4 a la vez y los cuadros
+ * principales de las salas primero, para no saturar al servidor ni a Wikimedia.
  */
 export async function prefetchPalaceImages(palace: Museum): Promise<void> {
-  const searches = palace.rooms.flatMap((room) => [room.imageSearch, ...room.pieces.map((p) => p.imageSearch)])
-  await Promise.all(
-    searches.filter(hasSearch).map(async (search) => {
-      const image = await fetchResolvedImage(search)
+  const ordered = [
+    ...palace.rooms.map((room) => room.imageSearch),
+    ...palace.rooms.flatMap((room) => room.pieces.map((p) => p.imageSearch)),
+  ].filter(hasSearch)
+  const seen = new Set<string>()
+  const queue = ordered.filter((s) => {
+    const key = keyOf(s)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  let next = 0
+  const worker = async () => {
+    while (next < queue.length) {
+      const image = await fetchResolvedImage(queue[next++])
       if (image) await preload(image.src)
-    }),
-  )
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, queue.length) }, worker))
 }
 
 /** `undefined` mientras carga, `null` si no hay imagen. */
@@ -109,4 +125,9 @@ export const peekResolvedImage = (search: ImageSearch) => settled.get(keyOf(sear
 export function creditLine(image: ResolvedImage): string {
   const license = /^public domain$/i.test(image.license) ? 'Dominio público' : image.license
   return [image.title, image.artist, license].filter(Boolean).join(' · ')
+}
+
+/** Una imagen subida por el usuario, con la misma forma que una de Wikimedia (placa y ficha). */
+export function userImageAsResolved(src: string, title: string): ResolvedImage {
+  return { src, width: 1024, height: 768, title, artist: '', license: 'Imagen subida por ti', sourceUrl: '', kind: 'photo' }
 }

@@ -24,3 +24,6 @@ CLAUDE.local.md
 
 # Mirror de deploy: el pack KayKit original (Public/) no se sube para ahorrar cuota LFS.
 /Public/
+
+# Caché en disco de imágenes de Wikimedia
+.cache/

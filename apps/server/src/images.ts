@@ -2,7 +2,21 @@ import express from "express";
 import type { Router } from "express";
 import type { ResolvedImage } from "@mus3o/shared";
 
-const UA = "mus3o/0.1 (hackathon project)";
+import {
+  readCacheFile,
+  readCacheMeta,
+  readSeedFile,
+  readSeedMeta,
+  writeCacheFile,
+  writeCacheMeta,
+  resetStoreState,
+  type StoredFile,
+} from "./imageStore";
+
+// Política de Wikimedia: User-Agent identificable con contacto en cada llamada.
+const DEFAULT_UA =
+  "mus3o/1.0 (https://github.com/platanus-hack/platanus-hack-26-ve-team-5; contact via repo issues)";
+const userAgent = () => process.env.WIKIMEDIA_USER_AGENT?.trim() || DEFAULT_UA;
 const TIMEOUT_MS = 8_000;
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_HOSTS = new Set(["upload.wikimedia.org", "thumb.wikimedia.org"]);
@@ -10,11 +24,17 @@ const ALLOWED_HOSTS = new Set(["upload.wikimedia.org", "thumb.wikimedia.org"]);
 /** Error transitorio de Wikimedia (límite de tasa, 5xx, timeout): no debe cachearse como "sin imagen". */
 export class UpstreamError extends Error {}
 
-// Máximo 3 llamadas simultáneas a Wikimedia: entrar a un museo pide decenas de imágenes a la vez.
+/** Ajustes de espera (milisegundos); las pruebas los reducen. */
+export const tuning = { retryAfterCapMs: 5_000, defaultRetryMs: 1_500, backoffMs: 3_000, concurrency: 2 };
+
+/** Telemetría simple: cuántas llamadas reales salieron hacia Wikimedia. */
+export const upstreamStats = { calls: 0 };
+
+// Máximo 2 llamadas simultáneas a Wikimedia: entrar a un museo pide decenas de imágenes a la vez.
 let active = 0;
 const waiting: (() => void)[] = [];
 async function slot<T>(run: () => Promise<T>): Promise<T> {
-  if (active >= 3) await new Promise<void>((resolve) => waiting.push(resolve));
+  if (active >= tuning.concurrency) await new Promise<void>((resolve) => waiting.push(resolve));
   active++;
   try {
     return await run();
@@ -26,24 +46,63 @@ async function slot<T>(run: () => Promise<T>): Promise<T> {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function getJson(url: string): Promise<any | null> {
+// Tras un 429 se pausan las llamadas nuevas unos segundos en lugar de seguir martillando.
+let pausedUntil = 0;
+async function respectBackoff() {
+  for (let wait = pausedUntil - Date.now(); wait > 0; wait = pausedUntil - Date.now()) await sleep(wait);
+}
+
+/** `Retry-After` en segundos o fecha HTTP → milisegundos (null si falta o es ilegible). */
+export function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const secs = Number(value);
+  if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+}
+
+export const resetBackoff = () => {
+  pausedUntil = 0;
+};
+
+/**
+ * Una llamada a Wikimedia con cortesía: espera la pausa global, usa el User-Agent de la política y,
+ * ante un 429, respeta `Retry-After` (máx. ~5 s) y reintenta una sola vez. `handle` consume la respuesta
+ * dentro del turno de concurrencia. Lanza UpstreamError si sigue fallando.
+ */
+async function upstream<T>(url: string, accept: string, handle: (res: Response) => Promise<T>, redirect?: RequestRedirect): Promise<T> {
   return slot(async () => {
     for (let attempt = 0; attempt < 2; attempt++) {
+      await respectBackoff();
       let res: Response;
       try {
-        res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+        upstreamStats.calls++;
+        res = await fetch(url, {
+          headers: { "User-Agent": userAgent(), Accept: accept },
+          redirect,
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
       } catch {
         throw new UpstreamError("timeout");
       }
-      if (res.status === 429 && attempt === 0) {
-        await sleep(1_200);
-        continue;
+      if (res.status === 429) {
+        const wait = Math.min(parseRetryAfter(res.headers.get("retry-after")) ?? tuning.defaultRetryMs, tuning.retryAfterCapMs);
+        pausedUntil = Math.max(pausedUntil, Date.now() + Math.max(wait, tuning.backoffMs));
+        await res.body?.cancel().catch(() => {});
+        if (attempt === 0) continue;
+        throw new UpstreamError("429");
       }
-      if (res.status === 404) return null;
-      if (!res.ok) throw new UpstreamError(String(res.status));
-      return res.json();
+      return handle(res);
     }
     throw new UpstreamError("429");
+  });
+}
+
+async function getJson(url: string): Promise<any | null> {
+  return upstream(url, "application/json", async (res) => {
+    if (res.status === 404) return null;
+    if (!res.ok) throw new UpstreamError(String(res.status));
+    return res.json();
   });
 }
 
@@ -161,24 +220,82 @@ async function fromCommons(query: string): Promise<ResolvedImage | null> {
   return null;
 }
 
+const STOP = new Set(
+  "a al con de del el en la las lo los por para que se sin sobre su un una y o the of and in on to for".split(" "),
+);
+const words = (s: string) => normalize(s).replace(/[^a-z0-9ñ]+/g, " ").split(" ").filter((w) => w.length > 2 && !STOP.has(w));
+
+/** Palabras abstractas que nunca son un artículo con imagen útil ("Fecha", "Consecuencia"...). */
+const GENERIC_WORDS = new Set(
+  ("fecha consecuencia consecuencias definicion definiciones concepto conceptos causa causas resumen introduccion conclusion " +
+    "ejemplo ejemplos funcion funciones tipo tipos etapa etapas importancia caracteristicas resultado resultados " +
+    "date definition summary example examples overview cause causes result results type types function").split(" "),
+);
+
+/**
+ * Título de una sola palabra que no sirve como búsqueda de imagen. `strict`: palabra abstracta conocida
+ * (no se busca nada). `weak`: palabra suelta en minúscula (solo vale si un resultado la contiene).
+ */
+export function genericKind(title: string): "strict" | "weak" | null {
+  const t = title.trim();
+  if (!t || /\s/.test(t)) return null;
+  if (GENERIC_WORDS.has(normalize(t))) return "strict";
+  return t[0] === t[0].toLowerCase() && t[0] !== t[0].toUpperCase() ? "weak" : null;
+}
+
+/** Búsqueda en Wikipedia: el mejor resultado cuyo título comparte palabras significativas con la consulta. */
+async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
+  const q = [title, context].filter(Boolean).join(" ");
+  const data = await getJson(
+    `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=3&format=json`,
+  );
+  const hits: string[] = (data?.query?.search ?? []).map((h: any) => String(h?.title ?? "")).filter(Boolean);
+  const own = new Set(words(title));
+  const all = new Set([...own, ...words(context)]);
+  return hits
+    .map((hit, i) => {
+      const w = words(hit);
+      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length };
+    })
+    .filter((h) => h.any > 0)
+    .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
+    .map((h) => h.hit);
+}
+
 const resolveCache = new Map<string, ResolvedImage | null>();
 const MAX_RESOLVE_ENTRIES = 500;
 // Peticiones iguales que llegan a la vez comparten una sola consulta a Wikimedia. Se limpia al terminar,
 // así un error transitorio no queda guardado (igual que antes).
 const resolving = new Map<string, Promise<ResolvedImage | null>>();
 
-export async function resolveImage(q: { wiki?: string; commons?: string; lang?: string }): Promise<ResolvedImage | null> {
+type ImageQuery = { wiki?: string; commons?: string; lang?: string; context?: string };
+
+function parseQuery(q: ImageQuery) {
   const lang = q.lang && /^[a-z]{2}$/.test(q.lang) ? q.lang : "es";
   const wiki = q.wiki?.trim().slice(0, 120) ?? "";
   const commons = q.commons?.trim().slice(0, 120) ?? "";
+  const context = q.context?.trim().slice(0, 120) ?? "";
+  return { lang, wiki, commons, context, key: `${lang}|${normalize(wiki)}|${normalize(commons)}|${normalize(context)}` };
+}
+
+/** Clave canónica de una consulta (la misma que usan la caché, la semilla y el script de precarga). */
+export const queryKey = (q: ImageQuery) => parseQuery(q).key;
+
+/** Orden de búsqueda: memoria → semilla (repo, solo lectura) → caché en disco → Wikimedia. */
+export async function resolveImage(q: ImageQuery): Promise<ResolvedImage | null> {
+  const { lang, wiki, commons, context, key } = parseQuery(q);
   if (!wiki && !commons) return null;
-  const key = `${lang}|${normalize(wiki)}|${normalize(commons)}`;
   if (resolveCache.has(key)) return resolveCache.get(key)!;
   const pending = resolving.get(key);
   if (pending) return pending;
 
   const task = (async () => {
-    const result = (wiki && (await fromWikipedia(wiki, lang))) || (commons && (await fromCommons(commons))) || null;
+    let result: ResolvedImage | null | undefined = await readSeedMeta(key);
+    if (result === undefined) result = await readCacheMeta(key);
+    if (result === undefined) {
+      result = await retrieve(wiki, commons, context, lang); // lanza UpstreamError: no se guarda nada
+      await writeCacheMeta(key, result); // incluye los "sin imagen" definitivos
+    }
     if (resolveCache.size >= MAX_RESOLVE_ENTRIES) resolveCache.delete(resolveCache.keys().next().value!);
     resolveCache.set(key, result);
     return result;
@@ -191,8 +308,33 @@ export async function resolveImage(q: { wiki?: string; commons?: string; lang?: 
   }
 }
 
+/** Recuperación en cascada: resumen exacto → búsqueda en Wikipedia (con contexto) → búsqueda en Commons. */
+async function retrieve(wiki: string, commons: string, context: string, lang: string): Promise<ResolvedImage | null> {
+  const generic = wiki ? genericKind(wiki) : null;
+  // "Fecha", "Consecuencia"... en un museo de historia: mejor sin cuadro que una imagen cualquiera.
+  if (generic === "strict" && !commons) return null;
+  if (wiki && generic !== "strict") {
+    if (generic !== "weak") {
+      const exact = await fromWikipedia(wiki, lang);
+      if (exact) return exact;
+    }
+    if (context || generic === "weak") {
+      const own = new Set(words(wiki));
+      for (const hit of await searchTitles(wiki, context, lang)) {
+        if (generic === "weak" && !words(hit).some((w) => own.has(w))) continue;
+        const found = await fromWikipedia(hit, lang);
+        if (found) return found;
+      }
+    }
+  }
+  if (generic) return commons ? fromCommons(commons) : null;
+  // Con la consulta de Commons dada se usa tal cual; sin ella, solo se busca por título + contexto.
+  const query = commons || (context ? `${wiki} ${context}` : "");
+  return query ? fromCommons(query) : null;
+}
+
 // LRU de archivos: 60 entradas / 40 MB.
-type FileEntry = { body: Buffer; type: string };
+type FileEntry = StoredFile;
 const files = new Map<string, FileEntry>();
 let fileBytes = 0;
 const MAX_FILES = 60;
@@ -204,6 +346,8 @@ export const clearImageCaches = () => {
   loading.clear();
   files.clear();
   fileBytes = 0;
+  resetBackoff();
+  resetStoreState();
 };
 
 function remember(url: string, entry: FileEntry) {
@@ -252,22 +396,33 @@ const loading = new Map<string, Promise<FileEntry | 413 | 502>>();
 
 async function downloadFile(key: string): Promise<FileEntry | 413 | 502> {
   try {
-    const up = await fetch(key, {
-      headers: { "User-Agent": UA },
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    const type = up.headers.get("content-type") ?? "";
-    if (!up.ok || !type.startsWith("image/")) return 502;
-    const body = await readCapped(up);
-    if (!body) return 413;
-    const entry = { body, type };
-    remember(key, entry);
-    return entry;
+    const seeded = (await readSeedFile(key)) ?? (await readCacheFile(key));
+    if (seeded) {
+      remember(key, seeded);
+      return seeded;
+    }
+    const result = await upstream<FileEntry | 413 | 502>(
+      key,
+      "image/*",
+      async (up) => {
+        const type = up.headers.get("content-type") ?? "";
+        if (!up.ok || !type.startsWith("image/")) return 502;
+        const body = await readCapped(up);
+        return body ? { body, type } : 413;
+      },
+      "manual",
+    );
+    if (typeof result === "number") return result;
+    remember(key, result);
+    await writeCacheFile(key, result); // solo respuestas buenas; los errores nunca se guardan
+    return result;
   } catch {
     return 502;
   }
 }
+
+/** Bytes de una imagen de Wikimedia (semilla → caché → red); número = estado HTTP de error. Lo usa el script de precarga. */
+export const loadImageFile = (url: string) => downloadFile(url);
 
 export const imageRouter: Router = express.Router();
 
@@ -275,7 +430,7 @@ imageRouter.get("/image", async (req, res) => {
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
   let image: ResolvedImage | null;
   try {
-    image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang) });
+    image = await resolveImage({ wiki: str(req.query.wiki), commons: str(req.query.commons), lang: str(req.query.lang), context: str(req.query.context) });
   } catch (err) {
     if (!(err instanceof UpstreamError)) throw err;
     res.status(502).json({ error: "Wikimedia no disponible" });

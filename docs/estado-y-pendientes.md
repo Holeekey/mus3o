@@ -15,7 +15,7 @@
 | Imágenes subidas por el usuario | 🔴 No conectado | Contrato y servidor listos; falta el frontend |
 | Parser local de apuntes (sin IA) | ✅ Funciona | Texto, JSON, CSV y entrada directa a palacios pre-compilados |
 | Palacios pre-compilados (Offline) | ✅ Completo | 3 palacios ricos listos para entrar con 1 clic (Von Neumann, Biología Celular, Imperio Romano) |
-| Subida de archivos | 🟡 Parcial | La interfaz acepta `.txt` y `.md` (máx. 200 KB). `docx`, `xlsx`, `csv` están en el contrato pero no hay extractor en el navegador |
+| Subida de archivos | ✅ Hecho | "+ Adjuntar": `docx`, `xlsx`, `csv`, `txt`, `md`, `json` e imágenes, leídos en el navegador (`lib/files.ts`). Prompt maestro híbrido: solo si el texto supera 20 000 caracteres se resume con Haiku (`/api/digest-sources`). Las imágenes del usuario se cuelgan en los cuadros. Pendiente: `.doc`/`.xls` viejos y PDF no se leen; las imágenes del usuario no sobreviven a una recarga |
 | Palacio 3D (salas, puertas, pedestales, cuadros) | ✅ Funciona | Layout determinista, colisiones, minimapa, AtmosphereController (lerp de niebla) y monumentos procedurales |
 | Piezas: procedural, catálogo y glifo | ✅ Funciona | Modelos de catálogo, glifos procedurales y badges mnemotécnicos (Método de Loci) |
 | Memoria espaciada (curva de olvido) | ✅ Funciona | Niveles, repaso, máquina del tiempo |

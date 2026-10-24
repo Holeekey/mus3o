@@ -1,13 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
 import {
+  DigestSourcesResponseSchema,
   findImageAssignmentIssues,
+  LIMITS,
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
+  repairAndSanitizeMuseum,
   sampleMuseum,
   sanitizeRawSources,
   verifySources,
+  type DigestSourcesRequest,
+  type DigestSourcesResponse,
   type GenerateMuseumRequest,
   type ImprovePromptRequest,
   type ImprovePromptResponse,
@@ -15,6 +20,8 @@ import {
 } from "@mus3o/shared";
 import {
   cleanNotes,
+  DIGEST_SYSTEM_PROMPT,
+  digestPrompt,
   DSL_SYSTEM_PROMPT,
   dslNotesPrompt,
   dslUserPrompt,
@@ -26,21 +33,25 @@ import {
   SYSTEM_PROMPT,
   userPrompt,
 } from "./prompts";
+import { attachImageSearches, retrieveSources } from "./enrich";
 
-const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
+const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+/** Modelo barato para resumir fuentes largas en un temario base. */
+const DIGEST_MODEL = () => process.env.ANTHROPIC_DIGEST_MODEL || "claude-haiku-5-5";
 let client: Anthropic | undefined;
 
 const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
 function parseMuseum(raw: string): Museum {
-  // Las citas largas se recortan antes de validar: lo que cuenta es que luego se verifiquen.
-  return MuseumSchema.parse(sanitizeRawSources(JSON.parse(stripFence(raw))));
+  // Las citas largas se recortan antes de validar y la salida se desinfecta deterministamente.
+  const parsed = MuseumSchema.parse(sanitizeRawSources(JSON.parse(stripFence(raw))));
+  return repairAndSanitizeMuseum(parsed);
 }
 
 export function parseAdaptiveMuseum(raw: string, topic?: string): Museum {
   const stripped = stripFence(raw);
   if (stripped.includes("ROOM:") || stripped.startsWith("ROOM:")) {
-    return parseMus3oDSL(stripped, { title: topic });
+    return repairAndSanitizeMuseum(parseMus3oDSL(stripped, { title: topic }));
   }
   return parseMuseum(raw);
 }
@@ -63,12 +74,27 @@ export function parseFlowMuseum(raw: string, imageIds: string[]): Museum {
   return museum;
 }
 
+/**
+ * Capa de recuperación sobre la salida del modelo: pistas de búsqueda de imágenes y, con apuntes,
+ * fuentes recuperadas de ellos. El modelo no genera nada de esto.
+ */
+export function enrichMuseum(museum: Museum, notes?: string): Museum {
+  const images = attachImageSearches(museum, notes ?? museum.title);
+  return notes === undefined ? images : retrieveSources(attachSources(images, notes), notes);
+}
+
 export type GenerateInput = { topic: string } | { notes: string };
 
 export class AiUnavailableError extends Error {}
 
 function getClient(): Anthropic {
-  client ??= new Anthropic({ timeout: 120_000, maxRetries: 1 });
+  // Las keys de organización sin workspace exigen el header anthropic-workspace-id.
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
+  client ??= new Anthropic({
+    timeout: 120_000,
+    maxRetries: 1,
+    ...(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {}),
+  });
   return client;
 }
 
@@ -106,7 +132,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     // Con apuntes un mock no sirve: el cliente cae a su parser local.
     if ("notes" in input) throw new AiUnavailableError("IA no configurada");
     console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
-    return { ...sampleMuseum, title: input.topic };
+    return enrichMuseum({ ...sampleMuseum, title: input.topic });
   }
   const isNotes = "notes" in input;
   const content = isNotes ? dslNotesPrompt(input.notes) : dslUserPrompt(input.topic);
@@ -117,7 +143,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
-  return isNotes ? attachSources(museum, cleanNotes(input.notes)) : museum;
+  return enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined);
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
@@ -139,7 +165,7 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
     { system: SYSTEM_PROMPT, content: buildFlowContent(request), maxTokens: 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
-  return attachSources(museum, flowNotesText(request));
+  return enrichMuseum(museum, flowNotesText(request));
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {
@@ -148,4 +174,28 @@ export async function improvePrompt(request: ImprovePromptRequest): Promise<Impr
     { system: IMPROVE_SYSTEM_PROMPT, content: improvePromptText(request), maxTokens: 1500 },
     (raw) => ImprovePromptResponseSchema.parse(JSON.parse(stripFence(raw))),
   );
+}
+
+/** Recorta el temario a LIMITS.maxDigestChars cortando en el último salto de línea anterior al límite. */
+export function clampDigest(raw: string): string {
+  const text = raw.trim();
+  if (text.length <= LIMITS.maxDigestChars) return text;
+  const head = text.slice(0, LIMITS.maxDigestChars);
+  const cut = head.lastIndexOf("\n");
+  return (cut > 0 ? head.slice(0, cut) : head).trim();
+}
+
+export async function digestSources(sources: DigestSourcesRequest["sources"]): Promise<DigestSourcesResponse> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("IA no configurada");
+  const res = await getClient().messages.create({
+    model: DIGEST_MODEL(),
+    // Haiku 5.5 razona por defecto y ese razonamiento se cobra: para resumir no hace falta.
+    thinking: { type: "disabled" },
+    max_tokens: 6000,
+    system: DIGEST_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: digestPrompt(sources) }],
+  });
+  const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  // Salida vacía o inválida: lanza y el route responde 502.
+  return DigestSourcesResponseSchema.parse({ digest: clampDigest(stripFence(text)) });
 }

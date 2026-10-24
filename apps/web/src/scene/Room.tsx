@@ -14,6 +14,7 @@ import { AssetWall } from './DungeonAssets'
 import { ProceduralMonument } from './Monument'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
+import { useIntro } from '../intro/store'
 import { Reveal } from '../intro/Reveal' // INTRO: aparición al entrar al palacio
 import { floorKey, monumentKey, objectKey, paintingsKey, pedestalKey, wallsKey } from '../intro/timeline'
 
@@ -55,6 +56,9 @@ function Plaster({ theme, color }: { theme: Theme; color?: string }) {
 
 // El título de la sala va como inscripción en un muro sin puerta, mirando al interior.
 function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette }) {
+  const isIntroPlaying = useIntro((s) => s.phase === 'playing')
+  if (isIntroPlaying) return null
+
   const side: Side = (['n', 's', 'w', 'e'] as Side[]).find((s) => !room.doors.includes(s)) ?? 'n'
   const inset = 0.2 + 0.03 // mitad del muro + holgura
   const pos: [number, number, number] =
@@ -91,6 +95,7 @@ const PEDESTAL_TOP = 1.05
 const LABEL_OPACITY = { new: 0.85, intact: 0.85, cracked: 0.65, broken: 0.5, forgotten: 0.4 } as const
 
 function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalette; theme: Theme }) {
+  const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const ref = useRef<Object3D>(null)
   const model = p.concept.model?.type === 'procedural' ? p.concept.model : null
   const memorized = useStore((s) => !!s.memorized[p.concept.id])
@@ -143,41 +148,44 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
       )}
       </DecayWrap>
       </Reveal>
-      <Reveal id={objectKey(p.concept.id)} mode="pop" origin={[0, 2.2, 0]}>
-      <Suspense fallback={null}>
-        <Billboard position={[0, model ? 2.3 : 2.15, 0]}>
-          <LabelPlate
-            font={FONT_BODY}
-            fontSize={0.17}
-            maxWidth={2}
-            surface={theme.ui.tokens.surface}
-            ink={theme.ui.tokens.ink}
-            opacity={focused ? 1 : Math.max(LABEL_OPACITY[level], 0.75)}
-          >
-            {label}
-          </LabelPlate>
-          {!hidden && (level === 'new' || level === 'forgotten') && (
-            <group position={[0, -0.27, 0]}>
-              <LabelPlate
-                font={FONT_BODY}
-                fontSize={0.1}
-                surface={level === 'forgotten' ? theme.ui.tokens.danger : theme.ui.tokens.accent}
-                ink={level === 'forgotten' ? theme.ui.tokens['bg-ink'] : theme.ui.tokens.ink}
-              >
-                {level === 'new' ? 'nuevo' : 'olvidado'}
-              </LabelPlate>
-            </group>
-          )}
-        </Billboard>
-      </Suspense>
-      </Reveal>
+      {!isIntroPlaying && (
+        <Reveal id={objectKey(p.concept.id)} mode="pop" origin={[0, 2.2, 0]}>
+        <Suspense fallback={null}>
+          <Billboard position={[0, model ? 2.3 : 2.15, 0]}>
+            <LabelPlate
+              font={FONT_BODY}
+              fontSize={0.17}
+              maxWidth={2}
+              surface={theme.ui.tokens.surface}
+              ink={theme.ui.tokens.ink}
+              opacity={focused ? 1 : Math.max(LABEL_OPACITY[level], 0.75)}
+            >
+              {label}
+            </LabelPlate>
+            {!hidden && (level === 'new' || level === 'forgotten') && (
+              <group position={[0, -0.27, 0]}>
+                <LabelPlate
+                  font={FONT_BODY}
+                  fontSize={0.1}
+                  surface={level === 'forgotten' ? theme.ui.tokens.danger : theme.ui.tokens.accent}
+                  ink={level === 'forgotten' ? theme.ui.tokens['bg-ink'] : theme.ui.tokens.ink}
+                >
+                  {level === 'new' ? 'nuevo' : 'olvidado'}
+                </LabelPlate>
+              </group>
+            )}
+          </Billboard>
+        </Suspense>
+        </Reveal>
+      )}
     </group>
   )
 }
 
 export function Room({ room, palette, theme }: { room: RoomLayout; palette: RoomPalette; theme: Theme }) {
   const { cornice, plinth } = theme.scene.architecture
-  const paintings = useMemo(() => assignPaintings(room), [room])
+  const userImages = useStore((s) => s.userImages)
+  const paintings = useMemo(() => assignPaintings(room, userImages), [room, userImages])
   return (
     <group>
       <Reveal id={floorKey(room.id)} mode="pop" origin={[room.x, 0, room.z]}>
@@ -195,7 +203,15 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
       </Reveal>
       {paintings.map((a) => (
         <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
-          <Painting slot={a.slot} search={a.search} palette={palette} theme={theme} diorama={a.diorama} roomId={a.roomId} />
+          <Painting
+            slot={a.slot}
+            search={a.search}
+            userImage={a.userImage}
+            palette={palette}
+            theme={theme}
+            diorama={a.diorama}
+            roomId={a.roomId}
+          />
         </Reveal>
       ))}
       <Reveal id={monumentKey(room.id)} mode="sink">

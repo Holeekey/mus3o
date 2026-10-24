@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
-import { creditLine, useResolvedImage } from '../lib/images'
+import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
+import { useIntro } from '../intro/store'
 import { LabelPlate } from './LabelPlate'
-import type { PaintingSlot } from '../palace/layout'
+import type { PaintingSlot, UserImage } from '../palace/layout'
 import type { RoomPalette, Theme } from '../theme'
 
 // El cuadro-portal arrastra el código del diorama (geometría procedural, terreno): solo se
@@ -48,25 +49,35 @@ function useTexture(src?: string): Texture | null {
 export function Painting({
   slot,
   search,
+  userImage,
   palette,
   theme,
   diorama,
   roomId,
 }: {
   slot: PaintingSlot
-  search: ImageSearch
+  search?: ImageSearch
+  /** Imagen subida por el usuario: tiene prioridad sobre la búsqueda. */
+  userImage?: UserImage
   palette: RoomPalette
   theme: Theme
   /** Si lo hay, el cuadro es un portal: al acercarse se disuelve en este diorama. */
   diorama?: Diorama
   roomId?: string
 }) {
-  const image = useResolvedImage(search)
+  const resolved = useResolvedImage(userImage ? undefined : search)
+  const image = userImage ? userImageAsResolved(userImage.src, userImage.title) : resolved
   const texture = useTexture(image?.src)
+  const isIntroPlaying = useIntro((s) => s.phase === 'playing')
+  const activeTexture = isIntroPlaying ? null : texture
   const matColor = useMemo(() => new Color(theme.scene.object.color).multiplyScalar(0.92), [theme])
-  if (!image || !texture) return null
 
-  const aspect = (texture.image as { width: number; height: number }).width / (texture.image as { width: number; height: number }).height
+  const hasTexture = Boolean(image && texture)
+  const imgAspect = texture?.image
+    ? (texture.image as { width: number; height: number }).width /
+      (texture.image as { width: number; height: number }).height
+    : 4 / 3
+  const aspect = Number.isFinite(imgAspect) && imgAspect > 0 ? imgAspect : 4 / 3
   const maxW = slot.maxWidth - 2 * (FRAME_T + MAT)
   const maxH = slot.maxHeight - 2 * (FRAME_T + MAT)
   const w = Math.min(maxW, maxH * aspect)
@@ -90,7 +101,13 @@ export function Painting({
   const flat = (
     <mesh position={[0, 0, WALL_Z + 0.0505]} receiveShadow>
       <planeGeometry args={[w, h]} />
-      <meshStandardMaterial map={texture} roughness={1} />
+      {/* key distinta por variante: three.js compila el shader sin textura si se reutiliza el
+          material del placeholder y solo se le asigna `map` después (el lienzo queda negro). */}
+      {hasTexture && activeTexture ? (
+        <meshStandardMaterial key={activeTexture.uuid} map={activeTexture} roughness={1} />
+      ) : (
+        <meshStandardMaterial key="placeholder" color={matColor} roughness={0.95} />
+      )}
     </mesh>
   )
 
@@ -116,27 +133,29 @@ export function Painting({
           </mesh>
         </group>
       ))}
-      <Suspense fallback={null}>
-        {/* Cartela de yeso bajo el cuadro: legible sobre cualquier pared. */}
-        <group position={[0, bottom - 0.22, WALL_Z + 0.03]}>
-          <LabelPlate
-            font={FONT_BODY}
-            fontSize={slot.main ? 0.085 : 0.07}
-            maxWidth={Math.max(slot.maxWidth, 1.6)}
-            surface={theme.ui.tokens.surface}
-            ink={theme.ui.tokens.ink}
-          >
-            {creditLine(image)}
-          </LabelPlate>
-        </group>
-      </Suspense>
+      {image && texture && !isIntroPlaying && (
+        <Suspense fallback={null}>
+          {/* Cartela de yeso bajo el cuadro: legible sobre cualquier pared. */}
+          <group position={[0, bottom - 0.22, WALL_Z + 0.03]}>
+            <LabelPlate
+              font={FONT_BODY}
+              fontSize={slot.main ? 0.085 : 0.07}
+              maxWidth={Math.max(slot.maxWidth, 1.6)}
+              surface={theme.ui.tokens.surface}
+              ink={theme.ui.tokens.ink}
+            >
+              {creditLine(image)}
+            </LabelPlate>
+          </group>
+        </Suspense>
+      )}
     </group>
-    {diorama && (
+    {diorama && !isIntroPlaying && activeTexture && (
       <Suspense fallback={<group position={[slot.x, slot.y, slot.z]} rotation={[0, slot.rotationY, 0]}>{flat}</group>}>
         <PortalPainting
           id={`portal:${roomId ?? slot.side}`}
           diorama={diorama}
-          texture={texture}
+          texture={activeTexture}
           bare
           position={portalPos}
           rotationY={slot.rotationY}

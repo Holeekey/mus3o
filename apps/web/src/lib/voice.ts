@@ -118,13 +118,65 @@ export function pickSpanishVoice<T extends { lang: string }>(voices: T[]): T | n
   return voices.find((x) => norm(x).startsWith('es')) ?? null
 }
 
+// --- ElevenLabs (opcional) ---
+// El servidor hace de proxy (la clave nunca llega al navegador). Si /api/tts/status dice que no
+// está configurado, o cualquier llamada falla, se usa la síntesis del navegador.
+let remoteEnabled: Promise<boolean> | null = null
+function remoteTts(): Promise<boolean> {
+  remoteEnabled ??= fetch('/api/tts/status')
+    .then((r) => (r.ok ? r.json() : { enabled: false }))
+    .then((j: { enabled?: boolean }) => j.enabled === true)
+    .catch(() => false)
+  return remoteEnabled
+}
+
+let currentAudio: HTMLAudioElement | null = null
+let currentUrl: string | null = null
+let abort: AbortController | null = null
+let token = 0
+
+function releaseAudio(): void {
+  abort?.abort()
+  abort = null
+  if (currentAudio) {
+    currentAudio.pause()
+    currentAudio = null
+  }
+  if (currentUrl) {
+    URL.revokeObjectURL(currentUrl)
+    currentUrl = null
+  }
+}
+
+async function speakRemote(text: string, mine: number): Promise<boolean> {
+  if (typeof Audio === 'undefined' || !(await remoteTts())) return false
+  abort = new AbortController()
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: text.slice(0, 500) }),
+      signal: abort.signal,
+    })
+    if (!res.ok) return false
+    const blob = await res.blob()
+    if (mine !== token) return true // llegó tarde: otra frase o un stop ya la reemplazó
+    currentUrl = URL.createObjectURL(blob)
+    currentAudio = new Audio(currentUrl)
+    await currentAudio.play()
+    return true
+  } catch {
+    return mine !== token // si la cancelaron a propósito no se cae al navegador
+  }
+}
+
 export function canSpeak(): boolean {
   return synth() !== null
 }
 
-export function speak(text: string, { lang = 'es-ES' }: { lang?: string } = {}): void {
+function speakBrowser(text: string, lang: string): void {
   const s = synth()
-  if (!s || !text.trim()) return
+  if (!s) return
   try {
     s.cancel()
     const u = new SpeechSynthesisUtterance(text)
@@ -141,7 +193,18 @@ export function speak(text: string, { lang = 'es-ES' }: { lang?: string } = {}):
   }
 }
 
+export function speak(text: string, { lang = 'es-ES' }: { lang?: string } = {}): void {
+  if (!text.trim()) return
+  stopSpeaking()
+  const mine = token
+  void speakRemote(text, mine).then((done) => {
+    if (!done && mine === token) speakBrowser(text, lang)
+  })
+}
+
 export function stopSpeaking(): void {
+  token++
+  releaseAudio()
   try {
     synth()?.cancel()
   } catch {

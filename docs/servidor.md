@@ -11,7 +11,7 @@ Archivos:
 | `src/app.ts` | Rutas, CORS, límites de cuerpo, rate limits, tope diario, caché, errores |
 | `src/claude.ts` | Cliente de Anthropic, `askForJson` (reintento), mock sin clave, `attachSources` |
 | `src/prompts.ts` | Todos los prompts y reglas (sistema, apuntes, flujo, diorama, imágenes, mejora) |
-| `src/cache.ts` | Caché en memoria, máx. 100 museos |
+| `src/cache.ts` | Caché en memoria, máx. 100 museos y LRU aparte de 100 temarios (`getCachedDigest`) |
 | `src/images.ts` | Proxy de Wikipedia/Commons: resolución, descarga, LRU de archivos |
 
 ---
@@ -21,8 +21,11 @@ Archivos:
 | Método y ruta | Entrada | Salida | Notas |
 |---|---|---|---|
 | `POST /api/generate-museum` | `{ topic }` (legacy) **o** `{ mode, prompt, sources[], images[] }` | `Museum` | Único endpoint de generación. Cuerpo ≤ 8 MB |
+| `POST /api/digest-sources` | `{ sources[] }` (1-10 fuentes, ≤ 200 000 car. en total) | `{ digest }` (≤ 15 000 car.) | Solo cuando el texto supera 20 000 car. Cuerpo ≤ 1 MB. 400 cuerpo inválido; 503 sin clave; 429 tope diario; 502 `No se pudo resumir las fuentes` |
 | `POST /api/improve-prompt` | Mismo que el flujo sin imágenes | `{ suggestions[], improvedPrompt }` | **Solo depuración**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
+| `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
+| `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 
 ### Respuestas de error
@@ -40,7 +43,7 @@ el tipo de error y la latencia (`generate-museum falló tras N ms: <Nombre>`).
 ## 2. Protecciones (orden real en `app.ts`)
 
 1. **CORS** solo para `WEB_ORIGIN` (default `http://localhost:5173`).
-2. **Tamaño de cuerpo:** `generate-museum` 8 MB (hay imágenes en base64); el resto 100 KB.
+2. **Tamaño de cuerpo:** `generate-museum` 8 MB (hay imágenes en base64); `digest-sources` 1 MB (hasta 200 000 caracteres de texto); el resto 100 KB.
 3. **Rate limit de imágenes:** 300 peticiones por minuto por IP en `/api/image`.
 4. **Rutas de imagen** (`imageRouter`).
 5. **Rate limit general** en `/api/*` (excepto imágenes): **10 peticiones por minuto por IP**.
@@ -57,6 +60,7 @@ Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de c
 | Formato legacy `topic` | `topic.trim().toLowerCase()` |
 | Formato legacy `notes` | `"notes:" + sha256(notes)` |
 | Flujo nuevo | `"flow:" + sha256(JSON.stringify(request))` (incluye modo, fuentes e imágenes) |
+| Temario base (`digest-sources`) | `"digest:" + sha256(JSON.stringify(fuentes desinfectadas))`, en un LRU aparte de 100 entradas que guarda solo el texto del temario |
 
 - Los apuntes no se guardan en claro en la clave.
 - Máximo **100 entradas**; al llenarse se expulsa la **menos usada recientemente** (LRU): un acierto refresca la entrada, y guardar de nuevo una clave existente no expulsa otra.
@@ -70,10 +74,12 @@ Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de c
 | `generateMuseum({notes})` | Formato legacy con apuntes | 16 000 | `parseMuseum` + `attachSources` |
 | `generateFlowMuseum(req)` | Flujo nuevo (con modo, fuentes, imágenes) | 16 000 | `parseFlowMuseum` (valida además los `imageId`) + `attachSources` |
 | `improvePrompt(req)` | Solo depuración | 1 500 | `ImprovePromptResponseSchema` |
+| `digestSources(sources)` | `digest-sources` | 6 000 (sin razonamiento: `thinking: { type: "disabled" }`) | `clampDigest` + `DigestSourcesResponseSchema` (sin reintento) |
 
 Detalles:
 
-- Modelo: `ANTHROPIC_MODEL` (default **`claude-sonnet-5-5`**).
+- Modelo: `ANTHROPIC_MODEL` (default **`claude-sonnet-5-5`**). El temario base usa `ANTHROPIC_DIGEST_MODEL` (default **`claude-haiku-5-5`**, ~20× más barato).
+- **Prompt maestro (`DIGEST_SYSTEM_PROMPT`):** solo se llama si el texto extraído en el navegador supera `LIMITS.maxNotesChars`; por debajo, la compactación del navegador cuesta 0 tokens. Pide un temario markdown (`# Tema`, 1 a 8 temas; `- Concepto: idea esencial`, ≤ 12 por tema), fiel a las fuentes, en su idioma y bajo 12 000 caracteres. Cada fuente va en su bloque `<source>` con el mismo helper del flujo (`sourceBlock`). `clampDigest` recorta la salida a `LIMITS.maxDigestChars` en el último salto de línea; salida vacía o inválida → 502. Costo: con 200 000 caracteres (~50k tokens de entrada) y ≤ 6 000 de salida, menos de USD 0.01 por llamada *(est., precios de Haiku de token-budget)*. El razonamiento va apagado: Haiku 5.5 razona por defecto y en una prueba gastó 3 193 de 4 000 tokens de salida pensando, con lo que el temario quedaba cortado o vacío.
 - Cliente con `timeout: 120 s` y `maxRetries: 1`.
 - **Reintento de validación (`askForJson`):** si el JSON no valida, se devuelve a Claude su respuesta anterior y el error (≤ 500 caracteres) para que la corrija. Son 2 intentos en total.
 - **Limpieza antes de validar:** se quita el fence de markdown (```` ```json ````), y `sanitizeRawSources` recorta citas largas.
@@ -111,10 +117,14 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 |---|---|---|
 | `ANTHROPIC_API_KEY` | (vacía) | Sin clave: mock para temas, 503 para apuntes |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Modelo de Claude |
+| `ANTHROPIC_DIGEST_MODEL` | `claude-haiku-5-5` | Modelo barato de `/api/digest-sources` |
 | `PORT` | `3001` | Puerto HTTP |
 | `WEB_ORIGIN` | `http://localhost:5173` | Origen permitido por CORS |
 | `MAX_DAILY_GENERATIONS` | `200` | Tope diario de llamadas a Claude |
 | `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt` |
+| `ELEVENLABS_API_KEY` | (vacía) | Activa la voz natural; sin ella el cliente usa la voz del navegador |
+| `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voz por defecto / `eleven_multilingual_v2` | Voz y modelo (el id se valida alfanumérico) |
+| `MAX_DAILY_TTS_CHARS` | `30000` | Tope diario de caracteres enviados a ElevenLabs |
 
 ## 7. Proxy de imágenes (`images.ts`)
 
@@ -128,7 +138,7 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 
 ## 8. Tests del servidor
 
-`npm test -w @mus3o/server` (Vitest): 4 archivos, 44 pruebas.
+`npm test -w @mus3o/server` (Vitest): 7 archivos, 68 pruebas.
 
 | Archivo | Cubre |
 |---|---|
@@ -136,6 +146,7 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 | `images.test.ts` | Clasificación, parser de URLs de Wikimedia, LRU, reintentos |
 | `sources.test.ts` | Verificación de citas en el servidor |
 | `cache.test.ts` | Caché LRU de museos |
+| `digest.test.ts` | Prompt maestro, recorte del temario, ruta `digest-sources` (límites, 503, caché) |
 
 ## 9. Cómo añadir un endpoint o cambiar la IA
 
