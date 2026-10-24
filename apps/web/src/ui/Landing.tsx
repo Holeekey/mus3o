@@ -1,6 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
-import { countSources, LIMITS, type Museum } from '@mus3o/shared'
-import { generateMuseum } from '../lib/api'
+import { useDeferredValue, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import { LIMITS } from '@mus3o/shared'
+import { startLiveBuild } from '../build/liveBuild'
+import { sourceSummary } from '../palace/sourceSummary'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { PRESET_PALACES } from '../palace/presets'
@@ -17,13 +18,8 @@ const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.
 const PLACEHOLDER = ['# Tema 1', '- Concepto A: explicación', '- Concepto B', '', '# Tema 2', '- Concepto C'].join(String.fromCharCode(10))
 const MAX_FILE_BYTES = 200_000
 
-/** "17 de 17 conceptos verificados en tus apuntes" o "15 de 17 · 2 sin fuente". */
-export function sourceSummary(palace: Museum): string {
-  const { total, verified, unverified } = countSources(palace)
-  return unverified === 0
-    ? `${verified} de ${total} conceptos verificados en tus apuntes`
-    : `${verified} de ${total} · ${unverified} sin fuente`
-}
+// El resumen "N de M verificados" ahora se muestra dentro del palacio (aviso y panel de pausa).
+export { sourceSummary }
 
 export function Landing() {
   const enterPalace = useStore((s) => s.enterPalace)
@@ -34,44 +30,23 @@ export function Landing() {
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [aiState, setAiState] = useState<'idle' | 'loading'>('idle')
-  const [aiError, setAiError] = useState<string | null>(null)
-  // Palacio generado con IA a la espera de entrar: deja ver cuántos conceptos se verificaron.
-  const [aiResult, setAiResult] = useState<{ palace: Museum; text: string } | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  useEffect(() => () => abortRef.current?.abort(), [])
+  const [validationError, setValidationError] = useState<string | null>(null)
+  // Si la IA falló antes de la primera sala, el store nos devuelve aquí con el motivo.
+  const buildError = useStore((s) => s.build.error)
+  const clearBuildError = useStore((s) => s.clearBuildError)
+  const aiError = validationError ?? buildError
 
-  const generateWithAi = async () => {
-    if (!input.trim() || aiState === 'loading') return
+  const generateWithAi = () => {
+    if (!input.trim()) return
     // El server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     if (input.trim().length > LIMITS.maxNotesChars) {
-      setAiError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
+      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
       return
     }
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setAiError(null)
-    setAiResult(null)
-    setAiState('loading')
-    try {
-      const palace = await generateMuseum(input, controller.signal)
-      const { verified, unverified } = countSources(palace)
-      if (verified + unverified === 0) enterPalace(palace)
-      else setAiResult({ palace, text: input.trim() })
-    } catch (e) {
-      if (controller.signal.aborted) return
-      const status = (e as { status?: number }).status
-      setAiError(
-        status === 503
-          ? 'La IA no está configurada en el servidor. Puedes construir el palacio sin IA.'
-          : status === 429
-            ? 'Demasiadas solicitudes. Intenta en un minuto.'
-            : 'No pudimos generar el palacio con IA. Intenta de nuevo o constrúyelo sin IA.',
-      )
-    } finally {
-      if (!controller.signal.aborted) setAiState('idle')
-    }
+    setValidationError(null)
+    clearBuildError()
+    // Entra al palacio ya: las salas se levantan según la IA las escribe.
+    void startLiveBuild(input)
   }
 
   const deferred = useDeferredValue(input)
@@ -142,7 +117,7 @@ export function Landing() {
           </div>
           <textarea
             value={input}
-            onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
+            onChange={(e) => { setInput(e.target.value); setValidationError(null); clearBuildError() }}
             placeholder={PLACEHOLDER}
             spellCheck={false}
             maxLength={MAX_INPUT_CHARS}
@@ -153,8 +128,6 @@ export function Landing() {
               <span className="error">{aiError}</span>
             ) : fileError ? (
               <span className="error">{fileError}</span>
-            ) : aiResult ? (
-              <span>{sourceSummary(aiResult.palace)}</span>
             ) : result.ok ? (
               <span>
                 {result.palace.rooms.length} salas · {conceptCount} conceptos
@@ -167,16 +140,11 @@ export function Landing() {
         </div>
 
         <div className="actions">
-          {aiResult && (
-            <button className="btn btn-primary btn-lg" onClick={() => enterPalace(aiResult.palace, aiResult.text)}>
-              Entrar al palacio
-            </button>
-          )}
-          <button className={aiResult ? 'btn' : 'btn btn-primary btn-lg'} disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
+          <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
             Construir palacio
           </button>
-          <button className="btn" disabled={!input.trim() || aiState === 'loading'} onClick={generateWithAi}>
-            {aiState === 'loading' ? 'Levantando muros…' : 'Generar con IA'}
+          <button className="btn" disabled={!input.trim()} onClick={generateWithAi}>
+            Generar con IA
           </button>
           <button className="btn btn-ghost" onClick={() => setInput(EXAMPLE_TEXT)}>
             Usar ejemplo: Biología celular
@@ -199,15 +167,6 @@ export function Landing() {
           <Suspense fallback={null}>
             <Preview layout={layout} />
           </Suspense>
-          {aiState === 'loading' && (
-            <div className="preview-loading" role="status">
-              <span className="bricks" aria-hidden>
-                <i /><i /><i /><i /><i /><i />
-              </span>
-              <p>Levantando muros…</p>
-              <p className="sub">La IA modela un objeto para cada concepto.</p>
-            </div>
-          )}
         </div>
         <div className="plinth">
           <p className="plinth-title">Maqueta del palacio</p>

@@ -807,4 +807,10 @@ kbd {
 .palace.intro-on .hud { visibility: hidden; }
 .intro-skip { position: fixed; right: 24px; bottom: 24px; z-index: 50; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .intro-skip kbd { margin-left: 8px; font: inherit; font-size: 0.8em; color: var(--ink-muted); }
+/* Avisos del palacio que se levanta en vivo (BuildNotice): una línea discreta arriba al centro. */
+.build-note { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; align-items: center; gap: 10px; max-width: min(92vw, 560px); padding: 8px 16px; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-weight: 600; font-size: 0.9rem; pointer-events: none; }
+.build-note-live::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: build-pulse 1.1s ease-in-out infinite; }
+.build-note-close { pointer-events: auto; flex: none; border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: 1.2rem; line-height: 1; cursor: pointer; }
+@keyframes build-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .build-note-live::before { animation: none; } }
 @keyframes intro-fade { from { opacity: 1; } to { opacity: 0; } }

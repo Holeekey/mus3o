@@ -365,6 +365,8 @@ export function buildLayout(palace: Museum): PalaceLayout {
 
 export const STREAM_COLS = 4
 export const STREAM_CELL = 24
+/** Límites de un palacio en construcción lleno (8 salas): sol y sombras se encuadran una vez y no se mueven al crecer. */
+export const STREAM_MAX_BOUNDS = { minX: -11, maxX: (STREAM_COLS - 1) * STREAM_CELL + 11, minZ: -9, maxZ: STREAM_CELL + 9 }
 /** La IA aún no mandó la primera sala: el punto de entrada ya es el de cualquier primera sala. */
 const STREAM_SPAWN: PalaceLayout['spawn'] = { x: -4.5, z: -4.5, yaw: Math.atan2(-4.5, -4.5) }
 

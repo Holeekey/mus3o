@@ -41,7 +41,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     camera.rotation.set(0, layout.spawn.yaw, 0)
     pointerLock.lock = () => controls.current?.lock()
     pointerLock.unlock = () => controls.current?.unlock()
-  }, [camera, layout])
+    // Solo cuando cambia el punto de entrada: un palacio que se levanta en vivo cambia de layout con cada sala.
+  }, [camera, layout.spawn.x, layout.spawn.z, layout.spawn.yaw]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
