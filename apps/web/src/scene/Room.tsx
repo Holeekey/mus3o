@@ -225,6 +225,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
             theme={theme}
             diorama={a.diorama}
             roomId={a.roomId}
+            title={room.title}
           />
         </Reveal>
       ))}

@@ -382,8 +382,8 @@ export function assignPaintings(room: RoomLayout, userImages: Record<string, str
   const out: PaintingAssignment[] = []
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
-  if (main && hasSearch(room.imageSearch)) {
-    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
+  if (main && (hasSearch(room.imageSearch) || room.diorama)) {
+    out.push({ slot: main, search: hasSearch(room.imageSearch) ? room.imageSearch : undefined, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
     free.splice(free.indexOf(main), 1)
   }
   const nearestFree = (p: PedestalLayout) => {

@@ -74,7 +74,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
   )
-  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama && r.imageSearch), [layout])
+  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama), [layout])
   return (
     <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat>
       <color attach="background" args={[scene.background]} />

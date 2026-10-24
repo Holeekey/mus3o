@@ -167,7 +167,7 @@ export const KINDS = [
 ] as const;
 export const POSES = ["standing", "pointing", "charging", "fallen", "seated", "raising-arm"] as const;
 /** Diseño de la tela de una bandera: franjas (por defecto) o aspa (cruz de San Andrés). */
-export const FLAG_PATTERNS = ["stripes", "saltire"] as const;
+export const FLAG_PATTERNS = ["stripes", "saltire", "vertical"] as const;
 
 // science-kit: valores admitidos por los parámetros opcionales de los props científicos.
 export const VALVE_TYPES = ["tricuspid", "mitral", "pulmonary", "aortic"] as const;
@@ -190,7 +190,7 @@ export const FlowSchema = z.object({
 export const DioramaPropSchema = z.object({
   kind: z.enum(KINDS),
   pose: z.enum(POSES).optional().catch(undefined),
-  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`). */
+  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`); "vertical" = tres franjas verticales `color` | blanco | `secondary` (p. ej. Francia). */
   pattern: z.enum(FLAG_PATTERNS).optional().catch(undefined),
   color: dHex.optional().catch(undefined),
   secondary: dHex.optional().catch(undefined),
