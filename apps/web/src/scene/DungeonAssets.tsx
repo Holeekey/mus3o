@@ -25,7 +25,7 @@ function AssetWallInner({ box }: { box: Box }) {
     >
       <Clone
         object={scene}
-        scale={[length / 4, box.h / 4, Math.max(thickness / 1, 0.4)]}
+        scale={[length / 4, box.h / 4, Math.max(thickness, 0.4)]}
         castShadow
         receiveShadow
       />
@@ -83,10 +83,12 @@ function AssetDoorwayInner({
   position,
   rotation,
   isOpen = false,
+  light = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
   isOpen?: boolean
+  light?: boolean
 }) {
   const { scene } = useGLTF(DOORWAY_MODEL)
   // Clonamos el modelo de manera independiente para cada instancia de puerta
@@ -122,8 +124,8 @@ function AssetDoorwayInner({
         castShadow
         receiveShadow
       />
-      {/* Antorcha / Luz cálida que ilumina el arco de la puerta */}
-      <pointLight color="#ffb347" intensity={6} distance={6} position={[0, 2.2, 0]} />
+      {/* Antorcha / luz cálida que ilumina el arco; cada point light es costosa, así que es opcional */}
+      {light && <pointLight color="#ffb347" intensity={6} distance={6} position={[0, 2.2, 0]} />}
     </group>
   )
 }
@@ -132,25 +134,22 @@ export function AssetDoorway({
   position,
   rotation,
   isOpen = false,
+  light = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
   isOpen?: boolean
-  isGated?: boolean
+  light?: boolean
 }) {
   return (
     <Suspense fallback={null}>
-      <AssetDoorwayInner position={position} rotation={rotation} isOpen={isOpen} />
+      <AssetDoorwayInner position={position} rotation={rotation} isOpen={isOpen} light={light} />
     </Suspense>
   )
 }
 
 // Precarga de modelos
-try {
-  useGLTF.preload(WALL_MODEL)
-  useGLTF.preload(FLOOR_MODEL)
-  useGLTF.preload(DOORWAY_MODEL)
-  useGLTF.preload(GATED_MODEL)
-} catch {
-  // Ignora si corre en entorno sin DOM
-}
+useGLTF.preload(WALL_MODEL)
+useGLTF.preload(FLOOR_MODEL)
+useGLTF.preload(DOORWAY_MODEL)
+useGLTF.preload(GATED_MODEL)

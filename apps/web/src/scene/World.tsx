@@ -76,7 +76,8 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
               <AssetWall key={j} box={w} color={scene.corridor.wall} />
             ))}
             {/* Puerta interactiva con físicas y animación al inicio del pasillo */}
-            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} />
+            {/* Una sola luz por pasillo (en la compuerta) para no multiplicar el costo de iluminación */}
+            <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} light />
             {/* Arco abierto al final del pasillo que conecta con la siguiente cámara */}
             <AssetDoorway position={doorPosB} rotation={[0, rotY, 0]} isOpen={true} />
           </group>
