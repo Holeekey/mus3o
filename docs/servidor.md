@@ -59,7 +59,7 @@ Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de c
 | Flujo nuevo | `"flow:" + sha256(JSON.stringify(request))` (incluye modo, fuentes e imágenes) |
 
 - Los apuntes no se guardan en claro en la clave.
-- Máximo **100 entradas**; al llenarse se expulsa la más antigua (orden de inserción).
+- Máximo **100 entradas**; al llenarse se expulsa la **menos usada recientemente** (LRU): un acierto refresca la entrada, y guardar de nuevo una clave existente no expulsa otra.
 - Solo se cachean respuestas válidas.
 
 ## 4. Llamadas a Claude (`claude.ts`)
@@ -121,19 +121,21 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 - **Resolución:** `resolveImage({ wiki, commons, lang })` busca primero el artículo de Wikipedia (`wikiTitle`) y, si no da imagen, en Commons (`commonsQuery`). `lang` default `es`. Clasifica el resultado como `painting`, `diagram` o `photo` según metadatos.
 - **Caché de resoluciones:** 500 entradas, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda.
 - **Concurrencia:** máximo **3** llamadas simultáneas a Wikimedia (un museo puede pedir decenas de imágenes a la vez).
+- **Peticiones idénticas simultáneas:** `resolveImage` y la descarga de `/image/file` comparten la consulta en curso por clave (`resolving` y `loading`) y la limpian al terminar, así un error transitorio no se cachea.
 - **Errores transitorios** (`UpstreamError`: límite de tasa, 5xx, timeout) **no** se cachean como "sin imagen".
 - **Caché de archivos:** LRU de **60 entradas o 40 MB**. `clearImageCaches()` la vacía (usada en tests).
 - **Seguridad:** `parseAllowedUrl` es el único control del proxy; solo acepta hosts de Wikimedia. Sin esto sería un proxy abierto.
 
 ## 8. Tests del servidor
 
-`npm test -w @mus3o/server` (Vitest): 3 archivos, 37 pruebas.
+`npm test -w @mus3o/server` (Vitest): 4 archivos, 44 pruebas.
 
 | Archivo | Cubre |
 |---|---|
 | `flow.test.ts` | Validación del flujo, reglas de modo y grafo, imágenes asignadas, construcción del contenido |
 | `images.test.ts` | Clasificación, parser de URLs de Wikimedia, LRU, reintentos |
 | `sources.test.ts` | Verificación de citas en el servidor |
+| `cache.test.ts` | Caché LRU de museos |
 
 ## 9. Cómo añadir un endpoint o cambiar la IA
 

@@ -6,7 +6,7 @@ en `localStorage`, se valida con estos esquemas Zod. Archivos:
 | Archivo | Contenido |
 |---|---|
 | `src/schema.ts` | Todos los esquemas, límites (`LIMITS`), reglas de modo y grafo, tipos exportados |
-| `src/sources.ts` | Verificación de citas contra los apuntes (`verifySources`, `locateFragment`, `sanitizeRawSources`) |
+| `src/sources.ts` | Verificación de citas contra los apuntes (`verifySources`, `locateFragment`, `prepareText`, `locateIn`, `sanitizeRawSources`) |
 | `src/grid.ts` | Cuadrícula para colocar salas (lo usa el layout del frontend) |
 | `src/mock.ts` | `sampleMuseum`: museo mínimo de ejemplo (servidor sin API key y fallback del cliente) |
 | `src/index.ts` | Re-exporta todo |

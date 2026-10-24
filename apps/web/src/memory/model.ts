@@ -100,7 +100,7 @@ export function dueIds(mem: PalaceMemory, ids: string[], now: number): string[] 
 export type RoomMemory = { strength: number; due: number; learned: number; total: number }
 
 /** Promedio de fuerza de la sala sobre los conceptos ya aprendidos; si no hay ninguno, 1. */
-export function roomMemory(mem: PalaceMemory, ids: string[], now: number): RoomMemory {
+export function roomMemory(mem: PalaceMemory, ids: readonly string[], now: number): RoomMemory {
   let sum = 0
   let learned = 0
   let due = 0

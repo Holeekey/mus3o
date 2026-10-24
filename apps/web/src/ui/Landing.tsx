@@ -7,6 +7,7 @@ import { PRESET_PALACES } from '../palace/presets'
 import { buildLayout } from '../palace/layout'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace } from '../palace/parse'
 import { dueCountFor } from '../memory/hooks'
+import { dueLabel } from '../memory/dueLabel'
 import { useStore } from '../store'
 import { FreeExploreToggle } from './FreeExploreToggle'
 
@@ -28,6 +29,8 @@ export function Landing() {
   const enterPalace = useStore((s) => s.enterPalace)
   const resume = useStore((s) => s.resume)
   const saved = useStore((s) => s.palace)
+  // Una sola vez por render: la landing se vuelve a renderizar en cada tecla del editor.
+  const dueText = dueLabel(dueCountFor(saved))
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -179,9 +182,7 @@ export function Landing() {
           {saved && (
             <button className="btn btn-ghost" onClick={resume}>
               Continuar “{saved.title}”
-              {dueCountFor(saved) > 0 && (
-                <span className="due-chip"> · {dueCountFor(saved)} {dueCountFor(saved) === 1 ? 'repaso pendiente' : 'repasos pendientes'}</span>
-              )}
+              {dueText && <span className="due-chip"> · {dueText}</span>}
             </button>
           )}
         </div>

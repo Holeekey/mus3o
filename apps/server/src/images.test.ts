@@ -157,6 +157,50 @@ describe("image endpoints", () => {
     await fetch(`${base}/api/image/file?u=${u}`);
     expect(calls).toHaveLength(1);
   });
+
+  describe("simultaneous identical requests", () => {
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const wikiHits = () => calls.filter((u) => u.includes("wikipedia.org")).length;
+
+    it("share one Wikimedia lookup when resolving the same image", async () => {
+      handler = async (url) => {
+        await delay(60);
+        return url.includes("wikipedia.org")
+          ? json({ type: "standard", title: "Roma", originalimage: { source: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Roma.jpg" } })
+          : json(commonsPage());
+      };
+      const [a, b] = await Promise.all([fetch(`${base}/api/image?wiki=Roma`), fetch(`${base}/api/image?wiki=Roma`)]);
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+      expect(await a.json()).toEqual(await b.json());
+      expect(wikiHits()).toBe(1);
+    });
+
+    it("share one download when proxying the same file", async () => {
+      handler = async () => {
+        await delay(60);
+        return new Response(new Uint8Array([7, 8, 9]), { headers: { "Content-Type": "image/jpeg" } });
+      };
+      const u = encodeURIComponent("https://upload.wikimedia.org/wikipedia/commons/a/ab/Y.jpg");
+      const [a, b] = await Promise.all([fetch(`${base}/api/image/file?u=${u}`), fetch(`${base}/api/image/file?u=${u}`)]);
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+      expect(new Uint8Array(await b.arrayBuffer())).toEqual(new Uint8Array([7, 8, 9]));
+      expect(calls).toHaveLength(1);
+    });
+
+    it("do not cache a transient error that all waiters received", async () => {
+      handler = async () => {
+        await delay(60);
+        return json({}, 500);
+      };
+      const [a, b] = await Promise.all([fetch(`${base}/api/image?wiki=Paris`), fetch(`${base}/api/image?wiki=Paris`)]);
+      expect(a.status).toBe(502);
+      expect(b.status).toBe(502);
+      handler = () => json({}, 404);
+      expect((await fetch(`${base}/api/image?wiki=Paris`)).status).toBe(404);
+    });
+  });
 });
 
 describe("classify", () => {

@@ -3,7 +3,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { moveWithCollisions, type PalaceLayout } from '../palace/layout'
-import { allConcepts, playerPose, useStore } from '../store'
+import { conceptIdSet } from '../palace/conceptIds'
+import { playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
@@ -311,7 +312,7 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
     const st = useStore.getState()
     let best: string | null = null
     let bestD = REACH
-    const ids = new Set(allConcepts(st.palace).map((c) => c.id))
+    const ids = conceptIdSet(st.palace)
     for (const l of model.layout.linked) {
       if (!ids.has(l.pieceId)) continue
       const vx = l.x - p.x

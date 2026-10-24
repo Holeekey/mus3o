@@ -25,6 +25,7 @@ Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio.
 | [diorama.md](./diorama.md) | "Entrar al cuadro": escena de maqueta, props, terreno, atmósfera | Tocas `apps/web/src/diorama` o el campo `diorama` |
 | [fuentes-e-imagenes.md](./fuentes-e-imagenes.md) | Trazabilidad de citas, verificación contra los apuntes, imágenes de Wikimedia | Tocas `sources`, citas o cuadros con imagen real |
 | [estado-y-pendientes.md](./estado-y-pendientes.md) | Qué está hecho, qué no, resultados de tests, discrepancias conocidas | Quieres saber el estado real antes de empezar |
+| [optimizaciones.md](./optimizaciones.md) | Mejoras de rendimiento ya investigadas (6 seguras, con archivo, línea, prueba y medidas del build) | Vas a optimizar peso, CPU o trabajo repetido |
 | [desarrollo.md](./desarrollo.md) | Cómo correr, probar, variables de entorno, flujo de git, errores comunes | Vas a levantar el proyecto o abrir un PR |
 
 Documentos previos (decisiones de producto y de seguridad, no cambian con el código):
