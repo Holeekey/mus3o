@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 
@@ -70,4 +70,8 @@ export async function ensureAsset(id: string, downloadUrl: string, signal?: Abor
     throw err;
   }
   return true;
+}
+
+export async function removeAsset(id: string): Promise<void> {
+  if (isValidAssetId(id)) await rm(fileFor(id), { force: true });
 }

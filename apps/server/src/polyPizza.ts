@@ -1,5 +1,6 @@
 import type { DynamicAsset, Museum, Piece } from "@mus3o/shared";
 import { ensureAsset } from "./assetStore";
+import { isRejected, recordAssignment } from "./assetReview";
 
 /**
  * Cliente de Poly Pizza (modelos low-poly CC0 / CC-BY). Sin POLY_PIZZA_API_KEY queda desactivado
@@ -177,9 +178,13 @@ export async function hydrateMuseumAssets(
   const lists = new Map<string, PolyCandidate[]>();
   (await Promise.allSettled(keywords.map((k) => find(k)))).forEach((r, i) => lists.set(keywords[i], r.status === "fulfilled" ? r.value : []));
 
+  // Lista negra de revisión: un modelo rechazado no se vuelve a asignar (aunque siga en la caché de búsquedas).
+  const blocked = new Set<string>();
+  for (const id of new Set([...lists.values()].flat().map((c) => c.id))) if (await isRejected(id)) blocked.add(id);
+
   const used = new Set<string>();
   const plan = targets.map((p) => {
-    const list = lists.get((p.searchKeyword as string).trim().toLowerCase()) ?? [];
+    const list = (lists.get((p.searchKeyword as string).trim().toLowerCase()) ?? []).filter((c) => !blocked.has(c.id));
     const ordered = [...list.filter((c) => !used.has(c.id)), ...list.filter((c) => used.has(c.id))];
     if (ordered[0]) used.add(ordered[0].id);
     return ordered;
@@ -190,6 +195,14 @@ export async function hydrateMuseumAssets(
   settled.forEach((r, i) => {
     if (r.status === "fulfilled" && r.value) byId.set(targets[i].id, r.value);
   });
+  // Registro para revisión; un fallo al escribirlo nunca debe romper la generación.
+  await Promise.allSettled(
+    targets.flatMap((t, i) => {
+      const asset = byId.get(t.id);
+      const cand = asset && plan[i].find((c) => c.id === asset.assetId);
+      return asset && cand ? [recordAssignment({ keyword: (t.searchKeyword as string).trim().toLowerCase(), assetId: asset.assetId, title: asset.title, author: asset.author, license: asset.license, score: cand.score, sourceUrl: asset.sourceUrl })] : [];
+    }),
+  );
   if (byId.size === 0) return museum;
   return {
     ...museum,

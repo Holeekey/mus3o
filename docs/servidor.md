@@ -28,6 +28,8 @@ Archivos:
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 | `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |
+| `GET /api/assets-review?status=` | `pending` \| `approved` \| `rejected` (opcional) | `{ assets: [{ assetId, keywords, title, author, license, score, sourceUrl, status, uses }] }` | **Solo curaduría**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
+| `POST /api/assets-review/:id/:action` | `approve` \| `reject` \| `reset` | La entrada actualizada | Igual que arriba. 400 acción/id inválido; 404 modelo no registrado |
 
 ### Respuestas de error
 
@@ -172,3 +174,10 @@ el modelo que mejor **coincide**:
 Timeout de 2500 ms por fase (`AbortController`); ante cualquier fallo la pieza conserva su glifo. Sin `POLY_PIZZA_API_KEY`
 la etapa no hace nada. El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra
 el crédito en la ficha (`Hud.tsx`) si la licencia es CC-BY.
+
+### Revisión de modelos
+
+Cada asignación queda en `.cache/assets/review.json` (`assetReview.ts`) con su palabra clave, puntaje y estado (`pending` por
+defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra persistente: la hidratación no lo vuelve a
+asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
+Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
