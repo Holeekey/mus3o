@@ -3,7 +3,9 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
 import { Vector3 } from 'three'
 
+import type { Piece } from '@mus3o/shared'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
+import { pieceKind } from '../palace/pieceKind'
 import { playerPose, useStore } from '../store'
 import { pointerLock } from './pointerLock'
 
@@ -22,6 +24,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
   const controls = useRef<ComponentRef<typeof PointerLockControls>>(null)
   const keys = useRef<Record<string, boolean>>({})
   const forward = useRef(new Vector3())
+  // Concepto enfocado, para que el handler de teclas conozca su tipo sin depender de su texto.
+  const focusedConcept = useRef<Piece | null>(null)
 
   useEffect(() => {
     camera.rotation.order = 'YXZ'
@@ -45,7 +49,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
         }
         if (s.openId) s.set({ openId: null })
         else if (s.focusedId) {
-          if (s.focusedId.toLowerCase().includes('key') || s.focusedId.toLowerCase().includes('llave')) {
+          if (focusedConcept.current && pieceKind(focusedConcept.current) === 'key') {
             s.pickupKey()
           }
           s.set({ openId: s.focusedId })
@@ -130,20 +134,9 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       s.set({ focusedDoorId: bestDoor })
     }
 
-    // Auto-recogida de la llave al acercarse al pedestal (dentro de 1.8m)
-    if (!s.hasKey) {
-      for (const p of room?.pedestals ?? []) {
-        if (p.concept.id.toLowerCase().includes('key') || p.concept.id.toLowerCase().includes('llave')) {
-          const dist = Math.hypot(p.x - camera.position.x, p.z - camera.position.z)
-          if (dist < 1.8) {
-            s.pickupKey()
-          }
-        }
-      }
-    }
-
     // Pedestal al que se está mirando y que está al alcance.
     let best: string | null = null
+    let bestConcept: Piece | null = null
     let bestDist = REACH
     for (const p of room?.pedestals ?? []) {
       const vx = p.x - camera.position.x
@@ -152,8 +145,10 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       if (dist > bestDist || dist < 0.01) continue
       if ((vx * f.x + vz * f.z) / dist < 0.8) continue
       best = p.concept.id
+      bestConcept = p.concept
       bestDist = dist
     }
+    focusedConcept.current = bestConcept
     if (best !== s.focusedId) {
       // Al alejarse, la tarjeta de exploración se cierra sola.
       const closeCard = s.openId && s.mode === 'explore' && s.openId !== best

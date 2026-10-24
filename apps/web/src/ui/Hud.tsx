@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PalaceLayout } from '../palace/layout'
 import { isCorrectAnswer } from '../palace/match'
+import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { pointerLock } from '../scene/pointerLock'
 import { allConcepts, useStore } from '../store'
@@ -109,6 +110,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const palettes = roomPalettes(DEFAULT_THEME, layout.rooms.map((r) => r.title))
   const palette = palettes[room.index]
   const open = findConcept(layout, openId)
+  const focused = findConcept(layout, focusedId)
+  const focusedKind = focused ? pieceKind(focused.concept) : 'standard'
   const examFinished = mode === 'exam' && answered.length === total && total > 0
 
   return (
@@ -149,7 +152,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       {locked && (!focusedDoorId || unlockedDoors[focusedDoorId]) && focusedId && !openId && (
         <p className="hint">
           <kbd>E</kbd>{' '}
-          {focusedId.toLowerCase().includes('key') || focusedId.toLowerCase().includes('llave')
+          {focusedKind === 'key'
             ? hasKey
               ? 'Examinar Llave de Hierro'
               : 'Recoger Llave de Hierro'
