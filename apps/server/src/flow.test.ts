@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
 import { buildFlowContent, parseFlowMuseum } from "./claude";
-import { flowPrompt, userPrompt } from "./prompts";
+import { FLOW_STATIC_RULES, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -180,5 +180,25 @@ describe("HTTP routes without ANTHROPIC_API_KEY", () => {
     process.env.ENABLE_DEBUG_ROUTES = "true";
     const res = await post("/api/improve-prompt", { prompt: "Bases de datos" });
     expect(res.status).toBe(503);
+  });
+});
+
+describe("generación liviana", () => {
+  it("la variante liviana pide un glifo de respaldo y no dibujar partes", () => {
+    expect(SYSTEM_PROMPT).toContain('"procedural"');
+    expect(SYSTEM_PROMPT_LIGHT).not.toMatch(/procedural|"parts"/);
+    expect(SYSTEM_PROMPT_LIGHT).toContain('"type": "glyph"');
+    expect(SYSTEM_PROMPT_LIGHT.length).toBeLessThan(SYSTEM_PROMPT.length);
+  });
+
+  it("las reglas fijas viajan en el system prompt (cacheable) y no en el mensaje", () => {
+    const withRules = flowPrompt(request());
+    const lean = flowPrompt(request(), { staticRules: false });
+    expect(withRules).toContain('agrega a CADA sala "imageSearch"');
+    expect(lean).not.toContain('agrega a CADA sala "imageSearch"');
+    expect(lean).not.toContain("Dioramas");
+    expect(FLOW_STATIC_RULES).toContain('agrega a CADA sala "imageSearch"');
+    expect(FLOW_STATIC_RULES).toContain("Dioramas");
+    expect(lean.length).toBeLessThan(withRules.length);
   });
 });

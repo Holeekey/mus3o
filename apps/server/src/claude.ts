@@ -30,11 +30,13 @@ import {
   IMPROVE_SYSTEM_PROMPT,
   improvePrompt as improvePromptText,
   notesPrompt,
+  FLOW_STATIC_RULES,
   SYSTEM_PROMPT,
+  SYSTEM_PROMPT_LIGHT,
   userPrompt,
 } from "./prompts";
 import { attachImageSearches, retrieveSources } from "./enrich";
-import { hydrateMuseumAssets } from "./polyPizza";
+import { hydrateMuseumAssets, polyEnabled } from "./polyPizza";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
@@ -101,7 +103,7 @@ function getClient(): Anthropic {
 
 /** Pide JSON a Claude y, si no valida, le devuelve el error una vez para que lo corrija. */
 async function askForJson<T>(
-  options: { system: string; content: Anthropic.MessageParam["content"]; maxTokens: number },
+  options: { system: string | Anthropic.TextBlockParam[]; content: Anthropic.MessageParam["content"]; maxTokens: number; thinking?: boolean },
   parse: (raw: string) => T,
 ): Promise<T> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: options.content }];
@@ -111,9 +113,14 @@ async function askForJson<T>(
     const res = await getClient().messages.create({
       model: MODEL(),
       max_tokens: options.maxTokens,
+      // Generar JSON no necesita razonamiento y ese razonamiento se cobra como salida.
+      ...(options.thinking ? {} : { thinking: { type: "disabled" as const } }),
       system: options.system,
       messages,
     });
+    // Solo conteos de tokens (nunca contenido): sirve para vigilar el costo real por generación.
+    const u = res.usage;
+    console.log(`tokens: entrada ${u.input_tokens}, salida ${u.output_tokens}, caché leída ${u.cache_read_input_tokens ?? 0}, caché escrita ${u.cache_creation_input_tokens ?? 0}`);
     const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     try {
       return parse(text);
@@ -156,14 +163,21 @@ export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.Cont
       { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
     ];
   });
-  return [...images, { type: "text", text: flowPrompt(request) }];
+  return [...images, { type: "text", text: flowPrompt(request, { staticRules: false }) }];
 }
 
 export async function generateFlowMuseum(request: GenerateMuseumRequest): Promise<Museum> {
   if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("IA no configurada");
   const imageIds = request.images.map((i) => i.id);
+  // Con Poly Pizza activo el modelo 3D lo trae el servidor: la IA solo elige un glifo de respaldo y emite
+  // bastante menos salida. Las reglas fijas van en el system prompt con caché (se leen a ~10 % del precio).
+  const light = polyEnabled();
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: light ? SYSTEM_PROMPT_LIGHT : SYSTEM_PROMPT },
+    { type: "text", text: FLOW_STATIC_RULES, cache_control: { type: "ephemeral" } },
+  ];
   const museum = await askForJson(
-    { system: SYSTEM_PROMPT, content: buildFlowContent(request), maxTokens: 16000 },
+    { system, content: buildFlowContent(request), maxTokens: light ? 9000 : 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
   return hydrateMuseumAssets(enrichMuseum(museum, flowNotesText(request)));

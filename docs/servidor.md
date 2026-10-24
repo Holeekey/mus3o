@@ -181,3 +181,15 @@ Cada asignación queda en `.cache/assets/review.json` (`assetReview.ts`) con su 
 defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra persistente: la hidratación no lo vuelve a
 asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
 Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
+
+## Costo de generación (flujo `/api/generate-museum`)
+
+Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el servidor **arma** (modelos 3D, imágenes, citas).
+
+- **Salida liviana con Poly Pizza** (`POLY_PIZZA_API_KEY` definida): se usa `SYSTEM_PROMPT_LIGHT`; la IA ya no dibuja 2 a 8 partes procedurales
+  por pieza (lo más caro de la salida) sino un glifo de respaldo + `searchKeyword`. `max_tokens` baja de 16 000 a 9 000. Sin clave se
+  mantiene el prompt completo con partes procedurales, porque no habría modelo que lo reemplace.
+- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes y dioramas) van al final del system prompt con `cache_control`,
+  no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
+- **Sin razonamiento**: `askForJson` desactiva `thinking` (se cobra como salida y generar JSON no lo necesita).
+- **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
