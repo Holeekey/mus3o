@@ -21,6 +21,9 @@ export const LIMITS = {
   maxQuote: 240,
 } as const;
 
+/** ~1,5 MB por imagen en base64 (las del cliente van a <= 1024 px). */
+export const MAX_IMAGE_BASE64_CHARS = 2_000_000;
+
 export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "education"]);
 
 export const PartSchema = z.object({
@@ -425,7 +428,7 @@ export const InputImageSchema = z.object({
   name: z.string().min(1).max(120),
   mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
   /** Base64, redimensionada en el navegador a <= 1024 px. */
-  data: z.string().min(1),
+  data: z.string().min(1).max(MAX_IMAGE_BASE64_CHARS).regex(/^[A-Za-z0-9+/]+={0,2}$/, "base64 inválido"),
 });
 
 const RequestObjectSchema = z.object({
