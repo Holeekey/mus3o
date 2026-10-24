@@ -13,15 +13,16 @@ export const teatro: Theme = {
     { name: 'Verde cardenillo', wall: '#3F6E5A', floor: '#26453A', trim: '#D8C9A3', ink: '#F3F1EA' },
     { name: 'Ocre amarillo', wall: '#B7832A', floor: '#7A5518', trim: '#4A2A14', ink: '#1E140B' },
     { name: 'Azul cobalto', wall: '#26408B', floor: '#17285A', trim: '#C9963A', ink: '#F1F2F8' },
-    { name: 'Bermellón', wall: '#C4512B', floor: '#83351B', trim: '#2B1A12', ink: '#1B0F0A' },
+    { name: 'Bermellón', wall: '#D2643A', floor: '#83351B', trim: '#2B1A12', ink: '#1B0F0A' },
     { name: 'Morellone', wall: '#5E2B3A', floor: '#3C1B25', trim: '#D8C9A3', ink: '#F5EDEF' },
     { name: 'Tierra verde', wall: '#7C8A5B', floor: '#4F5A39', trim: '#2E2A1E', ink: '#15170F' },
     { name: 'Negro de humo', wall: '#2B2A28', floor: '#1A1918', trim: '#C9963A', ink: '#EFEDE8' },
   ],
 
   scene: {
-    background: '#1A1210',
-    fog: { color: '#1A1210', near: 18, far: 70 },
+    // Sobre los muros se ve una bóveda clara de yeso, no un vacío oscuro.
+    background: '#D6CFC4',
+    fog: { color: '#D6CFC4', near: 22, far: 80 },
     object: { color: '#F2F1EE', roughness: 0.95 },
     pedestal: { color: '#E4E1DB', segments: 8 },
     corridor: { wall: '#D9D4CB', floor: '#8E877C' },

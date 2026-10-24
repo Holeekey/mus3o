@@ -1,10 +1,12 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { generateMuseum } from '../lib/api'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { buildLayout } from '../palace/layout'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace, type InputFormat } from '../palace/parse'
-import { Preview } from '../scene/Preview'
 import { useStore } from '../store'
+
+// La maqueta 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
+const Preview = lazy(() => import('../scene/Preview').then((m) => ({ default: m.Preview })))
 
 const FORMATS: { id: InputFormat; label: string; placeholder: string }[] = [
   { id: 'text', label: 'Texto', placeholder: '# Tema 1\n- Concepto A: explicación\n- Concepto B\n\n# Tema 2\n- Concepto C' },
@@ -145,7 +147,9 @@ export function Landing() {
 
       <section className="landing-right" aria-label="Vista previa del palacio">
         <div className="preview-frame">
-          <Preview layout={layout} />
+          <Suspense fallback={null}>
+            <Preview layout={layout} />
+          </Suspense>
           {aiState === 'loading' && (
             <div className="preview-loading" role="status">
               <span className="bricks" aria-hidden>
