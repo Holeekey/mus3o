@@ -163,6 +163,9 @@ async function fromCommons(query: string): Promise<ResolvedImage | null> {
 
 const resolveCache = new Map<string, ResolvedImage | null>();
 const MAX_RESOLVE_ENTRIES = 500;
+// Peticiones iguales que llegan a la vez comparten una sola consulta a Wikimedia. Se limpia al terminar,
+// así un error transitorio no queda guardado (igual que antes).
+const resolving = new Map<string, Promise<ResolvedImage | null>>();
 
 export async function resolveImage(q: { wiki?: string; commons?: string; lang?: string }): Promise<ResolvedImage | null> {
   const lang = q.lang && /^[a-z]{2}$/.test(q.lang) ? q.lang : "es";
@@ -171,11 +174,21 @@ export async function resolveImage(q: { wiki?: string; commons?: string; lang?: 
   if (!wiki && !commons) return null;
   const key = `${lang}|${normalize(wiki)}|${normalize(commons)}`;
   if (resolveCache.has(key)) return resolveCache.get(key)!;
+  const pending = resolving.get(key);
+  if (pending) return pending;
 
-  const result = (wiki && (await fromWikipedia(wiki, lang))) || (commons && (await fromCommons(commons))) || null;
-  if (resolveCache.size >= MAX_RESOLVE_ENTRIES) resolveCache.delete(resolveCache.keys().next().value!);
-  resolveCache.set(key, result);
-  return result;
+  const task = (async () => {
+    const result = (wiki && (await fromWikipedia(wiki, lang))) || (commons && (await fromCommons(commons))) || null;
+    if (resolveCache.size >= MAX_RESOLVE_ENTRIES) resolveCache.delete(resolveCache.keys().next().value!);
+    resolveCache.set(key, result);
+    return result;
+  })();
+  resolving.set(key, task);
+  try {
+    return await task;
+  } finally {
+    resolving.delete(key);
+  }
 }
 
 // LRU de archivos: 60 entradas / 40 MB.
@@ -187,6 +200,8 @@ const MAX_FILE_BYTES = 40 * 1024 * 1024;
 
 export const clearImageCaches = () => {
   resolveCache.clear();
+  resolving.clear();
+  loading.clear();
   files.clear();
   fileBytes = 0;
 };
@@ -231,6 +246,29 @@ async function readCapped(res: Response): Promise<Buffer | null> {
   return Buffer.concat(chunks);
 }
 
+// Descargas en curso por URL: varias peticiones iguales comparten una sola descarga. Nunca rechaza:
+// devuelve el estado HTTP con el que responder si falla.
+const loading = new Map<string, Promise<FileEntry | 413 | 502>>();
+
+async function downloadFile(key: string): Promise<FileEntry | 413 | 502> {
+  try {
+    const up = await fetch(key, {
+      headers: { "User-Agent": UA },
+      redirect: "manual",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const type = up.headers.get("content-type") ?? "";
+    if (!up.ok || !type.startsWith("image/")) return 502;
+    const body = await readCapped(up);
+    if (!body) return 413;
+    const entry = { body, type };
+    remember(key, entry);
+    return entry;
+  } catch {
+    return 502;
+  }
+}
+
 export const imageRouter: Router = express.Router();
 
 imageRouter.get("/image", async (req, res) => {
@@ -263,28 +301,17 @@ imageRouter.get("/image/file", async (req, res) => {
     files.delete(key); // refresca el orden LRU
     files.set(key, entry);
   } else {
-    try {
-      const up = await fetch(key, {
-        headers: { "User-Agent": UA },
-        redirect: "manual",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      const type = up.headers.get("content-type") ?? "";
-      if (!up.ok || !type.startsWith("image/")) {
-        res.status(502).json({ error: "Imagen no disponible" });
-        return;
-      }
-      const body = await readCapped(up);
-      if (!body) {
-        res.status(413).json({ error: "Imagen demasiado grande" });
-        return;
-      }
-      entry = { body, type };
-      remember(key, entry);
-    } catch {
-      res.status(502).json({ error: "Imagen no disponible" });
+    let download = loading.get(key);
+    if (!download) {
+      download = downloadFile(key).finally(() => loading.delete(key));
+      loading.set(key, download);
+    }
+    const result = await download;
+    if (typeof result === "number") {
+      res.status(result).json({ error: result === 413 ? "Imagen demasiado grande" : "Imagen no disponible" });
       return;
     }
+    entry = result;
   }
   res.setHeader("Content-Type", entry.type);
   res.setHeader("Cache-Control", "public, max-age=86400");
