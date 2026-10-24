@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { generateMuseum } from '../lib/api'
+import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { buildLayout } from '../palace/layout'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace, type InputFormat } from '../palace/parse'
@@ -136,6 +137,9 @@ export function Landing() {
           </button>
           <button className="btn btn-ghost" onClick={() => { setInput(EXAMPLE_TEXT); setFormat('text') }}>
             Usar ejemplo: Biología celular
+          </button>
+          <button className="btn btn-ghost" onClick={() => enterPalace(dungeonDemoMuseum)}>
+            Explorar Mazmorra
           </button>
           {saved && (
             <button className="btn btn-ghost" onClick={resume}>
