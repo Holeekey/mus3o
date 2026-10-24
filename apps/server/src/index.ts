@@ -22,6 +22,17 @@ const RequestSchema = z.union([
   z.object({ notes: z.string().trim().min(1).max(LIMITS.maxNotesChars) }).strict(),
 ]);
 
+// Tope diario de llamadas a Claude (solo fallos de caché) para cuidar el presupuesto de créditos.
+const MAX_DAILY = Number(process.env.MAX_DAILY_GENERATIONS) || 200;
+let budget = { day: "", used: 0 };
+function takeDailySlot(): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  if (budget.day !== day) budget = { day, used: 0 };
+  if (budget.used >= MAX_DAILY) return false;
+  budget.used++;
+  return true;
+}
+
 // La clave de caché no guarda los apuntes en claro.
 const cacheKey = (input: GenerateInput) =>
   "notes" in input ? "notes:" + createHash("sha256").update(input.notes).digest("hex") : input.topic;
@@ -39,6 +50,10 @@ app.post("/api/generate-museum", async (req, res) => {
     const cached = getCached(key);
     if (cached) {
       res.json(cached);
+      return;
+    }
+    if (!takeDailySlot()) {
+      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
       return;
     }
     const museum = await generateMuseum(input);

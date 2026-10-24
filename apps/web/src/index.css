@@ -1,3 +1,17 @@
+/* Fuentes autoalojadas: la demo no depende de CDNs externas. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk.ttf') format('truetype');
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono.ttf') format('truetype');
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 :root {
   --bg: #0e0b1f;
   --bg-deep: #07051a;
