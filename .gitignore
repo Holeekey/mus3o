@@ -9,6 +9,7 @@ dist
 # Assets externos y temporales
 /Public/
 /assets/
+/apps/web/public/models/dungeon/
 
 # Config local de cada dev (no compartida)
 .claude/*

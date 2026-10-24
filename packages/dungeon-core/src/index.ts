@@ -9,5 +9,8 @@ export * from "./application/navigation/AStarNavigator.js";
 export * from "./application/agent/AutonomousDungeonAgent.js";
 export * from "./application/engine/DungeonSandboxEngine.js";
 
+// Adapters
+export * from "./adapters/DungeonPalaceAdapter.js";
+
 // Shared Types
 export * from "./shared/types.js";
