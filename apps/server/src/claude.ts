@@ -135,7 +135,7 @@ function getClient(): Anthropic {
 
 /** Pide JSON a Claude y, si no valida, le devuelve el error una vez para que lo corrija. */
 async function askForJson<T>(
-  options: { system: string | Anthropic.TextBlockParam[]; content: Anthropic.MessageParam["content"]; maxTokens: number; thinking?: boolean },
+  options: { system: string | Anthropic.TextBlockParam[]; content: Anthropic.MessageParam["content"]; maxTokens: number},
   parse: (raw: string) => T,
 ): Promise<T> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: options.content }];
@@ -145,8 +145,6 @@ async function askForJson<T>(
     const res = await getClient().messages.create({
       model: MODEL(),
       max_tokens: options.maxTokens,
-      // Generar JSON no necesita razonamiento y ese razonamiento se cobra como salida.
-      ...(options.thinking ? {} : { thinking: { type: "disabled" as const } }),
       system: options.system,
       messages,
     });
@@ -219,7 +217,6 @@ export async function addDioramas(museum: Museum, roomIds: string[]): Promise<Mu
     const res = await getClient().messages.create(
       {
         model: DIORAMA_MODEL(),
-        thinking: { type: "disabled" },
         max_tokens: 4000,
         system: [{ type: "text", text: DIORAMA_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: dioramaPrompt(museum, wanted) }],

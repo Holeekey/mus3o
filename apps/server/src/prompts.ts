@@ -235,10 +235,11 @@ Campos de PIECE:
 - <searchKeyword> (obligatorio): UN sustantivo físico en inglés (1 a 2 palabras, minúsculas, sin signos) de un objeto concreto que evoque el concepto. Nunca verbos ni ideas abstractas. Si no hay objeto razonable, "-".
 - <explicación>: UNA frase (máx. 160 car.) con la idea esencial.
 Ningún campo puede contener el carácter "|".
+Dioramas: si el tema trata de historia, geografía, naturaleza, biología o medicina, marca con "diorama" 1 o 2 salas (las más visuales); solo en temas totalmente abstractos puedes no marcar ninguna.
 
 Ejemplo (modo education):
 TITLE: La CPU
-ROOM: cpu | La CPU | cyberpunk | #22d3ee | #0b1020 | crystal | |
+ROOM: cpu | La CPU | cyberpunk | #22d3ee | #0b1020 | crystal | | diorama
 PIECE: Unidad de control | cpu | Un director de orquesta holográfico que dispara impulsos de luz | conductor baton | Coordina qué instrucción se ejecuta en cada ciclo.
 ROOM: mem | La memoria | void | #a78bfa | #0f0a1f | torus | cpu |
 PIECE: Registros | box | Cofres de cristal pegados al corazón del procesador | treasure chest | Memorias mínimas dentro de la CPU para datos inmediatos.`;

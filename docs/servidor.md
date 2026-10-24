@@ -191,7 +191,7 @@ Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el s
   mantiene el prompt completo con partes procedurales, porque no habría modelo que lo reemplace.
 - **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes y dioramas) van al final del system prompt con `cache_control`,
   no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
-- **Sin razonamiento**: `askForJson` desactiva `thinking` (se cobra como salida y generar JSON no lo necesita).
+- **Sin parámetro `thinking`**: Sonnet 5.5 no razona antes de responder y rechaza `thinking: {type:"disabled"}` (400); por eso `askForJson` no lo envía. Solo se desactiva en llamadas a Haiku (digest y respaldo).
 - **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
 
 ### DSL (tema y apuntes) y modelos 3D
@@ -233,3 +233,13 @@ el servidor arma el resto:
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
 en quiz) se reintenta una vez con el error, como antes. Cada llamada registra sus tokens en el log.
+
+### Medición real (Sonnet 5.5, 2026-10-24, modo education, "La Revolución Francesa")
+
+| Formato | Tokens de salida | Tiempo | Resultado |
+|---|---|---|---|
+| `FLOW_FORMAT=json` (anterior) | 10 925 (entrada 811, +3 062 escritos en caché) | 70 s | 3 salas, 11 piezas, 1 diorama |
+| DSL (por defecto) | 1 847 + 1 518 del diorama = **3 365** (entrada 191 + 155) | 27 s | 5 salas, 18 piezas, 1 diorama |
+
+≈ 3,2× menos salida y 2,6× menos tiempo, con más contenido. Un solo pedido por formato: es una muestra, no un promedio.
+Hallazgo de la medición: sin la instrucción explícita de marcar salas con `diorama`, el modelo no marcó ninguna y se perdía el diorama; el prompt ahora lo pide para temas de historia, geografía y naturaleza.
