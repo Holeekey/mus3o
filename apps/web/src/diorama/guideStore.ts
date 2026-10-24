@@ -35,11 +35,12 @@ function findPiece(palace: Museum | null, id: string): Piece | undefined {
 
 function say(line: GuideLine) {
   const st = useStore.getState()
-  useGuideStore.setState({ line })
-  busyUntil = now() + speechMs(line.text)
-  st.set({ arisMessage: line.text })
   // Voz: solo si el narrador está activo, Aris no está silenciada y el navegador puede hablar.
-  if (readNarratorOn() && !st.arisMuted && canSpeak()) {
+  const voiced = readNarratorOn() && !st.arisMuted && canSpeak()
+  useGuideStore.setState({ line })
+  busyUntil = now() + speechMs(line.text, voiced)
+  st.set({ arisMessage: line.text })
+  if (voiced) {
     spoke = true
     speak(line.text)
   }

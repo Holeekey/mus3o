@@ -111,9 +111,9 @@ export function buildPieceNarration(p: PieceInput): string {
   return parts.join(' ')
 }
 
-/** Tiempo estimado (ms) que tarda en leerse o decirse un texto; sirve para no pisar lo que Aris aún cuenta. */
-export function speechMs(text: string): number {
-  return Math.max(2500, text.length * 62)
+/** Tiempo estimado (ms) que tarda en decirse (`voiced`) o leerse un texto; sirve para no pisar lo que Aris aún cuenta. */
+export function speechMs(text: string, voiced = false): number {
+  return Math.max(2500, text.length * (voiced ? 62 : 28))
 }
 
 /** Registro de piezas ya contadas en esta visita: no se repiten salvo que el usuario lo pida. */

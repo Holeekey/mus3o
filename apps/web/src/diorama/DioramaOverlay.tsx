@@ -57,7 +57,7 @@ export function DioramaOverlay() {
               <p className="plaque-title">{title}</p>
             </div>
             {locked && !openId && (
-              <p className="hint" style={{ bottom: nearReturn ? '30%' : '12%', whiteSpace: 'nowrap' }}>
+              <p className="hint" style={{ bottom: nearReturn ? '30%' : '12%', left: '38%', whiteSpace: 'nowrap' }}>
                 <KeyHint k="Q" onTap={leaveDiorama}>Volver a la sala</KeyHint>
                 {nearReturn && <span style={{ fontWeight: 400, opacity: 0.75 }}> · o cruza el marco</span>}
                 <span style={{ fontWeight: 400, opacity: 0.75 }}> · </span>
