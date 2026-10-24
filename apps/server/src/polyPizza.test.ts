@@ -5,7 +5,7 @@ import { isAllowedDownload, isGlb } from "./assetStore";
 
 const r = (ID: string, Licence: string, Title = ID, extra: object = {}) => ({ ID, Licence, Title, Download: `https://static.poly.pizza/${ID}.glb`, Creator: { Username: "ana" }, ...extra });
 const asset: DynamicAsset = { assetId: "abc", url: "/api/assets/abc.glb", title: "t", author: "a", license: "CC0", sourceUrl: "https://poly.pizza/m/abc" };
-const cand = (id: string): PolyCandidate => ({ id, title: id, author: "a", license: "CC0", downloadUrl: `https://static.poly.pizza/${id}.glb`, score: 6 });
+const cand = (id: string): PolyCandidate => ({ id, title: id, author: "a", license: "CC0", downloadUrl: `https://static.poly.pizza/${id}.glb`, score: 6, tris: 0 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -32,6 +32,12 @@ describe("relevance y selección", () => {
     const by = { ID: "b1", Title: "Shield", Download: "https://static.poly.pizza/y.glb", Attribution: "Licence at https://creativecommons.org/licenses/by/3.0/" };
     const nc = { ID: "n1", Title: "Shield", Download: "https://static.poly.pizza/z.glb", Attribution: "https://creativecommons.org/licenses/by-nc/4.0/" };
     expect(rankCandidates("shield", [by, nc, cc0]).map((c) => [c.id, c.license])).toEqual([["srN1KGAO7f", "CC0"], ["b1", "CC-BY"]]);
+  });
+  it("descarta modelos pesados y a igual coincidencia y licencia prefiere el más liviano", () => {
+    const real = r("srN1KGAO7f", "CC0 1.0", "Shield", { Category: "Objects", Tags: ["Armor"], "Tri Count": 1272 });
+    const heavy = r("h", "CC0 1.0", "Shield", { "Tri Count": 90_000 });
+    const light = r("l", "CC0 1.0", "Shield", { "Tri Count": 300 });
+    expect(rankCandidates("shield", [heavy, real, light]).map((c) => c.id)).toEqual(["l", "srN1KGAO7f"]);
   });
   it("cae a CC-BY si no hay CC0", () => {
     expect(pickCandidate("key", [r("a", "CC-BY 3.0", "Key")])).toMatchObject({ id: "a", license: "CC-BY" });

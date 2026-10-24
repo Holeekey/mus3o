@@ -47,7 +47,7 @@ describe("assetReview", () => {
   it("la hidratación no vuelve a asignar un modelo rechazado", async () => {
     await rec("r3");
     await setStatus("r3", "rejected");
-    const c = (id: string): PolyCandidate => ({ id, title: id, author: "a", license: "CC0", downloadUrl: "", score: 6 });
+    const c = (id: string): PolyCandidate => ({ id, title: id, author: "a", license: "CC0", downloadUrl: "", score: 6, tris: 0 });
     const museum: Museum = { ...sampleMuseum, rooms: [{ ...sampleMuseum.rooms[0], pieces: [{ ...sampleMuseum.rooms[0].pieces[0], id: "p0", searchKeyword: "key" }] }] };
     const out = await hydrateMuseumAssets(museum, async () => [c("r3"), c("r4")], async (l) => ({ assetId: l[0].id, url: `/api/assets/${l[0].id}.glb`, title: "", author: "", license: "CC0", sourceUrl: "" }));
     expect(out.rooms[0].pieces[0].dynamicAsset?.assetId).toBe("r4");

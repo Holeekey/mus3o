@@ -18,12 +18,15 @@ export type PolyResult = {
   Licence?: string;
   Attribution?: string;
   Category?: string;
+  "Tri Count"?: number;
   Tags?: string[];
   Creator?: { Username?: string };
 };
 
-export type PolyCandidate = { id: string; title: string; author: string; license: "CC0" | "CC-BY"; downloadUrl: string; score: number };
+export type PolyCandidate = { id: string; title: string; author: string; license: "CC0" | "CC-BY"; downloadUrl: string; score: number; tris: number };
 
+/** Modelos con más triángulos que esto se descartan: el museo debe seguir siendo liviano. */
+export const MAX_TRIS = 30_000;
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export const polyEnabled = () => Boolean(process.env.POLY_PIZZA_API_KEY);
@@ -74,9 +77,11 @@ export function rankCandidates(keyword: string, results: PolyResult[]): PolyCand
     if (!license || !r.ID || !ID_RE.test(r.ID) || !r.Download) continue;
     const score = relevance(keyword, r);
     if (score === 0) continue;
-    usable.push({ id: r.ID, title: (r.Title ?? "").slice(0, 120), author: (r.Creator?.Username ?? "").slice(0, 120), license, downloadUrl: r.Download, score });
+    const tris = r["Tri Count"] ?? 0;
+    if (tris > MAX_TRIS) continue;
+    usable.push({ id: r.ID, title: (r.Title ?? "").slice(0, 120), author: (r.Creator?.Username ?? "").slice(0, 120), license, downloadUrl: r.Download, score, tris });
   }
-  return usable.sort((a, b) => b.score - a.score || (a.license === b.license ? 0 : a.license === "CC0" ? -1 : 1));
+  return usable.sort((a, b) => b.score - a.score || (a.license === b.license ? a.tris - b.tris : 0) || (a.license === b.license ? 0 : a.license === "CC0" ? -1 : 1));
 }
 
 export const pickCandidate = (keyword: string, results: PolyResult[]) => rankCandidates(keyword, results)[0] ?? null;
