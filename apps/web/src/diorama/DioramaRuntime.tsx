@@ -2,7 +2,7 @@ import { MeshPortalMaterial, Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { moveWithCollisions, type PalaceLayout } from '../palace/layout'
+import { freeSpotInFront, moveWithCollisions, type PalaceLayout } from '../palace/layout'
 import { conceptIdSet } from '../palace/conceptIds'
 import { playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
@@ -243,7 +243,9 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
         const info = activeId ? ds.portals[activeId] : undefined
         if (info) {
           const n = new THREE.Vector3(Math.sin(info.rotationY), 0, Math.cos(info.rotationY))
-          camera.position.set(info.center[0] + n.x * 2.7, EYE, info.center[2] + n.z * 2.7)
+          // Delante del cuadro, pero nunca dentro de un pedestal o de la pieza central.
+          const spot = freeSpotInFront(layout, info.center[0], info.center[2], n.x, n.z)
+          camera.position.set(spot.x, EYE, spot.z)
           camera.rotation.set(0, info.rotationY, 0, 'YXZ')
         }
         tr.current = { kind: 'reveal', t: 0, frames: 0 }

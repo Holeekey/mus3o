@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EXAMPLE_TEXT } from './example'
-import { buildLayout, moveWithCollisions, roomAt } from './layout'
+import { buildLayout, freeSpotInFront, moveWithCollisions, roomAt } from './layout'
 import { answerAliases, isCorrectAnswer, isCorrectAny } from './match'
 import { detectFormat, MAX_INPUT_CHARS, parsePalace } from './parse'
 import { LIMITS, type Graph } from '@mus3o/shared'
@@ -253,5 +253,27 @@ describe('respuestas dictadas', () => {
     expect(isCorrectAny(['negro premero', 'negro primero'], 'Pedro Camejo, Negro Primero')).toBe(true)
     expect(isCorrectAny(['algo distinto', 'otra cosa'], 'Pedro Camejo, Negro Primero')).toBe(false)
     expect(isCorrectAny([], 'ATP')).toBe(false)
+  })
+})
+
+describe('salir de un cuadro vivo', () => {
+  const layout = buildLayout(ok(EXAMPLE_TEXT).palace)
+  const blocked = (x: number, z: number) => layout.colliders.some((b) => Math.abs(x - b.x) < b.w / 2 + 0.35 && Math.abs(z - b.z) < b.d / 2 + 0.35)
+
+  it('el punto de salida nunca cae dentro de un pedestal ni de la pieza central', () => {
+    for (const room of layout.rooms) {
+      for (const p of room.pedestals) {
+        // Un cuadro imaginario justo detrás del pedestal: el punto ideal (2,7 m delante) cae encima de él.
+        const spot = freeSpotInFront(layout, p.x, p.z - 2.7, 0, 1)
+        expect(blocked(spot.x, spot.z)).toBe(false)
+        expect(roomAt(layout, spot.x, spot.z)?.id).toBe(room.id)
+      }
+    }
+  })
+
+  it('si ya está dentro de un pedestal, puede salir caminando', () => {
+    const p = layout.rooms[0].pedestals[0]
+    const next = moveWithCollisions(layout.colliders, p.x, p.z, 0.1, 0)
+    expect(next).toEqual({ x: p.x + 0.1, z: p.z })
   })
 })
