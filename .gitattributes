@@ -1,0 +1,23 @@
+# Git Large File Storage (LFS) & Binary Asset Configuration
+# 3D Models & Geometry
+*.bin filter=lfs diff=lfs merge=lfs -text binary
+*.gltf filter=lfs diff=lfs merge=lfs -text binary
+*.glb filter=lfs diff=lfs merge=lfs -text binary
+*.obj filter=lfs diff=lfs merge=lfs -text binary
+*.fbx filter=lfs diff=lfs merge=lfs -text binary
+
+# Textures & Images
+*.png filter=lfs diff=lfs merge=lfs -text binary
+*.jpg filter=lfs diff=lfs merge=lfs -text binary
+*.jpeg filter=lfs diff=lfs merge=lfs -text binary
+*.webp filter=lfs diff=lfs merge=lfs -text binary
+
+# Fonts
+*.ttf filter=lfs diff=lfs merge=lfs -text binary
+*.woff filter=lfs diff=lfs merge=lfs -text binary
+*.woff2 filter=lfs diff=lfs merge=lfs -text binary
+
+# Audio
+*.mp3 filter=lfs diff=lfs merge=lfs -text binary
+*.wav filter=lfs diff=lfs merge=lfs -text binary
+*.ogg filter=lfs diff=lfs merge=lfs -text binary

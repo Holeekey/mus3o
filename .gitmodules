@@ -1,0 +1,3 @@
+[submodule "dev-ai-toolkit"]
+	path = dev-ai-toolkit
+	url = https://github.com/Jrgil20/dev-ai-toolkit

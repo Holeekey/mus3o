@@ -1,0 +1,8 @@
+{
+  "dungeon_wall": "/models/dungeon/wall.gltf",
+  "dungeon_floor": "/models/dungeon/floor_tile_large.gltf",
+  "dungeon_door": "/models/dungeon/wall_gated.gltf",
+  "dungeon_key": "/models/dungeon/key.gltf",
+  "dungeon_chest": "/models/dungeon/chest.gltf",
+  "dungeon_spikes": "/models/dungeon/floor_tile_big_spikes.gltf"
+}

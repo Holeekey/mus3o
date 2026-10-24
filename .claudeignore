@@ -1,0 +1,39 @@
+# -------------------------------------------------------------
+# .claudeignore - Archivos y directorios prohibidos para Claude
+# -------------------------------------------------------------
+# Los archivos binarios y modelos 3D NUNCA deben ser leídos ni indexados
+# por Claude para prevenir saturación de tokens y caídas de contexto.
+
+# Directorios de assets pesados y modelos 3D
+Public/
+Public/**
+assets/
+assets/**
+apps/web/public/models/
+apps/web/public/models/**
+apps/web/public/fonts/
+apps/web/public/fonts/**
+
+# Formatos binarios de 3D, texturas y medios
+*.bin
+*.gltf
+*.glb
+*.fbx
+*.obj
+*.mtl
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ttf
+*.woff
+*.woff2
+*.mp3
+*.wav
+*.ogg
+
+# Artefactos de build y dependencias
+node_modules/
+dist/
+.git/
+*.log

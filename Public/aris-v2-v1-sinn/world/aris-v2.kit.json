@@ -1,0 +1,29 @@
+{
+  "id": "aris_v2",
+  "label": "Aris v2",
+  "model": "models/aris-v2/model.glb",
+  "footprintM": [
+    1.11,
+    0.51
+  ],
+  "heightM": 1.01,
+  "front": "+Z",
+  "boundsM": {
+    "min": [
+      -0.554,
+      -0.63,
+      -0.255
+    ],
+    "max": [
+      0.554,
+      0.384,
+      0.259
+    ]
+  },
+  "triangles": 2860,
+  "source": {
+    "project": "mus3o",
+    "asset": "awyedmjk",
+    "version": 1
+  }
+}
