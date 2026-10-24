@@ -26,20 +26,32 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 ## 2. Landing (`ui/Landing.tsx`)
 
 - Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
-- **Subir archivo:** solo `.txt` y `.md`, máximo **200 KB**. No hay extracción de docx, xlsx ni csv en la interfaz todavía.
+- **"+ Adjuntar"** (`lib/files.ts`): varios archivos a la vez, cada uno ≤ 15 MB, con chips que se pueden quitar. Todo se lee en el navegador, sin IA:
+
+| Tipo | Cómo se lee |
+|---|---|
+| `.docx` | `mammoth.extractRawText` |
+| `.xlsx` | `read-excel-file/universal`; cada fila queda como `encabezado: valor; ...` |
+| `.csv` | Separador `,` o `;` detectado, con comillas; mismo formato que `.xlsx` |
+| `.json` | Aplanado a líneas `ruta: valor` |
+| `.txt`, `.md` | Texto tal cual |
+| `.png`, `.jpg`, `.jpeg`, `.webp` | Se achica a ≤ 1024 px y se pasa a JPEG (`readImageAttachment`); máx. `LIMITS.maxImages` (6) |
+| `.doc`, `.xls` | Rechazados con "Guárdalo como .docx / .xlsx" |
+
+  Todo el texto pasa por `compactText` (espacios normalizados, sin líneas vacías ni repetidas). Límites: hasta 10 archivos de texto, 100 000 caracteres por archivo y `LIMITS.maxDigestInputChars` (200 000) en total.
 - **Botones:**
 
 | Botón | Qué hace |
 |---|---|
 | Construir palacio | Usa el parser local (`parsePalace`), sin IA |
-| Generar con IA | `lib/api.ts#generateMuseum`: envía `{topic}` si es una línea corta, o `{notes}` si no |
+| Generar con IA | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
 | Entrar al palacio | Aparece tras generar con IA |
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
 | Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
 
 - Mensajes de error y "demasiadas solicitudes" (429) ya están manejados.
-- **Lo que la interfaz NO envía todavía:** `mode`, `sources[]`, `images[]`, ni llama a `/api/improve-prompt`. El contrato y el servidor sí lo soportan (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
+- **Lo que la interfaz envía:** `sources[]` e `images[]` cuando hay adjuntos, siempre con `mode: "exploration"`. **Todavía no** hay selector de modo ni llama a `/api/improve-prompt` (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
 
 ### Parser local de apuntes (`palace/parse.ts`)
 

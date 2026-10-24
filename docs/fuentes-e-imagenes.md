@@ -95,11 +95,13 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 
 ### Imágenes que sube el usuario (solo flujo nuevo)
 
-- El contrato espera imágenes en base64, ya redimensionadas a ≤ 1024 px en el navegador (`InputImage`, ids `img-1`…`img-99`). **Hoy no hay código en el frontend que haga esto.**
+- El navegador las achica a ≤ 1024 px y las pasa a JPEG en base64 (`lib/files.ts#readImageAttachment`, ids `img-1`…`img-99`).
 - Máximo 6 por generación. El servidor las pasa a la IA con su id precedido de texto.
 - La IA asigna cada imagen a **como mucho una** pieza (`piece.image.imageId`).
 - Si la IA usa un id que no llegó en el request, la respuesta se rechaza y se reintenta.
-- **Estado actual:** el servidor y el contrato lo soportan, pero la interfaz todavía no envía imágenes (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
+- Al entrar, las imágenes viajan al palacio por id (`enterPalace(palace, text, userImages)`, `store.userImages`, data URLs **solo en memoria**: no van a `localStorage` porque pesan demasiado).
+- `assignPaintings(room, userImages)` cuelga primero el cuadro de la sala, después las piezas con imagen del usuario y por último las búsquedas de Wikimedia. La ficha también muestra la imagen del usuario. La placa dice "Imagen subida por ti".
+- Si se recarga la página, las imágenes del usuario ya no están en memoria: esas piezas vuelven a su `imageSearch`, si tienen.
 
 ## 3. Privacidad
 
