@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
@@ -16,6 +16,7 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
+import { useCardScroll } from './cardScroll'
 import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
@@ -23,6 +24,7 @@ import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
 import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
+import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
 
 function wallVars(p: RoomPalette) {
@@ -44,6 +46,8 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
   const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
   const close = () => useStore.getState().set({ openId: null })
   const touch = useIsTouch()
+  const inner = useRef<HTMLDivElement>(null)
+  const more = useCardScroll(inner)
   return (
     <aside className="card" style={wallVars(palette)}>
       <div className="card-header-bar">
@@ -52,7 +56,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
           ✕
         </button>
       </div>
-      <div className="card-inner">
+      <div ref={inner} className={more ? 'card-inner has-more' : 'card-inner'}>
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
         {concept.mnemonicCue ? (
@@ -81,6 +85,18 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         {/* Mientras se resuelve, reserva el lugar para que la ficha no salte. */}
         {image === undefined && <div className="card-figure card-figure-loading" aria-hidden />}
         <ConceptInfo concept={concept} image={image} />
+      </div>
+      {/* Pie fijo: el estado y las teclas siempre se ven, aunque el contenido sea largo. */}
+      <div className="card-footer">
+        {more && (
+          <button
+            type="button"
+            className="card-more-hint"
+            onClick={() => inner.current?.scrollBy({ top: inner.current.clientHeight * 0.8, behavior: 'smooth' })}
+          >
+            ↓ Sigue leyendo
+          </button>
+        )}
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
@@ -300,6 +316,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                 {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
+              <VrButton />
             </div>
             <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 
