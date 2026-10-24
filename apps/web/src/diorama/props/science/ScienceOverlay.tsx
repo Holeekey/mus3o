@@ -6,7 +6,7 @@ import type { DioramaModel, PropGroup } from '../../model'
 import { mulberry32, range } from '../../random'
 import { isScienceTerrain } from '../../terrain/science'
 import { makeScienceMaterials } from './material'
-import { BEAT, heartPhase, TAU, valveOpenness } from './util'
+import { heartPhase, TAU, valveOpenness } from './util'
 
 // Todo lo animado de la biblioteca científica que no cabe en un InstancedMesh estático:
 // circulación de células, ondas del marcapasos, impulso nervioso y partículas del medio.
@@ -168,7 +168,7 @@ function ImpulseBead({ inst, spec, clipping, time }: { inst: PropGroup['instance
   const curve = useMemo(() => new THREE.CatmullRomCurve3(spec.points), [spec])
   const len = useMemo(() => curve.getLength(), [curve])
   const geo = useMemo(() => new THREE.IcosahedronGeometry(1, 1), [])
-  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffd45e', toneMapped: false }), [])
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffe27a', toneMapped: false }), [])
   useLayoutEffect(() => {
     mat.clippingPlanes = clipping
     mat.needsUpdate = true
@@ -182,18 +182,21 @@ function ImpulseBead({ inst, spec, clipping, time }: { inst: PropGroup['instance
   )
   useFrame(() => {
     const t = time.value
-    beads.current.forEach((m, k) => {
+    // dos impulsos desfasados, cada uno con una pequeña cola de bolitas que se encogen
+    beads.current.forEach((m, i) => {
       if (!m) return
-      const u = (((t * spec.speed) / len + k * 0.5 + inst.phase * 0.1) % 1 + 1) % 1
+      const pulse = Math.floor(i / 3)
+      const tail = i % 3
+      const u = (((t * spec.speed) / len + pulse * 0.5 + inst.phase * 0.1 - tail * 0.012) % 1 + 1) % 1
       curve.getPointAt(u, _p)
       m.position.copy(_p)
       const f = Math.min(1, u * 14, (1 - u) * 14)
-      m.scale.setScalar(spec.radius * Math.max(0.001, f) * (0.9 + 0.1 * Math.sin(t * 20)))
+      m.scale.setScalar(spec.radius * Math.max(0.001, f) * (1 - tail * 0.28))
     })
   })
   return (
     <group position={[inst.x, inst.y, inst.z]} rotation={[0, inst.rotY, 0]} scale={inst.scale}>
-      {[0, 1].map((k) => (
+      {[0, 1, 2, 3, 4, 5].map((k) => (
         <mesh
           key={k}
           ref={(el) => {
@@ -282,4 +285,3 @@ export function ScienceAmbient({ model, time, clipping }: Common & { model: Dior
   )
 }
 
-void BEAT

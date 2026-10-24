@@ -165,11 +165,11 @@ export function buildBloodCell(ctx: PropCtx): Built {
     kit.b.add(lathe(discProfile(0.55, 9), 12, true), new THREE.Matrix4(), { color: ctx.color ?? '#c9323b', jitter: 0.05 })
   } else if (type === 'white') {
     radius = 0.8
-    kit.b.add(blob(2, (x, y, z) => 1 + 0.05 * Math.sin(x * 9 + z * 5) * Math.sin(y * 7)), mat(0, 0, 0, 0, 0, 0, 0.8), { color: ctx.color ?? '#ddd6ea', jitter: 0.04 })
+    kit.b.add(blob(3, (x, y, z) => 1 + 0.1 * Math.sin(x * 11 + z * 7) * Math.sin(y * 9 + x * 3)), mat(0, 0, 0, 0, 0, 0, 0.8), { color: ctx.color ?? '#e6dff2', jitter: 0.05 })
     // núcleo lobulado asomando bajo la membrana
     for (let i = 0; i < 4; i++) {
       const a = i * 1.7 + r() * 0.5
-      kit.b.ico(0.27, mat(Math.cos(a) * 0.5, 0.12 * i - 0.2, Math.sin(a) * 0.5), { color: '#6f5fa6', jitter: 0.06 }, 0)
+      kit.b.ico(0.3, mat(Math.cos(a) * 0.56, 0.14 * i - 0.25, Math.sin(a) * 0.56), { color: '#5d4a9c', jitter: 0.07 }, 1)
     }
     for (let i = 0; i < 14; i++) {
       const a = r() * TAU
@@ -259,25 +259,24 @@ export function buildPacemaker(ctx: PropCtx): Built {
   const kit = new Kit()
   const r = rngOf(ctx.seed, 3)
   const cy = 2.6
-  // Almohadilla de pared sobre la que descansa el nodo.
-  kit.b.add(blob(3, (x, y, z) => 1 + 0.05 * Math.sin(x * 8 + y * 6)), mat(0, cy, -0.1, 0, 0, 0, 3.6, 3.1, 0.9), { color: mixHex(ctx.color ?? TISSUE.flesh, TISSUE.fleshDeep, 0.25), jitter: 0.08 })
-  // Cresta (crista terminalis): banda muscular junto al nodo.
-  kit.b.add(blob(2, () => 1), mat(-0.6, cy, 0.5, 0, 0, 0.25, 0.5, 2.7, 0.35), { color: darken(TISSUE.flesh, 0.1), jitter: 0.06 })
-  // El nodo: racimo pálido en media luna.
-  for (let i = 0; i < 9; i++) {
-    const t = i / 8
-    const a = (t - 0.5) * 2.2
-    const x = Math.sin(a) * 1.1 + range(r, -0.08, 0.08)
-    const y = cy + Math.cos(a) * 0.5 - 0.35 + range(r, -0.08, 0.08)
-    const s = range(r, 0.26, 0.4)
-    kit.b.ico(s, mat(x, y, 0.78, r(), r(), r(), 1.3, 0.8, 0.7), { color: mixHex(TISSUE.fat, '#fff4d6', 0.35), jitter: 0.05 }, 1)
+  const wall = ctx.color ?? '#c9786a'
+  // Almohadilla de pared sobre la que descansa el nodo (más clara que el resto del tejido).
+  kit.b.add(blob(4, (x, y) => 1 + 0.04 * Math.sin(x * 8 + y * 6)), mat(0, cy, -0.1, 0, 0, 0, 3.7, 3.2, 0.95), { color: wall, jitter: 0.06 })
+  // Cresta terminal: banda muscular que bordea el nodo.
+  kit.b.add(blob(3, () => 1), mat(-1.55, cy, 0.55, 0, 0, 0.12, 0.42, 2.7, 0.4), { color: darken(wall, 0.16), jitter: 0.06 })
+  // El nodo: una media luna alargada de tejido claro, hecha de lóbulos solapados.
+  const lobes = 11
+  for (let i = 0; i < lobes; i++) {
+    const t = i / (lobes - 1)
+    const a = (t - 0.5) * 2.5
+    const x = Math.sin(a) * 1.15
+    const y = cy + 0.1 + Math.cos(a) * 0.9 - 0.9 + (r() - 0.5) * 0.1
+    const s = 0.5 - Math.abs(t - 0.5) * 0.45 + r() * 0.06
+    kit.b.add(blob(2, (px, py, pz) => 1 + 0.08 * Math.sin(px * 6 + pz * 5)), mat(x, y, 0.78, r() * 0.4, r() * 0.4, -a * 0.9, s * 1.2, s * 0.8, s * 0.7), { color: mixHex('#f4e7bd', '#fffaf0', t * 0.4), jitter: 0.04 })
   }
-  // Fibras que salen del nodo hacia la pared.
-  for (let i = 0; i < 5; i++) {
-    const a = -1.2 + i * 0.55
-    kit.b.limb(v3(Math.sin(a) * 0.9, cy + 0.1, 0.8), v3(Math.sin(a) * 2.6, cy - 0.6 + i * 0.15, 0.6), 0.07, 0.04, 4, { color: TISSUE.fat, jitter: 0.03 })
-  }
-  return { geometry: kit.build(), radius: 0, height: cy + 2, motion: 'none', science: { pulse: { y: cy, radius: 1.0 } } }
+  // Arteria del nodo: una venita roja que lo cruza.
+  kit.b.limb(v3(-0.4, cy + 1.7, 0.7), v3(0.3, cy - 1.4, 0.85), 0.07, 0.05, 5, { color: TISSUE.artery })
+  return { geometry: kit.build(), radius: 0, height: cy + 2.2, motion: 'none', science: { pulse: { y: cy, radius: 1.0 } } }
 }
 
 // --- Pared muscular ------------------------------------------------------------------------
@@ -375,17 +374,14 @@ export function buildNeuron(ctx: PropCtx): Built {
     kit.b.sph(0.3, mat(tip.x, tip.y, tip.z), { color: '#ef8da4' }, 8, 6)
   }
   const points = Array.from({ length: 28 }, (_, i) => axon.getPointAt(i / 27))
-  return { geometry: kit.build(), radius: 0.9, height: cy + 3.6, motion: 'none', science: { impulse: { points, speed: 6, radius: 0.34 } } }
+  return { geometry: kit.build(), radius: 0.9, height: cy + 3.6, motion: 'none', science: { impulse: { points, speed: 6, radius: 0.5 } } }
 }
 
 // --- Órganos ---------------------------------------------------------------------------------
 
-const hemi = (x: number, y: number, z: number, seed: number) => 0.5 + 0.5 * Math.sin(x * 9 + Math.sin(z * 5 + seed) * 2) * Math.sin(y * 8 + x * 3)
-
 export function buildOrgan(ctx: PropCtx): Built {
   const which = ctx.prop?.organ ?? 'heart'
   const kit = new Kit()
-  const r = rngOf(ctx.seed, 5)
   let height = 3
 
   if (which === 'heart') {
@@ -485,8 +481,5 @@ export function buildOrgan(ctx: PropCtx): Built {
     height = cy + 1.6
   }
   const shader = kit.shader
-  void hemi
-  void r
-  void fbm
   return { geometry: kit.build(), radius: 0.9, height, motion: 'none', science: shader ? { shader: true } : undefined }
 }

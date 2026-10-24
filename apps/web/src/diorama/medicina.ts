@@ -65,6 +65,9 @@ export const CORAZON = parseDiorama({
     { kind: 'vessel-mouth', pos: [-13.6, 8], y: 0, rotY: Math.PI / 2 + 0.15, scale: 1.4, color: '#7c4a82' },
     // Marcapasos natural.
     { kind: 'node-pacemaker', pos: [13.4, 1.5], y: 1.0, rotY: -Math.PI / 2, scale: 1.3, label: 'Nodo sinoauricular', pieceId: CORAZON_PIECES.nodo },
+    // Glóbulos a la deriva cerca de quien entra: la sala está viva desde el primer segundo.
+    { kind: 'blood-cell', cell: 'red', pos: [3.5, 5], count: 6, spread: 4, scale: 1.0, y: 1.6 },
+    { kind: 'blood-cell', cell: 'white', pos: [-3, 3], count: 1, scale: 1.0, y: 2.4 },
     // Circulación: la sangre llega por las cavas, espera a que la válvula abra y pasa al ventrículo.
     { kind: 'blood-cell', cell: 'red', pos: [-17, -5], scale: 1.1, count: 28, spread: 1.5, flow: { path: FROM_SVC, speed: 3.2, gate: gateAt(FROM_SVC, 3) } },
     { kind: 'blood-cell', cell: 'red', pos: [-17, 8], scale: 1.1, count: 28, spread: 1.5, flow: { path: FROM_IVC, speed: 3.0, gate: gateAt(FROM_IVC, 3) } },
@@ -81,9 +84,9 @@ export const CELULA = parseDiorama({
   props: [
     { kind: 'nucleus', pos: [-3, -12.5], scale: 1.3, label: 'Núcleo', pieceId: CELULA_PIECES.nucleo },
     { kind: 'dna-helix', pos: [2.4, -4.5], scale: 1.0, rotY: 0.4 },
-    { kind: 'mitochondrion', pos: [6.5, 0.5], rotY: 0.35, label: 'Mitocondria', pieceId: CELULA_PIECES.mitocondria },
-    { kind: 'mitochondrion', pos: [10.5, -7], rotY: -0.4, scale: 1.15 },
-    { kind: 'mitochondrion', pos: [-10, 6], rotY: 0.55, scale: 0.9 },
+    { kind: 'mitochondrion', pos: [6.5, 0.5], rotY: -0.5, label: 'Mitocondria', pieceId: CELULA_PIECES.mitocondria },
+    { kind: 'mitochondrion', pos: [10.5, -7], rotY: -0.5, scale: 1.15 },
+    { kind: 'mitochondrion', pos: [-9, 1], rotY: 0.85, scale: 0.9 },
     { kind: 'ribosome', pos: [-3, 3.5], rotY: 0.3, scale: 1.6, label: 'Ribosoma', pieceId: CELULA_PIECES.ribosoma },
     { kind: 'ribosome', pos: [-1, -1], count: 10, spread: 9, scale: 1.0, y: 0.8 },
     { kind: 'rough-er', pos: [-10, -4], rotY: 0.55, scale: 1.2, label: 'Retículo endoplasmático rugoso', pieceId: CELULA_PIECES.reticulo },

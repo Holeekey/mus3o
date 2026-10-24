@@ -1,8 +1,8 @@
 import * as THREE from 'three'
-import { darken, lighten, mat, mixHex } from '../../geo'
-import { fbm, noise2, range } from '../../random'
+import { darken, mat, mixHex } from '../../geo'
+import { noise2, range } from '../../random'
 import type { Built, PropCtx } from '../common'
-import { alignY, blob, carve, flip, Kit, rngOf, sstepN, surface, TAU, v3 } from './util'
+import { alignY, blob, carve, flip, Kit, rngOf, surface, TAU, v3 } from './util'
 
 // Biología celular. Todo a escala "encogida": una mitocondria mide como una persona.
 
@@ -340,16 +340,15 @@ export function buildVesicle(ctx: PropCtx, variant: number): Built {
   const kit = new Kit()
   const r = rngOf(ctx.seed, 18 + variant)
   const R = range(r, 0.85, 1.15)
-  const cut = v3(0.2, 0.2, 0.95).normalize()
-  const shell = carve(blob(3, (x, y, z) => 1 + 0.03 * Math.sin(x * 6 + z * 5)), (x, y, z) => {
-    const l = Math.hypot(x, y, z) || 1
-    return (x * cut.x + y * cut.y + z * cut.z) / l < 0.62
-  })
-  kit.b.add(shell, mat(0, R, 0, 0, 0, 0, R), { color: ctx.color ?? '#f0b25a', jitter: 0.05 })
-  kit.b.add(flip(shell), mat(0, R, 0, 0, 0, 0, R * 0.9), { color: lighten(ctx.color ?? '#f0b25a', 0.3), jitter: 0.04 })
-  for (let i = 0; i < 6; i++) kit.b.ico(range(r, 0.13, 0.22), mat(range(r, -0.4, 0.4) * R, R + range(r, -0.4, 0.4) * R, range(r, -0.5, 0.3) * R), { color: i % 2 ? '#5aa07a' : '#4a78c4', jitter: 0.06 }, 0)
+  const base = ctx.color ?? '#f1b0c6'
+  // Vesícula con cubierta de proteínas: una membrana esférica salpicada de receptores (simetría total:
+  // se ve igual desde cualquier lado, también cuando flota a la deriva con rotación libre).
+  kit.b.add(blob(3, (x, y, z) => 1 + 0.035 * Math.sin(x * 7 + z * 6) * Math.cos(y * 5)), mat(0, R, 0, 0, 0, 0, R), { color: base, jitter: 0.05 })
+  const coat = darken(base, 0.22)
+  for (let i = 0; i < 22; i++) {
+    const d = randomDir(r)
+    kit.b.ico(0.11 * R, mat(d.x * R * 1.0, R + d.y * R * 1.0, d.z * R * 1.0, r() * 3, r() * 3, 0, 1, 1.3, 1), { color: i % 3 ? coat : '#8fc7a4', jitter: 0.06 }, 0)
+  }
   return { geometry: kit.build(), radius: 0, height: R * 2 + 0.3, motion: 'drift' }
 }
 
-void fbm
-void sstepN

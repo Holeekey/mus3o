@@ -21,7 +21,6 @@ const ORG = { ax: 15.5, az: 26, z0: -6, wall: 12, ceil: 16 }
 const CELL_R = 60
 const VES = { r: 22, z0: -95, z1: 42 }
 
-const sgn = (v: number) => (v < 0 ? -1 : 1)
 /** Superelipse (p = 4): 0 en el centro, 1 en el borde. */
 const orgRho = (x: number, z: number) => Math.pow(Math.pow(Math.abs(x) / ORG.ax, 4) + Math.pow(Math.abs(z - ORG.z0) / ORG.az, 4), 0.25)
 const vesselCx = (z: number) => 5 * Math.sin(z * 0.045) + 2 * Math.sin(z * 0.11 + 1)
@@ -51,7 +50,6 @@ const cellFloor = (x: number, z: number) => {
 }
 
 // Células endoteliales del vaso: baldosas con un abultamiento (núcleo) en el centro.
-const ENDO_W = 0.42 // en vueltas del ángulo
 function endo(u: number, z: number, s: number): { edge: number; bump: number; id: number } {
   const N = 14
   const row = Math.floor(z / 4.2)
@@ -64,7 +62,6 @@ function endo(u: number, z: number, s: number): { edge: number; bump: number; id
   const bump = Math.exp(-(dx * dx * 9 + dz * dz * 14))
   return { edge, bump, id: hashStr(`${Math.floor(uu)}|${row}|${s}`) % 997 }
 }
-void ENDO_W
 function vesselFloor(x: number, z: number, s: number): number {
   const d = Math.max(-VES.r * 0.985, Math.min(VES.r * 0.985, x - vesselCx(z)))
   const base = VES.r - Math.sqrt(VES.r * VES.r - d * d)
@@ -236,7 +233,7 @@ function buildCellular(ground: string, accent: string, seed: number) {
   const rnd = mulberry32(seed + 9)
   const head = new THREE.IcosahedronGeometry(1, 0)
   const hp = head.getAttribute('position')
-  const sp = 0.52
+  const sp = 0.5
   const headCol = new THREE.Color(accent)
   const tmp = new THREE.Color()
   for (let row = -34; row <= 34; row++) {
@@ -250,7 +247,7 @@ function buildCellular(ground: string, accent: string, seed: number) {
       const hx = x + jx
       const hz = z + jz
       const hy = cellFloor(hx, hz) + 0.1 + (rnd() - 0.5) * 0.08
-      const rad = 0.21 + rnd() * 0.04
+      const rad = 0.17 + rnd() * 0.04
       tmp.copy(headCol).lerp(R.light, rnd() * 0.25).multiplyScalar(1 - 0.3 * smooth(7, 13, d) + (rnd() - 0.5) * 0.1)
       for (let k = 0; k < hp.count; k += 3) {
         for (let q = 0; q < 3; q++) {
