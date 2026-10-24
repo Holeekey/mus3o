@@ -18,9 +18,12 @@ import { PerfOverlay, perfEnabled } from './PerfOverlay'
 import { Player } from './Player'
 import { Room } from './Room'
 import { StaticMerge } from './StaticMerge'
+import { useVr } from '../vr/runtime'
 
 // El mundo de los dioramas (entrar al cuadro) se descarga aparte y solo si alguna sala tiene uno.
 const DioramaRuntime = lazy(() => import('../diorama/DioramaRuntime').then((m) => ({ default: m.DioramaRuntime })))
+// Modo VR (WebXR / cardboard): solo se descarga y monta si el dispositivo lo ofrece (móvil o WebXR). En escritorio no existe.
+const VrScene = lazy(() => import('../vr/VrScene'))
 
 // El palacio es casi estático (solo giran los objetos de los pedestales y caen esquirlas): la sombra se
 // recalcula cada SHADOW_EVERY frames en vez de en todos, y en todos mientras dura la intro.
@@ -110,6 +113,8 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     [theme, layout],
   )
   const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama), [layout])
+  const vrOn = useVr((s) => s.kind !== null) // en VR la resolución la fija el modo VR, no AdaptiveQuality
+  const vrAvailable = useVr((s) => s.available === 'xr' || s.available === 'cardboard')
   return (
     <Canvas
       camera={{ fov: 70, near: 0.1, far: 300 }}
@@ -118,7 +123,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       shadows={scene.shadows}
       flat
     >
-      <AdaptiveQuality />
+      {!vrOn && <AdaptiveQuality />}
       <color attach="background" args={[scene.background]} />
       <fog attach="fog" args={[scene.fog.color, scene.fog.near, scene.fog.far]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />
@@ -173,6 +178,11 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
       <HideDuringIntro>
         <ArisCompanion />
       </HideDuringIntro>
+      {vrAvailable && (
+        <Suspense fallback={null}>
+          <VrScene layout={layout} />
+        </Suspense>
+      )}
     </Canvas>
   )
 }

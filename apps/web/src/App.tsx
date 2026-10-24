@@ -38,6 +38,7 @@ import { IntroOverlay } from './intro/IntroOverlay'
 import { useIntro } from './intro/store'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
+import { VrOverlay } from './vr/VrOverlay'
 import { TeamPage } from './ui/TeamSection'
 import { TEAM_HASH, useHash } from './ui/useHash'
 
@@ -57,6 +58,7 @@ export default function App() {
         <Hud layout={layout} />
         <DioramaOverlay />
         <IntroOverlay />
+        <VrOverlay />
       </div>
     )
   }

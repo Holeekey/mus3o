@@ -21,6 +21,7 @@ import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
 import { TouchControls } from './TouchControls'
+import { VrButton } from '../vr/VrButton'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -272,6 +273,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                 {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
               </button>
               <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
+              <VrButton />
             </div>
             <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 
