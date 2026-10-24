@@ -7,16 +7,19 @@ services:
     plan: starter # $7/month (Active 24/7, No cold starts, 512MB RAM, 0.5 vCPU)
     region: oregon
     branch: dev
-    buildCommand: corepack enable && pnpm install && pnpm run build
+    # El repo es npm workspaces (package-lock.json); pnpm no resuelve los paquetes internos.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node apps/server/dist/index.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: PORT
         value: 10000
       - key: ANTHROPIC_MODEL
-        value: claude-sonnet-4-20250514
+        value: claude-sonnet-5-5
       - key: MAX_DAILY_GENERATIONS
         value: "200"
       - key: ANTHROPIC_API_KEY
