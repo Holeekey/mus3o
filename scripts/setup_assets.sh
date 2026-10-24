@@ -58,6 +58,9 @@ if [ -d "$TEXTURES_DIR" ]; then
   mkdir -p "$TARGET_DIR/textures" "$WEB_MODELS_DIR/textures"
   cp -r "$TEXTURES_DIR"/* "$TARGET_DIR/textures/" 2>/dev/null || true
   cp -r "$TEXTURES_DIR"/* "$WEB_MODELS_DIR/textures/" 2>/dev/null || true
+  # KayKit GLTF references textures relative to the GLTF file root:
+  cp "$TEXTURES_DIR"/*.png "$TARGET_DIR/" 2>/dev/null || true
+  cp "$TEXTURES_DIR"/*.png "$WEB_MODELS_DIR/" 2>/dev/null || true
   echo "  ✓ Textures copied"
 fi
 

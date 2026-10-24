@@ -1,5 +1,5 @@
 import { Clone, useGLTF } from '@react-three/drei'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import type { Box } from '../palace/layout'
 
 const WALL_MODEL = '/models/dungeon/wall.gltf'
@@ -80,13 +80,21 @@ export function AssetFloor({ box, color }: { box: Box; color?: string }) {
 function AssetDoorwayInner({
   position,
   rotation,
-  isGated = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
-  isGated?: boolean
 }) {
-  const { scene } = useGLTF(isGated ? GATED_MODEL : DOORWAY_MODEL)
+  const { scene } = useGLTF(DOORWAY_MODEL)
+
+  // Abre la puerta de madera hacia el muro para dejar el vano completamente transitable y visible
+  useEffect(() => {
+    scene.traverse((child) => {
+      if (child.name === 'wall_doorway_door') {
+        child.rotation.y = -Math.PI * 0.45
+      }
+    })
+  }, [scene])
+
   return (
     <group position={position} rotation={rotation}>
       <Clone
@@ -95,6 +103,8 @@ function AssetDoorwayInner({
         castShadow
         receiveShadow
       />
+      {/* Antorcha / Luz cálida que ilumina el arco de la puerta */}
+      <pointLight color="#ffb347" intensity={8} distance={7} position={[0, 2.2, 0]} />
     </group>
   )
 }
@@ -102,7 +112,6 @@ function AssetDoorwayInner({
 export function AssetDoorway({
   position,
   rotation,
-  isGated = false,
 }: {
   position: [number, number, number]
   rotation: [number, number, number]
@@ -110,7 +119,7 @@ export function AssetDoorway({
 }) {
   return (
     <Suspense fallback={null}>
-      <AssetDoorwayInner position={position} rotation={rotation} isGated={isGated} />
+      <AssetDoorwayInner position={position} rotation={rotation} />
     </Suspense>
   )
 }
@@ -122,5 +131,5 @@ try {
   useGLTF.preload(DOORWAY_MODEL)
   useGLTF.preload(GATED_MODEL)
 } catch {
-  // Ignora si corre en entorno sin DOM / SSR
+  // Ignora si corre en entorno sin DOM
 }
