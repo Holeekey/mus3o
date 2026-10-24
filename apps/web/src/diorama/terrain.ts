@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { DioramaTerrain } from './dioramaSchema'
+import type { DioramaTerrain } from '@mus3o/shared'
 import { clamp01, rgb, smooth } from './geo'
 import { fbm, hashStr, noise2, ridged } from './random'
 

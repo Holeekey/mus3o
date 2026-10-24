@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { DioramaPose, DioramaTerrain } from '../dioramaSchema'
+import type { DioramaPose, DioramaTerrain, FlagPattern } from '@mus3o/shared'
 
 export type PropCtx = {
   color?: string
@@ -7,6 +7,8 @@ export type PropCtx = {
   accent: string
   ground: string
   pose?: DioramaPose
+  /** Solo banderas: 'saltire' = aspa. */
+  pattern?: FlagPattern
   seed: number
   terrain: DioramaTerrain
 }

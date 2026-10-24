@@ -1,4 +1,4 @@
-import { DIORAMA_HALF, type Diorama, type DioramaKind, type DioramaProp } from './dioramaSchema'
+import { DIORAMA_HALF, type Diorama, type DioramaKind, type DioramaProp } from '@mus3o/shared'
 import { hashStr, mulberry32 } from './random'
 import type { HeightField } from './terrain'
 import { variantsFor } from './props'

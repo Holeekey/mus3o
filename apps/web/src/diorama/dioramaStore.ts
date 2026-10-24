@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Diorama } from './dioramaSchema'
+import type { Diorama } from '@mus3o/shared'
 
 // Estado del "Entrar al cuadro". Va aparte de store.ts para no pisar el trabajo de otras
 // ramas; Player.tsx solo consulta handleDioramaKey() y isDioramaActive().

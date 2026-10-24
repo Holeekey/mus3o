@@ -1,5 +1,5 @@
 import type { Part } from '@mus3o/shared'
-import type { DioramaKind } from '../dioramaSchema'
+import type { DioramaKind } from '@mus3o/shared'
 import { Builder, mat } from '../geo'
 import { buildFigure } from './figure'
 import { buildFlag } from './flag'

@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { DioramaPose } from '../dioramaSchema'
+import type { DioramaPose } from '@mus3o/shared'
 import { Builder, darken, lighten, mat } from '../geo'
 import { mulberry32, pick } from '../random'
 import { IRON, SKIN, STEEL, WOOD, type Built, type PropCtx } from './common'

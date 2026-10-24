@@ -1,4 +1,4 @@
-import type { Diorama } from './dioramaSchema'
+import type { Diorama } from '@mus3o/shared'
 import { darken, lighten, mixHex } from './geo'
 
 export type Atmosphere = {

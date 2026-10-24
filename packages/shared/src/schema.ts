@@ -84,6 +84,79 @@ export const PieceSchema = z.object({
   imageSearch: ImageSearchSchema.optional(),
 });
 
+// ---------------------------------------------------------------------------------------------
+// Diorama: la escena 3D en la que se "entra" desde el cuadro principal de una sala. El LLM solo
+// ELIGE de la biblioteca de props y los COLOCA. Todo está acotado y tiene respaldo (.catch) para
+// que una salida descuidada se degrade bien en lugar de romper la escena o el museo entero.
+// ---------------------------------------------------------------------------------------------
+const dHex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const dHexOr = (fallback: string) => dHex.catch(fallback);
+const dNum = (min: number, max: number, fallback: number) =>
+  z.number().finite().catch(fallback).transform((v) => Math.min(max, Math.max(min, v)));
+
+export const TERRAINS = ["plain", "hills", "mountains", "coast", "river", "forest", "city", "interior", "desert", "abstract"] as const;
+export const TIMES = ["day", "sunset", "night", "storm"] as const;
+export const KINDS = [
+  "figure", "rider", "horse", "flag", "cannon", "tree", "rock", "tent", "house", "church",
+  "ship", "column", "arch", "campfire", "custom",
+] as const;
+export const POSES = ["standing", "pointing", "charging", "fallen", "seated", "raising-arm"] as const;
+/** Diseño de la tela de una bandera: franjas (por defecto) o aspa (cruz de San Andrés). */
+export const FLAG_PATTERNS = ["stripes", "saltire"] as const;
+
+export const DIORAMA_HALF = 14; // los props viven en [-14, 14] m
+export const MAX_PROPS = 24;
+
+export const DioramaPropSchema = z.object({
+  kind: z.enum(KINDS),
+  pose: z.enum(POSES).optional().catch(undefined),
+  /** Solo para `flag`: "saltire" = aspa (p. ej. Cruz de Borgoña: campo `color`, aspa `secondary`). */
+  pattern: z.enum(FLAG_PATTERNS).optional().catch(undefined),
+  color: dHex.optional().catch(undefined),
+  secondary: dHex.optional().catch(undefined),
+  pos: z
+    .tuple([dNum(-DIORAMA_HALF, DIORAMA_HALF, 0), dNum(-DIORAMA_HALF, DIORAMA_HALF, 0)])
+    .catch([0, 0]),
+  rotY: dNum(-7, 7, 0).default(0),
+  scale: dNum(0.5, 3, 1).default(1),
+  count: z.number().finite().catch(1).transform((v) => Math.min(30, Math.max(1, Math.round(v)))).default(1),
+  spread: dNum(0, 8, 0).default(0),
+  label: z.string().max(40).optional().catch(undefined),
+  /** Id de una pieza de la sala a la que enlaza este prop (su ficha se abre al acercarse). */
+  pieceId: z.string().min(1).max(120).optional().catch(undefined),
+  parts: z.array(PartSchema).max(10).optional().catch(undefined),
+});
+
+export const DioramaSchema = z.object({
+  title: z.string().min(1).max(80).catch("Diorama"),
+  terrain: z.enum(TERRAINS).catch("plain"),
+  time: z.enum(TIMES).catch("day"),
+  palette: z
+    .object({
+      ground: dHexOr("#8a9a5b"),
+      sky: dHexOr("#9fc4e8"),
+      accent: dHexOr("#c9963a"),
+    })
+    .catch({ ground: "#8a9a5b", sky: "#9fc4e8", accent: "#c9963a" }),
+  // Un prop inválido se descarta, no tumba el diorama entero; el exceso se recorta a MAX_PROPS.
+  props: z
+    .array(z.unknown())
+    .catch([])
+    .transform((arr) =>
+      arr
+        .map((p) => DioramaPropSchema.safeParse(p))
+        .filter((r): r is { success: true; data: z.infer<typeof DioramaPropSchema> } => r.success)
+        .map((r) => r.data)
+        .filter((p) => p.kind !== "custom" || (p.parts && p.parts.length > 0))
+        .slice(0, MAX_PROPS),
+    ),
+});
+
+/** Valida (y repara) un diorama que viene de fuera. Nunca lanza. */
+export function parseDiorama(input: unknown): z.infer<typeof DioramaSchema> {
+  return DioramaSchema.parse(input ?? {});
+}
+
 export const RoomSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(LIMITS.maxTitle),
@@ -93,6 +166,8 @@ export const RoomSchema = z.object({
   period: z.string().min(1).max(40).optional(),
   /** Cuadro principal de la sala. */
   imageSearch: ImageSearchSchema.optional(),
+  /** Diorama al que se entra desde el cuadro principal. Si es inválido se descarta (no rompe el museo). */
+  diorama: DioramaSchema.optional().catch(undefined),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -326,6 +401,13 @@ export type ResolvedImage = z.infer<typeof ResolvedImageSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
 export type Room = z.infer<typeof RoomSchema>;
+export type Diorama = z.infer<typeof DioramaSchema>;
+export type DioramaProp = z.infer<typeof DioramaPropSchema>;
+export type DioramaKind = (typeof KINDS)[number];
+export type DioramaPose = (typeof POSES)[number];
+export type DioramaTerrain = (typeof TERRAINS)[number];
+export type DioramaTime = (typeof TIMES)[number];
+export type FlagPattern = (typeof FLAG_PATTERNS)[number];
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 export type Graph = z.infer<typeof MuseumGraphSchema>;
 export type Museum = z.infer<typeof MuseumSchema>;

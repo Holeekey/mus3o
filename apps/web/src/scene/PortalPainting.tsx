@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { atmosphereOf } from '../diorama/atmosphere'
 import { DioramaScene } from '../diorama/DioramaScene'
 import { useDioramaStore } from '../diorama/dioramaStore'
-import type { Diorama } from '../diorama/dioramaSchema'
+import type { Diorama } from '@mus3o/shared'
 import { warmDioramaModel } from '../diorama/model'
 
 const FONT_BODY = '/fonts/HankenGrotesk.ttf'
@@ -38,6 +38,12 @@ export type PortalPaintingProps = {
   palette?: { trim?: string; ink?: string; wall?: string }
   roomId?: string
   title?: string
+  /**
+   * Cuadro ya cargado y recortado al aspecto `width / height` (lo aporta Painting). Con él no se
+   * descarga `imageUrl`, y con `bare` solo se dibuja la ventana: marco y cartela los pone quien llama.
+   */
+  texture?: THREE.Texture | null
+  bare?: boolean
 }
 
 function usePaintingTexture(url: string | undefined, aspect: number) {
@@ -75,11 +81,34 @@ function usePaintingTexture(url: string | undefined, aspect: number) {
   return tex
 }
 
-function Frame({ w, h, trim }: { w: number; h: number; trim: string }) {
+function Frame({ w, h, trim, bare }: { w: number; h: number; trim: string; bare?: boolean }) {
   const bw = 0.17
   const d = 0.13
   const lip = '#2a1c12'
   const mat = <meshStandardMaterial color={trim} roughness={0.85} flatShading />
+  return (
+    <group>
+      {!bare && <OuterFrame w={w} h={h} bw={bw} d={d} mat={mat} />}
+      {/* labio interior oscuro: tapa el borde de la ventana */}
+      <mesh position={[0, h / 2 - 0.015, 0.05]}>
+        <boxGeometry args={[w, 0.03, 0.1]} />
+        <meshStandardMaterial color={lip} roughness={1} />
+      </mesh>
+      <mesh position={[0, -h / 2 + 0.015, 0.05]}>
+        <boxGeometry args={[w, 0.03, 0.1]} />
+        <meshStandardMaterial color={lip} roughness={1} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (w / 2 - 0.015), 0, 0.05]}>
+          <boxGeometry args={[0.03, h, 0.1]} />
+          <meshStandardMaterial color={lip} roughness={1} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function OuterFrame({ w, h, bw, d, mat }: { w: number; h: number; bw: number; d: number; mat: React.ReactElement }) {
   return (
     <group>
       {/* marco principal */}
@@ -112,21 +141,6 @@ function Frame({ w, h, trim }: { w: number; h: number; trim: string }) {
           {mat}
         </mesh>
       ))}
-      {/* labio interior oscuro: tapa el borde de la ventana */}
-      <mesh position={[0, h / 2 - 0.015, 0.05]}>
-        <boxGeometry args={[w, 0.03, 0.1]} />
-        <meshStandardMaterial color={lip} roughness={1} />
-      </mesh>
-      <mesh position={[0, -h / 2 + 0.015, 0.05]}>
-        <boxGeometry args={[w, 0.03, 0.1]} />
-        <meshStandardMaterial color={lip} roughness={1} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (w / 2 - 0.015), 0, 0.05]}>
-          <boxGeometry args={[0.03, h, 0.1]} />
-          <meshStandardMaterial color={lip} roughness={1} />
-        </mesh>
-      ))}
     </group>
   )
 }
@@ -136,12 +150,13 @@ function Frame({ w, h, trim }: { w: number; h: number; trim: string }) {
  * La ventana es un MeshPortalMaterial (perspectiva y paralaje correctos); el cuadro es un plano
  * con la textura delante cuya opacidad baja con la distancia.
  */
-export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, rotationY, width, height, palette, roomId, title }: PortalPaintingProps) {
+export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, rotationY, width, height, palette, roomId, title, texture, bare }: PortalPaintingProps) {
   const group = useRef<THREE.Group>(null)
   const paint = useRef<THREE.MeshBasicMaterial>(null)
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
-  const tex = usePaintingTexture(imageUrl, width / height)
+  const loaded = usePaintingTexture(texture ? undefined : imageUrl, width / height)
+  const tex = texture ?? loaded
   const [near, setNear] = useState(false)
   const hint = useRef<string | null>(null)
 
@@ -209,7 +224,7 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
   const plaqueW = Math.min(width * 0.7, 1.5)
   return (
     <group ref={group} position={position} rotation={[0, rotationY, 0]}>
-      <Frame w={width} h={height} trim={trim} />
+      <Frame w={width} h={height} trim={trim} bare={bare} />
       {/* ventana */}
       <mesh>
         <planeGeometry args={[width, height]} />
@@ -229,15 +244,19 @@ export function PortalPainting({ id = 'portal-0', diorama, imageUrl, position, r
         <meshBasicMaterial key={tex ? tex.uuid : 'plain'} ref={paint} map={tex} color={tex ? '#ffffff' : '#6b5a44'} transparent toneMapped={false} />
       </mesh>
       {/* cartela */}
-      <mesh position={[0, -height / 2 - 0.42, 0.03]} castShadow receiveShadow>
-        <boxGeometry args={[plaqueW, 0.3, 0.05]} />
-        <meshStandardMaterial color="#efece5" roughness={0.9} flatShading />
-      </mesh>
-      <Suspense fallback={null}>
-        <Text position={[0, -height / 2 - 0.42, 0.06]} font={FONT_BODY} fontSize={0.055} maxWidth={plaqueW - 0.14} textAlign="center" anchorY="middle" color={palette?.ink ?? '#1f1411'}>
-          {title ?? diorama.title}
-        </Text>
-      </Suspense>
+      {!bare && (
+        <>
+          <mesh position={[0, -height / 2 - 0.42, 0.03]} castShadow receiveShadow>
+            <boxGeometry args={[plaqueW, 0.3, 0.05]} />
+            <meshStandardMaterial color="#efece5" roughness={0.9} flatShading />
+          </mesh>
+          <Suspense fallback={null}>
+            <Text position={[0, -height / 2 - 0.42, 0.06]} font={FONT_BODY} fontSize={0.055} maxWidth={plaqueW - 0.14} textAlign="center" anchorY="middle" color={palette?.ink ?? '#1f1411'}>
+              {title ?? diorama.title}
+            </Text>
+          </Suspense>
+        </>
+      )}
     </group>
   )
 }

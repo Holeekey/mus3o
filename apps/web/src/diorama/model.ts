@@ -1,6 +1,6 @@
 import type * as THREE from 'three'
 import { atmosphereOf, type Atmosphere } from './atmosphere'
-import type { Diorama } from './dioramaSchema'
+import type { Diorama } from '@mus3o/shared'
 import { layoutDiorama, type DioramaLayout } from './layout'
 import { buildProp, type Built } from './props'
 import { hashStr } from './random'
@@ -42,6 +42,7 @@ export function getDioramaModel(d: Diorama): DioramaModel {
           accent: d.palette.accent,
           ground: d.palette.ground,
           pose: pl.prop.pose,
+          pattern: pl.prop.pattern,
           seed: seed + pl.index * 7919,
           terrain: d.terrain,
         },

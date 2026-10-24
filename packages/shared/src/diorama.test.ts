@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DioramaSchema, MAX_PROPS, parseDiorama } from './dioramaSchema'
-import { CARABOBO } from './carabobo'
+import { DioramaSchema, MAX_PROPS, RoomSchema, parseDiorama } from './schema'
 
 describe('DioramaSchema', () => {
   it('acepta un diorama mínimo y aplica valores por defecto', () => {
@@ -40,10 +39,20 @@ describe('DioramaSchema', () => {
     expect(d.props[0].parts).toHaveLength(1)
   })
 
-  it('el diorama de Carabobo es válido y estable', () => {
-    const parsed = DioramaSchema.parse(CARABOBO)
-    expect(parsed.props.length).toBe(CARABOBO.props.length)
-    expect(parsed.props.length).toBeLessThanOrEqual(MAX_PROPS)
-    expect(parsed.title).toContain('Carabobo')
+  it('acepta pattern saltire en banderas y descarta valores desconocidos', () => {
+    const d = parseDiorama({ props: [{ kind: 'flag', pattern: 'saltire', color: '#efe8d8', secondary: '#c8102e', pos: [0, 0] }, { kind: 'flag', pattern: 'wavy', pos: [1, 1] }] })
+    expect(d.props[0].pattern).toBe('saltire')
+    expect(d.props[1].pattern).toBeUndefined()
+  })
+
+  it('RoomSchema.diorama es opcional y un diorama roto se descarta sin tumbar la sala', () => {
+    const base = { id: 'r', name: 'Sala', pieces: [] }
+    expect(RoomSchema.parse(base).diorama).toBeUndefined()
+    const ok = RoomSchema.parse({ ...base, diorama: { title: 'X', terrain: 'hills', time: 'day', props: [{ kind: 'tree', pos: [1, 2] }] } })
+    expect(ok.diorama?.props).toHaveLength(1)
+    // no es un objeto: se descarta en vez de lanzar
+    expect(RoomSchema.parse({ ...base, diorama: 'nope' }).diorama).toBeUndefined()
+    // objeto con basura: se repara con valores por defecto
+    expect(RoomSchema.parse({ ...base, diorama: { terrain: 'volcano', props: 7 } }).diorama).toMatchObject({ terrain: 'plain', props: [] })
   })
 })
