@@ -6,6 +6,7 @@ import {
   type MonumentType,
   type Glyph,
   GlyphShape,
+  LIMITS,
   SearchKeywordSchema,
   MuseumSchema,
 } from "./schema";
@@ -51,6 +52,8 @@ const GLYPH_MAP: Record<string, Glyph> = {
   loop: "torus",
   pointer: "cone",
 };
+
+const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE)\**\s*:\s*\**/i;
 
 const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -98,7 +101,7 @@ export interface ParseDslOptions {
  *
  * Format:
  * ROOM: <id> | <title> | <theme> | <primaryHex> | <fogHex> | <monumentType> | <requires_csv_or_empty>
- * PIECE: <concept> | <glyph> | <mnemonicCue> | <searchKeyword opcional>
+ * PIECE: <concept> | <glyph> | <mnemonicCue> | <searchKeyword> | <explanation>
  */
 export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museum {
   const stripped = raw.replace(/^```[a-zA-Z]*\r?\n?/m, "").replace(/\r?\n?```$/m, "").trim();
@@ -107,18 +110,33 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
   let currentRoom: (Room & { requires: string[] }) | null = null;
   let roomCount = 0;
   let pieceCountInRoom = 0;
+  let skippingRoom = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) continue;
 
-    if (trimmed.startsWith("ROOM:")) {
-      const content = trimmed.slice(5).trim();
+    // Tolera viñetas, numeración, negritas, mayúsculas/minúsculas y barras de ancho completo: "- **Piece**: ..."
+    const tag = LINE_TAG.exec(trimmed);
+    const kind = tag?.[1].toUpperCase();
+    const body = tag ? trimmed.slice(tag[0].length).replace(/｜/g, "|") : "";
+
+    if (kind === "ROOM") {
+      if (rooms.length >= LIMITS.maxRooms) {
+        currentRoom = null;
+        skippingRoom = true;
+        continue;
+      }
+      skippingRoom = false;
+      const content = body.trim();
       const parts = content.split("|").map((p) => p.trim());
 
       roomCount++;
       const rawId = parts[0] || `room-${roomCount}`;
-      const roomId = sanitizeSlug(rawId, `room-${roomCount}`);
+      // Ids repetidos (la IA a veces repite): se desambiguan para que el grafo y los pedestales no choquen.
+      const baseId = sanitizeSlug(rawId, `room-${roomCount}`);
+      let roomId = baseId;
+      for (let n = 2; rooms.some((r) => r.id === roomId); n++) roomId = `${baseId}-${n}`;
       const title = parts[1] || `Sala ${roomCount}`;
       const rawTheme = (parts[2] || "").toLowerCase();
       const theme: RoomTheme = VALID_THEMES[rawTheme] ?? "cathedral";
@@ -150,7 +168,9 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       continue;
     }
 
-    if (trimmed.startsWith("PIECE:")) {
+    if (kind === "PIECE") {
+      // Piezas de una sala omitida por el tope: se ignoran, no se cuelgan de otra sala.
+      if (skippingRoom) continue;
       if (!currentRoom) {
         // Create an implicit room if PIECE comes before any ROOM
         roomCount++;
@@ -168,31 +188,35 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
         pieceCountInRoom = 0;
       }
 
-      if (currentRoom.pieces.length >= 12) {
+      if (currentRoom.pieces.length >= LIMITS.maxPiecesPerRoom) {
         // Enforce max pieces per room
         continue;
       }
 
       pieceCountInRoom++;
-      const content = trimmed.slice(6).trim();
+      const content = body.trim();
       const parts = content.split("|").map((p) => p.trim());
 
       const concept = parts[0] || `Concepto ${pieceCountInRoom}`;
       const rawGlyph = (parts[1] || "box").toLowerCase();
       const glyphShape: Glyph = GLYPH_MAP[rawGlyph] ?? (GlyphShape.safeParse(rawGlyph).success ? (rawGlyph as Glyph) : "box");
-      // Un "|" dentro del anclaje no debe correr los campos: la palabra clave es siempre el último campo.
-      const hasKeyword = parts.length > 3;
-      const cueParts = hasKeyword ? parts.slice(2, -1) : parts.slice(2);
+      // Campos: concepto | glifo | anclaje | palabra clave | explicación. Un "|" dentro del anclaje no corre los
+      // campos porque la palabra clave y la explicación se toman desde el final. Con 4 campos (formato anterior)
+      // el último es la palabra clave.
+      const n = parts.length;
+      const explanation = n >= 5 ? parts[n - 1] : "";
+      const rawKeyword = n >= 5 ? parts[n - 2] : n === 4 ? parts[3] : undefined;
+      const cueParts = n >= 5 ? parts.slice(2, -2) : n === 4 ? parts.slice(2, -1) : parts.slice(2);
       const mnemonicCue = cueParts.filter(Boolean).join(" ") || `Visualiza ${concept} anclado en este pedestal.`;
 
-      const keyword = normalizeSearchKeyword(hasKeyword ? parts[parts.length - 1] : undefined);
+      const keyword = normalizeSearchKeyword(rawKeyword);
 
       const pieceId = `${currentRoom.id}-p${pieceCountInRoom}`;
 
       const piece: Piece = {
         id: pieceId,
         title: concept.slice(0, 80),
-        text: concept.slice(0, 400),
+        text: (explanation || concept).slice(0, LIMITS.maxText),
         fact: mnemonicCue.slice(0, 400),
         mnemonicCue: mnemonicCue.slice(0, 400),
         model: {

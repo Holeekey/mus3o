@@ -171,7 +171,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
 
   // El formato DSL reduce la longitud requerida a <2000 tokens garantizando baja latencia
   const museum = await askForJson(
-    { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
+    { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 3500 : 2000 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
   return resolveModels(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));

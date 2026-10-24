@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseMus3oDSL } from "./dsl";
+import { LIMITS } from "./schema";
 
 describe("parseMus3oDSL", () => {
   it("parses valid low-token DSL into a strictly validated Museum", () => {
@@ -97,8 +98,43 @@ describe("searchKeyword en el DSL", () => {
   });
 
   it("un '|' dentro del anclaje no corre los campos", () => {
-    const p = parse("PIECE: A | box | idea | con barra | anvil");
+    const p = parse("PIECE: A | box | idea | con barra | anvil | Explicación breve");
     expect(p.searchKeyword).toBe("anvil");
     expect(p.mnemonicCue).toBe("idea con barra");
+    expect(p.text).toBe("Explicación breve");
+  });
+
+  it("acepta el formato de 4 campos (palabra clave al final) sin explicación", () => {
+    const p = parse("PIECE: Yunque | box | cue | anvil");
+    expect(p.searchKeyword).toBe("anvil");
+    expect(p.text).toBe("Yunque");
+  });
+});
+
+describe("robustez del parser DSL", () => {
+  it("tolera viñetas, negritas, minúsculas y barras de ancho completo", () => {
+    const m = parseMus3oDSL(`- **ROOM**: r1 | Sala | ancient | #112233 | #000000 | torus |
+1. piece: Uno｜box｜cue｜key｜Explica uno
+* **PIECE:** Dos | sphere | cue2 | compass | Explica dos`);
+    expect(m.rooms).toHaveLength(1);
+    expect(m.rooms[0].pieces.map((p) => [p.title, p.searchKeyword, p.text])).toEqual([
+      ["Uno", "key", "Explica uno"],
+      ["Dos", "compass", "Explica dos"],
+    ]);
+  });
+
+  it("desambigua ids de sala repetidos y mantiene el grafo válido", () => {
+    const m = parseMus3oDSL(`ROOM: a | Una | ancient | #112233 | #000000 | torus |
+PIECE: X | box | c | key | e
+ROOM: a | Otra | void | #112233 | #000000 | torus | a
+PIECE: Y | box | c | key | e`);
+    expect(m.rooms.map((r) => r.id)).toEqual(["a", "a-2"]);
+  });
+
+  it("recorta a LIMITS.maxRooms y maxPiecesPerRoom sin lanzar ni mezclar piezas", () => {
+    const rooms = Array.from({ length: 10 }, (_, i) => `ROOM: r${i} | Sala ${i} | ancient | #112233 | #000000 | torus |\n` + Array.from({ length: 14 }, (_, j) => `PIECE: P${i}-${j} | box | c | key | e`).join("\n")).join("\n");
+    const m = parseMus3oDSL(rooms);
+    expect(m.rooms).toHaveLength(LIMITS.maxRooms);
+    expect(m.rooms.every((r) => r.pieces.length === LIMITS.maxPiecesPerRoom)).toBe(true);
   });
 });

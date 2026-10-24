@@ -208,3 +208,11 @@ Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseu
 (`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
 por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
 `POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
+
+### Formato DSL actual y tolerancia del parser
+
+`PIECE: <concepto> | <glifo> | <anclaje> | <searchKeyword> | <explicación>` (5 campos; la explicación es 1 frase ≤ 160 car. y pasa a `piece.text`;
+sin ella `text` repite el concepto). Palabra clave y explicación se leen **desde el final**; con 4 campos (formato anterior) el último es la
+palabra clave. `parseMus3oDSL` tolera viñetas, numeración, negritas, `room:`/`piece:` en minúsculas y `｜` de ancho completo; desambigua ids de
+sala repetidos (`a`, `a-2`); recorta a `LIMITS.maxRooms` / `maxPiecesPerRoom` sin lanzar (las piezas de una sala omitida se descartan).
+`max_tokens` sube a 2000 (tema) y 3500 (apuntes) por la explicación (~35 tokens por pieza).
