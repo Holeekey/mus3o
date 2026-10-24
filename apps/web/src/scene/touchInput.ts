@@ -16,8 +16,10 @@ export const touchInput = {
   lookDy: 0,
   /** Si hay interacción táctil activa en este momento */
   active: false,
-  /** Si el dispositivo actual tiene capacidades táctiles */
-  isTouchDevice: typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0),
+  /** Si el dispositivo actual tiene capacidades táctiles activas */
+  isTouchDevice:
+    typeof window !== 'undefined' &&
+    Boolean('ontouchstart' in window && window.matchMedia?.('(pointer: coarse)').matches),
 }
 
 export function resetTouchMove() {

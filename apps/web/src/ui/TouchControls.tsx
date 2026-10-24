@@ -44,6 +44,12 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
     // Ignora si el toque fue sobre los botones de acción
     if ((e.target as HTMLElement).closest('.touch-action-btn')) return
 
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Ignorar en entornos que no soporten capture
+    }
+
     const mid = window.innerWidth / 2
     if (e.clientX < mid && joystickId.current === null) {
       joystickId.current = e.pointerId
@@ -91,6 +97,13 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
   }
 
   const onPointerUp = (e: React.PointerEvent) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {
+      // Ignorar
+    }
     if (e.pointerId === joystickId.current) {
       joystickId.current = null
       resetTouchMove()
