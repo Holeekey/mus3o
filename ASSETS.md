@@ -30,3 +30,9 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 | Llave de hierro | `key.gltf` / `key.bin` | GLTF + Binario | Item recolectable | `/models/dungeon/key.gltf` |
 | Cofre del tesoro | `chest.gltf` / `chest.bin` | GLTF + Binario | Meta / Recompensa | `/models/dungeon/chest.gltf` |
 | Atlas de textura | `dungeon_texture.png` | PNG Binario | Textura atlas | `/models/dungeon/dungeon_texture.png` |
+
+---
+
+## Modelos dinámicos (Poly Pizza)
+
+Los modelos de los pedestales pueden venir de [Poly Pizza](https://poly.pizza) en tiempo de generación (no están en el repo): el servidor los busca por `searchKeyword`, solo con licencia **CC0** o **CC-BY** (se descartan NC/ND/SA), los guarda en `.cache/assets/` (ignorada por git) y los sirve en `/api/assets/<id>.glb`. Cada asignación (palabra clave, autor, licencia, enlace) queda en `.cache/assets/review.json` y se puede revisar con `GET /api/assets-review`. Los modelos CC-BY muestran su crédito en la ficha del concepto. Ver `docs/servidor.md`.

@@ -146,3 +146,14 @@ Cobertura de la matriz V1–V6 y cambios de esta revisión:
 ## 10. Voz con ElevenLabs (opcional)
 
 La clave `ELEVENLABS_API_KEY` solo la lee el servidor (`apps/server/src/tts.ts`); el navegador llama a `/api/tts`. Protecciones: texto de 1-500 caracteres con `.strict()` y saneado, límite de 30 peticiones/min por IP, tope diario de caracteres, id de voz validado, timeout de 15 s y nunca se reenvía el cuerpo de error del proveedor. Si falla o no está configurado, `apps/web/src/lib/voice.ts` cae a la síntesis del navegador. Estado: **código listo, sin clave configurada**.
+
+## 11. Modelos 3D externos (Poly Pizza) y revisión
+
+- **Clave:** `POLY_PIZZA_API_KEY` solo la lee el servidor (`polyPizza.ts`); nunca llega al navegador.
+- **SSRF:** `assetStore.ts` solo descarga por HTTPS desde `poly.pizza` y subdominios, sin seguir redirecciones, con tope de 4 MB leído por trozos y comprobando la firma `glTF`. Ids de modelo validados con `^[A-Za-z0-9_-]{1,64}$` (sin `/` ni `..`).
+- **Contrato:** `dynamicAsset.url` solo puede ser `/api/assets/<id>.glb` (regex en el esquema): la IA no puede inyectar URLs externas; un valor inválido se descarta.
+- **Licencias:** solo CC0 y CC-BY (se descartan NC/ND/SA); el crédito CC-BY se muestra en la ficha.
+- **Entrada de la IA:** `searchKeyword`, `QUIZ` e `IMAGE` del DSL se normalizan y validan; las imágenes solo pueden ser ids del request.
+- **Rutas de revisión** (`/api/assets-review`): 404 salvo `ENABLE_DEBUG_ROUTES=true`; rechazar borra el `.glb` y lo mete en lista negra.
+- **Cortacircuito:** ante 403/429/HTML del host se pausan búsquedas y descargas 10 min (no se intenta saltar el desafío anti-bots de Cloudflare).
+- **Caché de museos en disco:** se revalida con `MuseumSchema` al leer; un archivo dañado se ignora. Sin `thinking`/contenido de usuario en logs: solo conteos de tokens.
