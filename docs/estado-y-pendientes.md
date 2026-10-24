@@ -15,8 +15,10 @@
 | Imágenes subidas por el usuario | 🔴 No conectado | Contrato y servidor listos; falta el frontend |
 | Parser local de apuntes (sin IA) | ✅ Funciona | Texto, JSON, CSV y entrada directa a palacios pre-compilados |
 | Palacios pre-compilados (Offline) | ✅ Completo | 3 palacios ricos listos para entrar con 1 clic (Von Neumann, Biología Celular, Imperio Romano) |
-| Subida de archivos | 🟡 Parcial | La interfaz acepta `.txt` y `.md` (máx. 200 KB). `docx`, `xlsx`, `csv` están en el contrato pero no hay extractor en el navegador |
+| Subida de archivos | ✅ Hecho | "+ Adjuntar": `docx`, `xlsx`, `csv`, `txt`, `md`, `json` e imágenes, leídos en el navegador (`lib/files.ts`). Prompt maestro híbrido: solo si el texto supera 20 000 caracteres se resume con Haiku (`/api/digest-sources`). Las imágenes del usuario se cuelgan en los cuadros. Pendiente: `.doc`/`.xls` viejos y PDF no se leen; las imágenes del usuario no sobreviven a una recarga |
 | Palacio 3D (salas, puertas, pedestales, cuadros) | ✅ Funciona | Layout determinista, colisiones, minimapa, AtmosphereController (lerp de niebla) y monumentos procedurales |
+| Flujo completo por DSL | 🟡 Medido con IA real (1 pedido) | Modo, fuentes e imágenes salen por DSL (≈ 3,2× menos tokens de salida y 2,6× menos tiempo que el JSON, ver `servidor.md`); dioramas en llamada aparte solo si la IA marca salas. `FLOW_FORMAT=json` conserva el formato anterior. Pendiente: probar los modos biography/quiz y con fuentes e imágenes |
+| Modelos 3D dinámicos (Poly Pizza) | 🔴 Búsqueda OK, descarga bloqueada por Cloudflare | `hydrateMuseumAssets` + `/api/assets` + `DynamicTotem`; requiere `POLY_PIZZA_API_KEY`. Sin clave o ante fallo, glifo procedural. Campos reales confirmados (`Licence`, `Download`, `Tags`, `Category`, `Creator`, `Tri Count`); se descartan modelos > 30 000 triángulos. **Bloqueo:** `static.poly.pizza` devuelve un desafío anti-bots (403) a peticiones del servidor; hoy 0 assets y todo cae al respaldo. Ver `servidor.md` |
 | Piezas: procedural, catálogo y glifo | ✅ Funciona | Modelos de catálogo, glifos procedurales y badges mnemotécnicos (Método de Loci) |
 | Memoria espaciada (curva de olvido) | ✅ Funciona | Niveles, repaso, máquina del tiempo |
 | Llaves, puertas y exploración libre | ✅ Funciona | Llave por sala, llave de hierro en la mazmorra |

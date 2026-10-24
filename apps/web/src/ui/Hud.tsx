@@ -3,7 +3,7 @@ import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
-import { creditLine, prefetchPalaceImages, useResolvedImage } from '../lib/images'
+import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
@@ -15,10 +15,12 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
+import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
+import { TouchControls } from './TouchControls'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -34,10 +36,18 @@ function findConcept(layout: PalaceLayout, id: string | null) {
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
-  const image = useResolvedImage(concept.imageSearch)
+  const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
+  const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
+  const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
+  const close = () => useStore.getState().set({ openId: null })
   return (
     <aside className="card" style={wallVars(palette)}>
-      <p className="card-tag">{roomName}</p>
+      <div className="card-header-bar">
+        <p className="card-tag">{roomName}</p>
+        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+          ✕
+        </button>
+      </div>
       <div className="card-inner">
         <h2>{concept.title}</h2>
         {concept.text && <p className="card-body">{concept.text}</p>}
@@ -50,6 +60,14 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
           <p className="card-meta">{concept.fact}</p>
         ) : null}
         <SourceBlock concept={concept} />
+        {concept.dynamicAsset?.license === 'CC-BY' && (
+          <p className="card-meta">
+            Modelo 3D «{concept.dynamicAsset.title}» por {concept.dynamicAsset.author || 'autor desconocido'} ·{' '}
+            <a href={concept.dynamicAsset.sourceUrl} target="_blank" rel="noreferrer noopener">
+              CC-BY vía Poly Pizza
+            </a>
+          </p>
+        )}
         {image && (
           <figure className="card-figure">
             <img src={image.src} alt={image.title} width={image.width} height={image.height} decoding="async" />
@@ -58,6 +76,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         )}
         {/* Mientras se resuelve, reserva el lugar para que la ficha no salte. */}
         {image === undefined && <div className="card-figure card-figure-loading" aria-hidden />}
+        <ConceptInfo concept={concept} image={image} />
         <div className="card-actions">
           <span className={memorized ? 'pill pill-gold' : 'pill'}>{memorized ? 'Memorizado' : 'Sin memorizar'}</span>
           <span className="keys">
@@ -222,6 +241,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <ArisDialog />
       <ArisPrompt />
+
+      <TouchControls layout={layout} />
 
       {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
         <div className="pause">

@@ -4,6 +4,7 @@ import { demoMuseum } from './mocks'
 import { dungeonDemoMuseum } from './mocks/dungeon'
 import { medicinaMuseum } from './mocks/medicina' // science-kit
 import { historiaMuseum } from './mocks/historia'
+import { compuestoMuseum } from './mocks/compuesto'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
 import { useStore } from './store'
@@ -13,11 +14,13 @@ import { DEFAULT_THEME } from './theme'
 const World = lazy(() => import('./scene/World').then((m) => ({ default: m.World })))
 
 // ?demo entra directo al palacio de ejemplo; ?demo=ia usa el museo de muestra con modelos de IA;
+// ?demo=compuesto prueba los dioramas compuestos en salas sin diorama;
 // ?demo=historia muestra el museo de historia con cuadros reales de Wikimedia;
 // ?demo=dungeon usa la mazmorra del sandbox adaptada a museo.
 const demo = new URLSearchParams(window.location.search).get('demo')
 if (demo === 'ia') useStore.getState().enterPalace(demoMuseum)
 else if (demo === 'historia') useStore.getState().enterPalace(historiaMuseum)
+else if (demo === 'compuesto') useStore.getState().enterPalace(compuestoMuseum) // dioramas compuestos (sin IA)
 else if (demo === 'dungeon') useStore.getState().enterPalace(dungeonDemoMuseum)
 else if (demo === 'medicina') useStore.getState().enterPalace(medicinaMuseum) // science-kit
 else if (demo !== null) {
@@ -36,10 +39,13 @@ import { useIntro } from './intro/store'
 import { BuildNotice } from './ui/BuildNotice'
 import { Hud } from './ui/Hud'
 import { Landing } from './ui/Landing'
+import { TeamPage } from './ui/TeamSection'
+import { TEAM_HASH, useHash } from './ui/useHash'
 
 export default function App() {
   const screen = useStore((s) => s.screen)
   const layout = useStore((s) => s.layout)
+  const hash = useHash()
 
   const introOn = useIntro((s) => s.phase === 'idle' || (s.phase === 'playing' && !s.reduced)) // intro: oculta el HUD hasta que el vuelo termina
 
@@ -59,5 +65,5 @@ export default function App() {
       </div>
     )
   }
-  return <Landing />
+  return hash === TEAM_HASH ? <TeamPage /> : <Landing />
 }

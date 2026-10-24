@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { assembleDslMuseum, Mus3oDslStream, parseMus3oDSL } from "./dsl";
+import { Mus3oDslStream, parseMus3oDSL } from "./dsl";
+import { LIMITS } from "./schema";
 
 describe("parseMus3oDSL", () => {
   it("parses valid low-token DSL into a strictly validated Museum", () => {
@@ -80,6 +81,136 @@ PIECE: P3 | tree | Raíces profundas
   });
 });
 
+describe("searchKeyword en el DSL", () => {
+  const parse = (piece: string) =>
+    parseMus3oDSL(`ROOM: r1 | Sala | ancient | #112233 | #000000 | torus |\n${piece}`).rooms[0].pieces[0];
+
+  it("normaliza tildes, mayúsculas, signos y limita a 3 palabras", () => {
+    expect(parse("PIECE: A | box | cue | Hourglass.").searchKeyword).toBe("hourglass");
+    expect(parse('PIECE: A | box | cue | "Ancient  Roman   Shield Extra"').searchKeyword).toBe("ancient roman shield");
+    expect(parse("PIECE: A | box | cue | Péndulo").searchKeyword).toBe("pendulo");
+  });
+
+  it("ignora '-' o valores inservibles y deja el glifo", () => {
+    expect(parse("PIECE: A | box | cue | -").searchKeyword).toBeUndefined();
+    expect(parse("PIECE: A | box | cue | ¿¿ ??").searchKeyword).toBeUndefined();
+    expect(parse("PIECE: A | box | cue").searchKeyword).toBeUndefined();
+  });
+
+  it("un '|' dentro del anclaje no corre los campos", () => {
+    const p = parse("PIECE: A | box | idea | con barra | anvil | Explicación breve");
+    expect(p.searchKeyword).toBe("anvil");
+    expect(p.mnemonicCue).toBe("idea con barra");
+    expect(p.text).toBe("Explicación breve");
+  });
+
+  it("acepta el formato de 4 campos (palabra clave al final) sin explicación", () => {
+    const p = parse("PIECE: Yunque | box | cue | anvil");
+    expect(p.searchKeyword).toBe("anvil");
+    expect(p.text).toBe("Yunque");
+  });
+});
+
+describe("robustez del parser DSL", () => {
+  it("tolera viñetas, negritas, minúsculas y barras de ancho completo", () => {
+    const m = parseMus3oDSL(`- **ROOM**: r1 | Sala | ancient | #112233 | #000000 | torus |
+1. piece: Uno｜box｜cue｜key｜Explica uno
+* **PIECE:** Dos | sphere | cue2 | compass | Explica dos`);
+    expect(m.rooms).toHaveLength(1);
+    expect(m.rooms[0].pieces.map((p) => [p.title, p.searchKeyword, p.text])).toEqual([
+      ["Uno", "key", "Explica uno"],
+      ["Dos", "compass", "Explica dos"],
+    ]);
+  });
+
+  it("desambigua ids de sala repetidos y mantiene el grafo válido", () => {
+    const m = parseMus3oDSL(`ROOM: a | Una | ancient | #112233 | #000000 | torus |
+PIECE: X | box | c | key | e
+ROOM: a | Otra | void | #112233 | #000000 | torus | a
+PIECE: Y | box | c | key | e`);
+    expect(m.rooms.map((r) => r.id)).toEqual(["a", "a-2"]);
+  });
+
+  it("recorta a LIMITS.maxRooms y maxPiecesPerRoom sin lanzar ni mezclar piezas", () => {
+    const rooms = Array.from({ length: 15 }, (_, i) => `ROOM: r${i} | Sala ${i} | ancient | #112233 | #000000 | torus |\n` + Array.from({ length: 14 }, (_, j) => `PIECE: P${i}-${j} | box | c | key | e`).join("\n")).join("\n");
+    const m = parseMus3oDSL(rooms);
+    expect(m.rooms).toHaveLength(LIMITS.maxRooms);
+    expect(m.rooms.every((r) => r.pieces.length === LIMITS.maxPiecesPerRoom)).toBe(true);
+  });
+});
+
+describe("DSL del flujo completo (modo, período, quiz, imágenes)", () => {
+  const rooms = (extra = "") => `TITLE: Roma
+ROOM: a | Origen | ancient | #112233 | #000000 | torus |
+${extra}PIECE: Rómulo | box | cue | wolf | Fundador legendario
+ROOM: b | República | ancient | #112233 | #000000 | torus | a
+PIECE: Senado | box | cue | column | Órgano de gobierno
+ROOM: c | Imperio | ancient | #112233 | #000000 | torus | a
+PIECE: Augusto | box | cue | statue | Primer emperador`;
+
+  it("exploration: árbol de n-1 aristas 'related' y título del DSL", () => {
+    const m = parseMus3oDSL(rooms(), { mode: "exploration" });
+    expect(m.title).toBe("Roma");
+    expect(m.graph?.edges).toEqual([
+      { from: "a", to: "b", kind: "related" },
+      { from: "a", to: "c", kind: "related" },
+    ]);
+  });
+
+  it("education: DAG de prerrequisitos (ramas y convergencias) alcanzable desde la primera sala", () => {
+    const m = parseMus3oDSL(rooms(), { mode: "education" });
+    expect(m.graph?.edges).toEqual([
+      { from: "a", to: "b", kind: "prerequisite" },
+      { from: "a", to: "c", kind: "prerequisite" },
+    ]);
+  });
+
+  it("education: converge con varios prerrequisitos y descarta los que apuntan hacia adelante (sin ciclos)", () => {
+    const raw = `ROOM: a | A | ancient | #112233 | #000000 | torus |
+PIECE: x | box | c | key | e
+ROOM: b | B | ancient | #112233 | #000000 | torus | a
+PIECE: x | box | c | key | e
+ROOM: c | C | ancient | #112233 | #000000 | torus | a
+PIECE: x | box | c | key | e
+ROOM: d | D | ancient | #112233 | #000000 | torus | b, c, e
+PIECE: x | box | c | key | e
+ROOM: e | E | ancient | #112233 | #000000 | torus |
+PIECE: x | box | c | key | e`;
+    const m = parseMus3oDSL(raw, { mode: "education" });
+    const intoD = m.graph!.edges.filter((e) => e.to === "d").map((e) => e.from);
+    expect(intoD).toEqual(["b", "c"]);
+  });
+
+  it("related: agrega conexiones transversales sin romper el modo", () => {
+    const raw = rooms().replace("| torus | a\nPIECE: Augusto", "| torus | a | | b\nPIECE: Augusto");
+    const m = parseMus3oDSL(raw, { mode: "exploration" });
+    expect(m.graph!.edges.some((e) => e.kind === "related" && [e.from, e.to].sort().join() === "b,c")).toBe(true);
+  });
+
+  it("biography: exige PERIOD en cada sala", () => {
+    expect(() => parseMus3oDSL(rooms(), { mode: "biography" })).toThrow();
+    const withPeriod = rooms().replace(/(ROOM: \w \| [^\n]*\n)/g, "$1PERIOD: 100–200\n");
+    const m = parseMus3oDSL(withPeriod, { mode: "biography" });
+    expect(m.rooms.every((r) => r.period === "100–200")).toBe(true);
+  });
+
+  it("quiz: toma QUIZ de la pieza anterior y falla si falta en alguna", () => {
+    expect(() => parseMus3oDSL(rooms(), { mode: "quiz" })).toThrow();
+    const quiz = "QUIZ: ¿Quién fundó Roma? | Rómulo | Remo | Numa | 0\n";
+    const all = (rooms() + "\n").replace(/(PIECE: [^\n]*\n)/g, `$1${quiz}`);
+    const m = parseMus3oDSL(all, { mode: "quiz" });
+    expect(m.rooms[0].pieces[0].quiz).toEqual({ question: "¿Quién fundó Roma?", options: ["Rómulo", "Remo", "Numa"], answerIndex: 0 });
+  });
+
+  it("IMAGE: acepta solo ids del request y una vez", () => {
+    const raw = (rooms() + "\n").replace(/(PIECE: [^\n]*\n)/g, "$1IMAGE: img-1\n");
+    const m = parseMus3oDSL(raw, { mode: "exploration", imageIds: ["img-1"] });
+    expect(m.rooms.flatMap((r) => r.pieces).filter((p) => p.image).length).toBe(1);
+    const none = parseMus3oDSL(raw, { mode: "exploration", imageIds: [] });
+    expect(none.rooms.flatMap((r) => r.pieces).some((p) => p.image)).toBe(false);
+  });
+});
+
 describe("Mus3oDslStream", () => {
   const RAW = [
     "ROOM: r1 | Sala 1 | ancient | #f59e0b | #78350f | crystal |",
@@ -93,8 +224,8 @@ describe("Mus3oDslStream", () => {
     "PIECE: P4 | tree | Raíces profundas",
   ].join("\n");
 
-  const run = (chunks: string[]) => {
-    const s = new Mus3oDslStream();
+  const run = (chunks: string[], options = {}) => {
+    const s = new Mus3oDslStream(options);
     const emitted: string[][] = [];
     for (const c of chunks) emitted.push(s.push(c).map((r) => r.id));
     emitted.push(s.end().map((r) => r.id));
@@ -116,17 +247,6 @@ describe("Mus3oDslStream", () => {
     expect(s.rooms[0].pieces.map((p) => p.title)).toEqual(["P1", "P2"]);
   });
 
-  it("produces the same museum as parseMus3oDSL for any chunking", () => {
-    const whole = parseMus3oDSL(RAW);
-    for (const size of [1, 3, 7, 50, 1000]) {
-      const chunks = RAW.match(new RegExp(`[\\s\\S]{1,${size}}`, "g")) ?? [];
-      const { s } = run(chunks);
-      const museum = assembleDslMuseum(s.rooms);
-      expect(museum.rooms).toEqual(whole.rooms);
-      expect(museum.graph).toEqual(whole.graph);
-    }
-  });
-
   it("flushes a trailing partial line and room on end()", () => {
     const s = new Mus3oDslStream();
     expect(s.push("ROOM: a | A | void | #fff | #000 | torus |\nPIECE: X | box | cue")).toEqual([]);
@@ -146,5 +266,116 @@ describe("Mus3oDslStream", () => {
     const pieces = Array.from({ length: 15 }, (_, i) => `PIECE: C${i} | box | c`).join("\n");
     const { s } = run([`ROOM: a | A | void | #fff | #000 | torus |\n${pieces}`]);
     expect(s.rooms[0].pieces).toHaveLength(12);
+  });
+
+  it("no emite salas por encima de LIMITS.maxRooms y las piezas sobrantes no se cuelgan de otra sala", () => {
+    const raw = Array.from({ length: 15 }, (_, i) => `ROOM: r${i} | Sala ${i} | ancient | #112233 | #000000 | torus |\nPIECE: P${i} | box | c | key | e`).join("\n");
+    const { s } = run([raw]);
+    expect(s.rooms).toHaveLength(LIMITS.maxRooms);
+    expect(s.rooms.every((r) => r.pieces.length === 1)).toBe(true);
+  });
+
+  it("expone el título y las salas marcadas como diorama", () => {
+    const s = new Mus3oDslStream();
+    s.push("TITLE: Roma\nROOM: a | A | ancient | #112233 | #000000 | torus | | diorama\nPIECE: x | box | c | key | e\n");
+    s.end();
+    expect(s.docTitle).toBe("Roma");
+    expect(s.dioramaRooms).toEqual(["a"]);
+  });
+
+  // DSL como lo emite el flujo completo: TITLE, PERIOD, QUIZ, IMAGE, prerrequisitos, cruces y salas diorama.
+  const FLOW_DSL = [
+    "```dsl",
+    "TITLE: Roma antigua",
+    "ROOM: origen | Origen | ancient | #112233 | #000000 | torus |",
+    "PERIOD: 753 a. C.",
+    "PIECE: Rómulo | box | Un lobo amamanta | wolf | Fundador legendario",
+    "QUIZ: ¿Quién fundó Roma? | Rómulo | Remo | Numa | 0",
+    "IMAGE: img-1",
+    "ROOM: republica | República | ancient | #223344 | #000011 | crystal | origen | diorama",
+    "PERIOD: 509 a. C.",
+    "- **PIECE**: Senado | cube | Togas en círculo | column | Órgano de gobierno",
+    "QUIZ: ¿Qué es el Senado? | Un consejo | Un río | 0",
+    "IMAGE: img-1",
+    "IMAGE: img-2",
+    "ROOM: imperio | Imperio | cathedral | #334455 | #000022 | torus | origen, republica | | republica",
+    "PERIOD: 27 a. C.",
+    "PIECE: Augusto | shield | Corona de laurel | statue | Primer emperador",
+    "QUIZ: ¿Primer emperador? | Augusto | Nerón | 0",
+    "ROOM: origen | Origen otra vez | void | #445566 | #000033 | ring_system | imperio",
+    "PERIOD: 476",
+    "PIECE: Caída | box | Ruinas | ruins | Fin del imperio de occidente",
+    "QUIZ: ¿Cuándo cae? | 476 | 1453 | 0",
+    "```",
+  ].join("\n");
+
+  // PRNG determinista (mulberry32) para trocear el texto siempre igual.
+  const prng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const randomChunks = (text: string, seed: number) => {
+    const next = prng(seed);
+    const chunks: string[] = [];
+    for (let i = 0; i < text.length; ) {
+      const size = 1 + Math.floor(next() * 40);
+      chunks.push(text.slice(i, i + size));
+      i += size;
+    }
+    return chunks;
+  };
+
+  it("equivalencia: el museo final del stream es igual al de parseMus3oDSL (todos los modos, trozos aleatorios)", () => {
+    for (const mode of [undefined, "exploration", "quiz", "education", "biography"] as const) {
+      const options = { mode, imageIds: ["img-1"] };
+      const whole = parseMus3oDSL(FLOW_DSL, options);
+      for (let seed = 1; seed <= 25; seed++) {
+        const { s } = run(randomChunks(FLOW_DSL, seed), options);
+        expect(s.finish()).toEqual(whole);
+      }
+      // Salas emitidas = salas del museo final (mismo contenido, sin los campos internos del grafo).
+      const { s } = run(randomChunks(FLOW_DSL, 99), options);
+      expect(s.rooms.map(({ requires: _r, related: _l, ...room }) => room)).toEqual(whole.rooms);
+    }
+  });
+
+  it("edgesOf: las aristas provisionales de cada sala suman exactamente las del grafo final, en todos los modos", () => {
+    for (const mode of [undefined, "exploration", "quiz", "education", "biography"] as const) {
+      const options = { mode, imageIds: ["img-1"] };
+      const s = new Mus3oDslStream(options);
+      const seen: string[] = [];
+      const arrive = (rooms: ReturnType<typeof s.push>) => {
+        for (const r of rooms) {
+          // Cada arista conecta la sala que llega con una anterior.
+          for (const e of s.edgesOf(r.id)) {
+            expect([e.from, e.to]).toContain(r.id);
+            expect(seen.concat(r.id)).toEqual(expect.arrayContaining([e.from, e.to]));
+          }
+          seen.push(r.id);
+        }
+      };
+      for (const chunk of randomChunks(FLOW_DSL, 5)) arrive(s.push(chunk));
+      arrive(s.end());
+      const key = (e: { from: string; to: string; kind: string }) => `${e.from}>${e.to}:${e.kind}`;
+      const union = new Set(s.rooms.flatMap((r) => s.edgesOf(r.id)).map(key));
+      expect(union).toEqual(new Set((s.finish().graph?.edges ?? []).map(key)));
+    }
+  });
+
+  it("equivalencia: título, diorama, período, quiz e imagen se leen igual que en el parser de una pasada", () => {
+    const seen: string[][] = [];
+    const whole = parseMus3oDSL(FLOW_DSL, { mode: "quiz", imageIds: ["img-1"], onDioramaRooms: (ids) => seen.push(ids) });
+    const { s } = run(randomChunks(FLOW_DSL, 7), { mode: "quiz", imageIds: ["img-1"], onDioramaRooms: (ids: string[]) => seen.push(ids) });
+    s.finish();
+    expect(s.dioramaRooms).toEqual(seen[0]);
+    expect(seen[1]).toEqual(seen[0]);
+    expect(whole.title).toBe("Roma antigua");
+    expect(whole.rooms[0].period).toBe("753 a. C.");
+    expect(whole.rooms[0].pieces[0].quiz?.answerIndex).toBe(0);
+    expect(whole.rooms[0].pieces[0].image).toEqual({ imageId: "img-1" });
+    // Un id de imagen repetido se ignora: solo una pieza la usa.
+    expect(whole.rooms.flatMap((r) => r.pieces).filter((p) => p.image).length).toBe(1);
   });
 });

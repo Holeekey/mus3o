@@ -25,21 +25,35 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 ## 2. Landing (`ui/Landing.tsx`)
 
-- Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
-- **Subir archivo:** solo `.txt` y `.md`, máximo **200 KB**. No hay extracción de docx, xlsx ni csv en la interfaz todavía.
+- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los palacios destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
+- **Equipo:** `#equipo` muestra una página aparte (`ui/TeamSection.tsx`, elegida en `App.tsx` con `ui/useHash.ts`): galería vertical donde la tarjeta en el centro de la pantalla va a color y el resto en blanco y negro. Fotos en `public/team/<nombre>.jpg`.
+- Editor "Tus apuntes" (texto libre); el palacio se valida con el parser local (salas y conceptos en la barra de estado).
+- **"+ Fuentes"** abre y cierra una columna **dentro del recuadro del editor**, a la derecha del texto (debajo en pantallas ≤ 640 px) (`ui/SourcesPanel.tsx`); también se cierra con ✕ o Escape: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
+
+| Tipo | Cómo se lee |
+|---|---|
+| `.docx` | `mammoth.extractRawText` |
+| `.xlsx` | `read-excel-file/universal`; cada fila queda como `encabezado: valor; ...` |
+| `.csv` | Separador `,` o `;` detectado, con comillas; mismo formato que `.xlsx` |
+| `.json` | Aplanado a líneas `ruta: valor` |
+| `.txt`, `.md` | Texto tal cual |
+| `.png`, `.jpg`, `.jpeg`, `.webp` | Se achica a ≤ 1024 px y se pasa a JPEG (`readImageAttachment`); máx. `LIMITS.maxImages` (6) |
+| `.doc`, `.xls` | Rechazados con "Guárdalo como .docx / .xlsx" |
+
+  Todo el texto pasa por `compactText` (espacios normalizados, sin líneas vacías ni repetidas). Límites: hasta 10 archivos de texto, 100 000 caracteres por archivo y `LIMITS.maxDigestInputChars` (200 000) en total.
 - **Botones:**
 
 | Botón | Qué hace |
 |---|---|
 | Construir palacio | Usa el parser local (`parsePalace`), sin IA |
-| Generar con IA | `lib/api.ts#generateMuseum`: envía `{topic}` si es una línea corta, o `{notes}` si no |
+| Generar con IA | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
 | Entrar al palacio | Aparece tras generar con IA |
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
 | Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
 
 - Mensajes de error y "demasiadas solicitudes" (429) ya están manejados.
-- **Lo que la interfaz NO envía todavía:** `mode`, `sources[]`, `images[]`, ni llama a `/api/improve-prompt`. El contrato y el servidor sí lo soportan (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
+- **Lo que la interfaz envía:** `sources[]` e `images[]` cuando hay adjuntos, siempre con `mode: "exploration"`. **Todavía no** hay selector de modo ni llama a `/api/improve-prompt` (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
 
 ### Parser local de apuntes (`palace/parse.ts`)
 
@@ -89,13 +103,13 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 `buildLayout(palace)` convierte el `Museum` en geometría determinista (función pura, testeable):
 
 - Todo en metros, plano XZ; `Y` es la altura.
-- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`.
+- **Rejilla de salas** (`planRoomGrid`): cada sala ocupa una celda; las conexiones salen del grafo (`graph`) o del orden de `rooms`. Hasta 12 salas y grafos no lineales (ramas, convergencias): además del árbol de recorrido, toda arista entre salas vecinas en la grilla tiene puerta (bucles y atajos).
 - Tamaño de sala según el número de piezas (`sizes`). Muros con hueco de puerta; cada pared con puerta se divide en dos tramos.
 - **Puertas** (`DoorLayout`): `fromRoomId` determina qué llave abre cada puerta.
 - **Corredores** (`CorridorLayout`): piso y muros entre salas.
 - **Pedestales** (`PedestalLayout`): una pieza por pedestal, con forma `Glyph` (o modelo, en la escena).
 - **Cuadros** (`PaintingSlot`): huecos en muros interiores, fuera de las puertas. `SLOT_Y = 2.3`, `SLOT_GAP = 0.4`, `SLOT_DOOR_MARGIN = 0.6`, máx. 16 por sala.
-- **Colores de sala:** `ROOM_COLORS` (8 colores de neón) en orden de sala.
+- **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
 
@@ -110,13 +124,15 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `Player.tsx` | Controles FPS: **WASD** (o flechas), **Shift** correr, **mouse** mirar (pointer lock), colisiones, foco del concepto |
 | `ProceduralModel.tsx` | Dibuja modelos `procedural` con primitivas (cotas de tamaño) |
 | `Shapes.tsx` | Dibuja `glyph` (formas geométricas simples) |
+| `DynamicTotem.tsx` | Modelo `.glb` externo (`piece.dynamicAsset`, Poly Pizza): `useGLTF` + `scene.clone`, `Resize` 0,7 m + `Center bottom`, `ErrorBoundary` y `Suspense` con respaldo (el glifo o modelo procedural de siempre) |
 | `DungeonAssets.tsx` | Carga modelos de `catalog.json` (`type: "catalog"`) |
 | `Painting.tsx` | Cuadro con imagen real (`useResolvedImage`) |
 | `PortalPainting.tsx` | Cuadro-portal: vista en miniatura del diorama, `E` entra |
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
-| `Preview.tsx` | Vista previa del palacio en la landing |
+| `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
+| `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
 | `pointerLock.ts` | Utilidad para bloquear el puntero |
 
 ### Controles
@@ -138,7 +154,7 @@ En el examen, responder exige escribir, así que se libera el puntero.
 
 | Componente | Función |
 |---|---|
-| `Hud` | Panel de concepto (`ConceptCard`), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |
@@ -153,6 +169,9 @@ Asistente de estudio **sin IA**, por reglas:
 - Tolerancia a errores tipográficos con distancia de Levenshtein.
 - Saludos, presentación, orientación hacia la siguiente sala, conteo de conceptos pendientes, pistas.
 - `speakAris(text)` usa la síntesis de voz del navegador (sin librerías).
+- **Menos fallback:** además de las reglas de navegación, Aris reconoce conceptos y salas **por nombre** (tildes ignoradas y un typo de tolerancia) y responde con el texto o la asociación mnemotécnica de la pieza; lista los conceptos de la sala, cuenta salas, explica los controles y el método de Loci. Las coincidencias por subcadena o Levenshtein exigen palabras de 4+ letras (evita que "escolástica" salude). Preguntas sin letras reales (`??`) no llaman a Haiku.
+- **Límite de esfuerzo de la ayuda:** `askArisHelp` (`lib/api.ts`) responde con el respaldo, sin red, si ya hay una consulta en curso, si pasaron menos de 4 s desde la anterior o si se llegó a 10 por sesión; repite desde caché la misma pregunta en la misma sala.
+- **Ayuda de Haiku:** cuando ninguna regla coincide, `evaluateArisQuery` devuelve `needsHelp: true` y `askAris` (store) muestra "Déjame pensarlo…" y llama a `POST /api/aris-help` (`lib/api.ts` → `askArisHelp`) con la pregunta, el título del palacio, la sala actual y hasta 12 títulos de conceptos (nunca los apuntes). Si falla o no hay IA, se muestra el respaldo guiado de siempre. Si el jugador cierra el globo o pregunta otra cosa mientras tanto, la respuesta tardía se descarta.
 
 ## 8. Otras piezas
 

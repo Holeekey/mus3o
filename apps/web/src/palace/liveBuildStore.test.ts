@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Museum, Piece, Room } from '@mus3o/shared'
+import { LIMITS, type Museum, type Piece, type Room } from '@mus3o/shared'
 import { newBuildSession } from '../build/session'
 import { introState, resetIntroForTests, useIntro } from '../intro/store'
 import { floorKey } from '../intro/timeline'
@@ -100,8 +100,34 @@ describe('building store actions', () => {
     state().beginBuildingPalace({ title: 'T' })
     state().addBuiltRoom(room('a'))
     state().addBuiltRoom(room('a'))
-    for (let i = 0; i < 12; i++) state().addBuiltRoom(room(`x${i}`))
-    expect(state().palace?.rooms.length).toBe(8)
+    for (let i = 0; i < LIMITS.maxRooms + 4; i++) state().addBuiltRoom(room(`x${i}`))
+    expect(state().palace?.rooms.length).toBe(LIMITS.maxRooms)
+  })
+
+  it('gives every arriving room a living painting (library or composed), like entering the finished palace', () => {
+    state().beginBuildingPalace({ title: 'T' })
+    for (const r of ids.map((id) => room(id))) {
+      state().addBuiltRoom(r)
+      const arrived = state().palace!.rooms[state().palace!.rooms.length - 1]
+      expect(arrived.diorama).toBeDefined()
+      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBe(arrived.diorama)
+    }
+  })
+
+  it('at the end the rooms keep their live dioramas and receive the final content (3D models) without moving', () => {
+    state().beginBuildingPalace({ title: 'T' })
+    for (const r of ids.map((id) => room(id))) state().addBuiltRoom(r)
+    const live = state().palace!.rooms.map((r) => r.diorama)
+    const withModels: Museum = {
+      ...final(),
+      rooms: ids.map((id) => ({ ...room(id), pieces: room(id).pieces.map((p) => ({ ...p, model: { type: 'catalog' as const, id: 'torch' } })) })),
+    }
+    const before = state().layout!.rooms.map((r) => [r.x, r.z])
+    state().finishBuildingPalace(withModels)
+    expect(state().palace!.rooms.map((r) => r.diorama)).toEqual(live)
+    const after = state().layout!
+    expect(after.rooms.map((r) => [r.x, r.z])).toEqual(before)
+    expect(after.rooms.every((r) => r.pedestals.every((p) => p.concept.model?.type === 'catalog'))).toBe(true)
   })
 
   it('does not record progress while the key of the palace is still undefined', () => {
@@ -175,8 +201,9 @@ describe('building store actions', () => {
   })
 
   it('goes back to the landing, with the old palace and the error, when nothing was built', () => {
-    const before = final()
-    state().enterPalace(before)
+    state().enterPalace(final())
+    // enterPalace completa los dioramas: el palacio de antes es el que quedó guardado.
+    const before = state().palace
     state().exitToLanding()
     state().beginBuildingPalace({ title: 'T' })
     state().failBuildingPalace('No pudimos generar el palacio con IA.')
@@ -190,8 +217,9 @@ describe('building store actions', () => {
   })
 
   it('leaving the palace mid-build cuts the model connection and restores the previous palace', () => {
-    const before = final()
-    state().enterPalace(before)
+    state().enterPalace(final())
+    // enterPalace completa los dioramas: el palacio de antes es el que quedó guardado.
+    const before = state().palace
     state().exitToLanding()
     state().beginBuildingPalace({ title: 'T' })
     const live = newBuildSession()

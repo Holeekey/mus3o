@@ -1,5 +1,7 @@
-import { Canvas } from '@react-three/fiber'
-import { lazy, Suspense, useMemo } from 'react'
+import { PerformanceMonitor } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef } from 'react'
+import type { DirectionalLight } from 'three'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { DEFAULT_THEME, roomPalettes, type Theme } from '../theme'
@@ -8,17 +10,35 @@ import { IntroCamera } from '../intro/IntroCamera'
 import { HideDuringIntro, Reveal } from '../intro/Reveal'
 import { beginIntro, introState } from '../intro/store'
 import { BuildSite } from '../intro/BuildSite'
-import { STREAM_MAX_BOUNDS } from '../palace/layout'
 import { corridorKey } from '../intro/timeline'
 import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { ArisCompanion } from './ArisCompanion'
 import { AtmosphereController } from './AtmosphereController'
 import { DecayField } from './Decay'
+import { PerfOverlay, perfEnabled } from './PerfOverlay'
 import { Player } from './Player'
 import { Room } from './Room'
+import { StaticMerge } from './StaticMerge'
 
 // El mundo de los dioramas (entrar al cuadro) se descarga aparte y solo si alguna sala tiene uno.
 const DioramaRuntime = lazy(() => import('../diorama/DioramaRuntime').then((m) => ({ default: m.DioramaRuntime })))
+
+// El palacio es casi estático (solo giran los objetos de los pedestales y caen esquirlas): la sombra se
+// recalcula cada SHADOW_EVERY frames en vez de en todos, y en todos mientras dura la intro.
+const SHADOW_EVERY = 3
+
+// Si los frames se alargan de forma sostenida baja la resolución a 1x; si se recupera, vuelve a 1,5x.
+function AdaptiveQuality() {
+  const setDpr = useThree((s) => s.setDpr)
+  return (
+    <PerformanceMonitor
+      flipflops={3}
+      onDecline={() => setDpr(1)}
+      onIncline={() => setDpr(Math.min(1.5, window.devicePixelRatio || 1))}
+      onFallback={() => setDpr(1)}
+    />
+  )
+}
 
 // Un sol de mediodía cuya cámara de sombra cubre todo el palacio.
 function Sun({ bounds, theme }: { bounds: PalaceLayout['bounds']; theme: Theme }) {
@@ -30,9 +50,23 @@ function Sun({ bounds, theme }: { bounds: PalaceLayout['bounds']; theme: Theme }
   const [sx, sy, sz] = sun.position
   const len = Math.hypot(sx, sy, sz)
   const dist = half * 2 + 20
+  const light = useRef<DirectionalLight>(null)
+  const frame = useRef(0)
+  useLayoutEffect(() => {
+    const l = light.current
+    if (!l) return
+    l.shadow.autoUpdate = false
+    l.shadow.needsUpdate = true
+  }, [shadows])
+  useFrame(() => {
+    const l = light.current
+    if (!l) return
+    if (introState.active || frame.current++ % SHADOW_EVERY === 0) l.shadow.needsUpdate = true
+  })
   return (
     <>
       <directionalLight
+        ref={light}
         color={sun.color}
         intensity={sun.intensity}
         position={[cx + (sx / len) * dist, (sy / len) * dist, cz + (sz / len) * dist]}
@@ -79,13 +113,20 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
   )
-  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama && r.imageSearch), [layout])
+  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama), [layout])
   return (
-    <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat>
+    <Canvas
+      camera={{ fov: 70, near: 0.1, far: 300 }}
+      dpr={[1, 1.5]}
+      gl={{ powerPreference: 'high-performance', antialias: true }}
+      shadows={scene.shadows}
+      flat
+    >
+      <AdaptiveQuality />
       <color attach="background" args={[scene.background]} />
       <fog attach="fog" args={[scene.fog.color, scene.fog.near, scene.fog.far]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />
-      <Sun bounds={building ? STREAM_MAX_BOUNDS : layout.bounds} theme={theme} />
+      <Sun bounds={layout.bounds} theme={theme} />
       {building && <BuildSite />}
       <AtmosphereController layout={layout} theme={theme} />
       <DecayField layout={layout} theme={theme} />
@@ -111,10 +152,12 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         return (
           <Reveal key={i} id={corridorKey(i)} mode="rise" /* INTRO */>
           <group>
-            <AssetFloor box={c.floor} color={scene.corridor.floor} />
-            {c.walls.map((w, j) => (
-              <AssetWall key={j} box={w} color={scene.corridor.wall} />
-            ))}
+            <StaticMerge>
+              <AssetFloor box={c.floor} color={scene.corridor.floor} />
+              {c.walls.map((w, j) => (
+                <AssetWall key={j} box={w} color={scene.corridor.wall} />
+              ))}
+            </StaticMerge>
             {/* Puerta interactiva con físicas y animación al inicio del pasillo */}
             {/* Una sola luz por pasillo (en la compuerta) para no multiplicar el costo de iluminación */}
             <AssetDoorway position={doorPosA} rotation={[0, rotY, 0]} isOpen={isOpen} light />
@@ -124,6 +167,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
           </Reveal>
         )
       })}
+      {perfEnabled() && <PerfOverlay />}
       <IntroCamera layout={layout} />
       <Player layout={layout} />
       {hasDiorama && (

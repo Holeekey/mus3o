@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseMus3oDSL, type MuseumStreamEvent } from '@mus3o/shared'
-import { ApiError, createLineSplitter, describeAiError, generateMuseumStream } from './api'
+import { ApiError, createLineSplitter, describeAiError, generateMuseumFromFilesStream, generateMuseumStream } from './api'
 
 const museum = parseMus3oDSL(
   [
@@ -70,6 +70,22 @@ describe('generateMuseumStream', () => {
     expect(calls[0][0]).toBe('/api/generate-museum/stream')
     expect(JSON.parse(calls[0][1].body)).toEqual({ topic: 'Volcanes' })
     expect(JSON.parse(calls[1][1].body)).toEqual({ notes: 'línea uno\nlínea dos' })
+  })
+
+  it('keeps the provisional edges that come with a room', async () => {
+    const withEdges = [events[0], { ...events[1] }, { type: 'room', room: museum.rooms[1], edges: [{ from: 'r1', to: 'r2', kind: 'related' }] }, events[3]]
+    vi.stubGlobal('fetch', vi.fn(async () => streamed(ndjson(withEdges))))
+    const got = await collect(generateMuseumStream('x'))
+    expect(got[2]).toMatchObject({ type: 'room', edges: [{ from: 'r1', to: 'r2', kind: 'related' }] })
+  })
+
+  it('streams the full-flow request (mode, prompt, sources, images) to the same endpoint', async () => {
+    const fetchMock = vi.fn(async () => streamed(ndjson(events)))
+    vi.stubGlobal('fetch', fetchMock)
+    await collect(generateMuseumFromFilesStream({ prompt: 'Roma', sources: [], images: [] }))
+    const calls = fetchMock.mock.calls as unknown as Array<[string, { body: string }]>
+    expect(calls[0][0]).toBe('/api/generate-museum/stream')
+    expect(JSON.parse(calls[0][1].body)).toEqual({ mode: 'exploration', prompt: 'Roma', sources: [], images: [] })
   })
 
   it('delivers an error event and stops there', async () => {

@@ -1,10 +1,19 @@
-import type { Museum, MuseumStreamEvent } from '@mus3o/shared'
-import { ApiError, describeAiError, generateMuseum, generateMuseumStream, looksLikeTopic } from '../lib/api'
+import { edgesAtArrival, type InputImage, type Museum, type MuseumStreamEvent, type Source } from '@mus3o/shared'
+import {
+  ApiError,
+  describeAiError,
+  generateMuseum,
+  generateMuseumFromFiles,
+  generateMuseumFromFilesStream,
+  generateMuseumStream,
+  looksLikeTopic,
+  type FilesStage,
+} from '../lib/api'
 import { prefetchRoomImages } from '../lib/images'
 import { useStore } from '../store'
 import { newBuildSession } from './session'
 
-/** Pausa entre salas al reproducir un museo que no llegó por streaming (servidor sin el endpoint). */
+/** Pausa entre salas al reproducir un museo que no llegó por streaming (el servidor falló o no tiene el endpoint). */
 const REPLAY_GAP_MS = 450
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
@@ -15,30 +24,50 @@ const sleep = (ms: number, signal: AbortSignal) =>
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 /**
- * "Generar con IA": entra al palacio de inmediato (solar vacío, cámara aérea) y lo va levantando sala a
- * sala según la IA las escribe. Un fallo antes de la primera sala vuelve a la landing con el error; uno a
- * mitad conserva las salas que ya hay.
+ * Qué se le pide a la IA:
+ * - `text`: el texto del editor sin archivos adjuntos (una línea corta es un tema; el resto, apuntes).
+ * - `files`: el flujo completo con archivos e imágenes adjuntos (`text` es lo que se usa para verificar las citas).
  */
-export async function startLiveBuild(input: string): Promise<void> {
-  const text = input.trim()
-  // Con apuntes se guardan para mostrar el contexto de cada fuente; un tema no tiene fuentes.
-  const notes = !looksLikeTopic(text)
+export type LiveBuildRequest =
+  | { kind: 'text'; text: string }
+  | { kind: 'files'; prompt: string; sources: Source[]; images: InputImage[]; text: string; userImages: Record<string, string> }
+
+/** Ni reintentar sin streaming sirve de nada: la IA no está configurada, hay demasiadas solicitudes o el pedido no vale. */
+const NO_FALLBACK = new Set([400, 429, 503])
+
+/**
+ * "Generar con IA": entra al palacio de inmediato (solar vacío, cámara aérea) y lo va levantando sala a
+ * sala según la IA las escribe. Un fallo antes de la primera sala vuelve a la landing con el error (tras
+ * reintentar una vez sin streaming si el fallo no era de configuración o de límite); uno a mitad conserva las
+ * salas que ya hay.
+ */
+export async function startLiveBuild(request: LiveBuildRequest, onStage?: (stage: FilesStage) => void): Promise<void> {
+  const files = request.kind === 'files'
+  const text = request.text.trim()
   const store = () => useStore.getState()
-  store().beginBuildingPalace({ title: notes ? 'Tu palacio' : text, sourceText: notes ? text : null, reducedMotion: prefersReducedMotion() })
+  store().beginBuildingPalace({
+    title: files ? 'Tu palacio' : looksLikeTopic(text) ? text : 'Tu palacio',
+    sourceText: text || null,
+    userImages: files ? request.userImages : {},
+    reducedMotion: prefersReducedMotion(),
+  })
   // Abre la sesión nueva (y corta la de una generación anterior, cuyos eventos tardíos se descartan).
   const { signal } = newBuildSession()
 
   let built = 0
   let finished = false
   const onRoom = (event: Extract<MuseumStreamEvent, { type: 'room' }>) => {
-    store().addBuiltRoom(event.room)
+    store().addBuiltRoom(event.room, event.edges)
     built++
     // En paralelo a que la sala se levanta: el cuadro principal primero, luego los de las piezas.
     void prefetchRoomImages(event.room)
   }
 
   try {
-    for await (const event of generateMuseumStream(text, signal)) {
+    const events = files
+      ? generateMuseumFromFilesStream({ prompt: request.prompt, sources: request.sources, images: request.images }, onStage, signal)
+      : generateMuseumStream(text, signal)
+    for await (const event of events) {
       if (signal.aborted) return
       if (event.type === 'meta') store().setBuildTitle(event.title)
       else if (event.type === 'room') onRoom(event)
@@ -51,24 +80,27 @@ export async function startLiveBuild(input: string): Promise<void> {
   } catch (e) {
     if (signal.aborted) return
     const status = (e as { status?: number }).status
-    // Servidor sin el endpoint de streaming: se pide el museo entero y se levanta igual, sala a sala.
-    if (built === 0 && (status === 404 || status === 405)) {
-      await replayWhole(text, signal)
+    // Sin ninguna sala todavía: se pide el museo entero por el camino de siempre y se levanta igual, sala a sala.
+    if (built === 0 && !(status !== undefined && NO_FALLBACK.has(status))) {
+      await replayWhole(request, onStage, signal)
       return
     }
     store().failBuildingPalace(describeAiError(status))
   }
 }
 
-async function replayWhole(text: string, signal: AbortSignal) {
+async function replayWhole(request: LiveBuildRequest, onStage: ((stage: FilesStage) => void) | undefined, signal: AbortSignal) {
   try {
-    const museum: Museum = await generateMuseum(text, signal)
+    const museum: Museum =
+      request.kind === 'files'
+        ? await generateMuseumFromFiles({ prompt: request.prompt, sources: request.sources, images: request.images }, onStage, signal)
+        : await generateMuseum(request.text, signal)
     const store = () => useStore.getState()
     store().setBuildTitle(museum.title)
     for (const [i, room] of museum.rooms.entries()) {
       if (i > 0) await sleep(REPLAY_GAP_MS, signal)
       if (signal.aborted) return
-      store().addBuiltRoom(room)
+      store().addBuiltRoom(room, edgesAtArrival(museum, i))
       void prefetchRoomImages(room)
     }
     store().finishBuildingPalace(museum)

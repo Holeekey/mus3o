@@ -163,3 +163,8 @@ export function creditLine(image: ResolvedImage): string {
   const license = /^public domain$/i.test(image.license) ? 'Dominio público' : image.license
   return [image.title, image.artist, license].filter(Boolean).join(' · ')
 }
+
+/** Una imagen subida por el usuario, con la misma forma que una de Wikimedia (placa y ficha). */
+export function userImageAsResolved(src: string, title: string): ResolvedImage {
+  return { src, width: 1024, height: 768, title, artist: '', license: 'Imagen subida por ti', sourceUrl: '', kind: 'photo' }
+}

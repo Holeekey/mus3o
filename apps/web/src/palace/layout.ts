@@ -1,4 +1,5 @@
-import { LIMITS, planRoomGrid, type Diorama, type Glyph, type ImageSearch, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
+import { chooseCenterpiece, type Centerpiece } from './centerpiece'
+import { emptyGrid, extraGridLinks, placeRoom, planRoomGrid, type Diorama, type Glyph, type GraphEdge, type ImageSearch, type IncrementalGrid, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -31,6 +32,8 @@ export type RoomLayout = {
   d: number
   height: number
   monument: Monument | MonumentType
+  /** Pieza central del tema (o null: sala despejada). Sustituye al monumento en el render. */
+  centerpiece: Centerpiece | null
   doors: Side[]
   walls: Box[]
   pedestals: PedestalLayout[]
@@ -64,9 +67,11 @@ export type PalaceLayout = {
   doors: DoorLayout[]
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
   spawn: { x: number; z: number; yaw: number }
+  /** Solo en un palacio que se levanta en vivo: lo que hace falta para añadir la sala siguiente sin mover las demás. */
+  stream?: { inputs: RoomInput[]; grid: IncrementalGrid; edges: GraphEdge[] }
 }
 
-export const ROOM_COLORS = ['#2EE6D6', '#FF3DA5', '#FFB547', '#8B7CFF', '#7CFF6B', '#FF6B5B', '#4DB8FF', '#F2F26B']
+export const ROOM_COLORS = ['#2EE6D6', '#FF3DA5', '#FFB547', '#8B7CFF', '#7CFF6B', '#FF6B5B', '#4DB8FF', '#F2F26B', '#FF8AD8', '#38D9A9', '#E8B04A', '#A0A8FF']
 const MONUMENTS: Monument[] = ['icosahedron', 'torusKnot', 'octahedron', 'dodecahedron', 'cone', 'torus']
 const SHAPES: Shape[] = ['icosahedron', 'octahedron', 'dodecahedron', 'tetrahedron', 'torus', 'cone', 'box', 'sphere']
 
@@ -229,6 +234,8 @@ function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: 
     d,
     height,
     monument: room.monument || MONUMENTS[i % MONUMENTS.length],
+    // Sin hasDiorama: ahora todas las salas llevan cuadro vivo, así que ya no distingue nada.
+    centerpiece: chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title) }),
     doors,
     walls: roomWalls(x, z, w, d, height, doors),
     pedestals,
@@ -300,7 +307,8 @@ function collidersOf(rooms: RoomLayout[], corridors: CorridorLayout[]): Box[] {
     ...rooms.flatMap((r) => r.walls.filter((w) => !w.y)),
     ...corridors.flatMap((c) => c.walls),
     ...rooms.flatMap((r) => r.pedestals.map((p) => ({ x: p.x, z: p.z, w: PEDESTAL_SIZE, d: PEDESTAL_SIZE, h: 1 }))),
-    ...rooms.map((r) => ({ x: r.x, z: r.z, w: 1.6, d: 1.6, h: 2 })),
+    // Solo hay collider donde hay pieza central: un centro despejado se puede cruzar.
+    ...rooms.flatMap((r) => (r.centerpiece ? [{ x: r.x, z: r.z, w: r.centerpiece.footprint[0], d: r.centerpiece.footprint[1], h: r.centerpiece.height }] : [])),
   ]
 }
 
@@ -358,92 +366,99 @@ export function buildLayout(palace: Museum): PalaceLayout {
 
 // ── Construcción incremental (palacio que se levanta mientras la IA lo escribe) ─────────────────────
 //
-// Las salas se ubican en serpiente (E, luego S, luego O…), `STREAM_COLS` por fila, en el orden en que
-// llegan, y cada una se une con la anterior. Una sala ya puesta no se mueve nunca: la celda es fija
-// (`STREAM_CELL`, suficiente para cualquier sala permitida) y la posición solo depende del índice.
-// El layout final es el incremental (no se recalcula con `buildLayout`), así que nada salta al terminar.
+// Cada sala se ubica al llegar, junto a la que la enlaza en el grafo (`placeRoom`, la misma regla que usa
+// `buildLayout` pero sin mirar las salas que aún no existen), en una grilla de celda fija (`STREAM_CELL`,
+// suficiente para cualquier sala permitida). Una sala ya puesta no se mueve nunca: su posición solo depende
+// de las salas anteriores. Lo único que cambia en una sala ya mostrada es que se le abre una puerta cuando
+// llega una sala que cuelga de ella. Al terminar, `finalizeLayout` añade las puertas extra del grafo final
+// (bucles y atajos entre salas vecinas) y refresca el contenido (modelos 3D, dioramas) sin mover nada.
 
-export const STREAM_COLS = 3
 export const STREAM_CELL = 24
-/** Límites de un palacio en construcción lleno (LIMITS.maxRooms salas): sol y sombras se encuadran una vez y no se mueven al crecer. */
-export const STREAM_MAX_BOUNDS = { minX: -11, maxX: (STREAM_COLS - 1) * STREAM_CELL + 11, minZ: -9, maxZ: (Math.ceil(LIMITS.maxRooms / STREAM_COLS) - 1) * STREAM_CELL + 9 }
-/** La IA aún no mandó la primera sala: el punto de entrada ya es el de cualquier primera sala. */
+/** Solar de la obra: la retícula tenue que se dibuja mientras la cámara aérea espera la primera sala. */
+export const STREAM_MAX_BOUNDS = { minX: -36, maxX: 84, minZ: -36, maxZ: 84 }
+/** La IA aún no mandó la primera sala: el punto de entrada ya es el de cualquier primera sala (en el origen). */
 const STREAM_SPAWN: PalaceLayout['spawn'] = { x: -4.5, z: -4.5, yaw: Math.atan2(-4.5, -4.5) }
-
-/** Celda de la sala `i` en la serpiente. */
-export function streamCell(i: number): { row: number; col: number } {
-  const row = Math.floor(i / STREAM_COLS)
-  return { row, col: row % 2 === 0 ? i % STREAM_COLS : STREAM_COLS - 1 - (i % STREAM_COLS) }
-}
 
 /** Palacio vacío: solo el solar. La cámara aérea lo enmarca alrededor del origen. */
 export function emptyLayout(): PalaceLayout {
   return { rooms: [], corridors: [], colliders: [], doors: [], bounds: { minX: -12, maxX: 12, minZ: -12, maxZ: 12 }, spawn: STREAM_SPAWN }
 }
 
-// Hacia dónde queda la sala i+1 respecto de la i.
-const streamSide = (i: number): Side => sideToward(streamCell(i), streamCell(i + 1))
+const sameSides = (a: Side[], b: Side[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
 
-/** Muro invisible sobre la puerta de la última sala, que aún no tiene a dónde llevar. */
-function pendingDoorSeal(room: RoomLayout, side: Side): Box {
-  const reach = 0.6
-  const horizontal = side === 'n' || side === 's'
-  const dx = side === 'e' ? room.w / 2 : side === 'w' ? -room.w / 2 : 0
-  const dz = side === 's' ? room.d / 2 : side === 'n' ? -room.d / 2 : 0
-  return { x: room.x + dx, z: room.z + dz, w: horizontal ? DOOR_W : reach, d: horizontal ? reach : DOOR_W, h: 3 }
-}
-
-/**
- * Agrega una sala al final del layout sin mover ninguna de las anteriores (conservan su objeto).
- * La última sala reserva ya su puerta hacia la siguiente —así sus muros y cuadros no cambian cuando
- * llega— y la puerta queda tapada con un collider hasta que llega la sala siguiente. Pura.
- * Llamar a `finalizeLayout` al terminar para cerrar la puerta reservada de la última sala.
- */
-export function appendRoomToLayout(layout: PalaceLayout, room: RoomInput): PalaceLayout {
-  const i = layout.rooms.length
-  const cell = streamCell(i)
-  const size = roomSize(room, i)
-  const doors: Side[] = []
-  if (i > 0) doors.push(opposite[streamSide(i - 1)])
-  doors.push(streamSide(i)) // reservada: se tapa hasta que llegue la siguiente
-  const next = makeRoomLayout(room, i, cell.col * STREAM_CELL, cell.row * STREAM_CELL, size, doors)
-
-  const rooms = [...layout.rooms, next]
-  const corridors = [...layout.corridors]
-  const linkDoors = [...layout.doors]
-  if (i > 0) {
-    const { corridor, door } = makeLink(layout.rooms[i - 1], next, streamSide(i - 1), i - 1)
-    corridors.push(corridor)
-    linkDoors.push(door)
-  }
+/** Arma el layout de un palacio en construcción reutilizando los objetos que no cambiaron. */
+function assembleStream(prev: PalaceLayout, inputs: RoomInput[], grid: IncrementalGrid, edges: GraphEdge[], links: Array<[number, number]>): PalaceLayout {
+  const doorsOf: Side[][] = inputs.map(() => [])
+  const sides = links.map(([a, b]) => sideToward(grid.cells[a], grid.cells[b]))
+  links.forEach(([a, b], k) => {
+    doorsOf[a].push(sides[k])
+    doorsOf[b].push(opposite[sides[k]])
+  })
+  const rooms = inputs.map((input, i) => {
+    const old = prev.rooms[i]
+    // Misma sala, mismo contenido y mismas puertas: se conserva el objeto.
+    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i])) return old
+    return makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i])
+  })
+  const corridors: CorridorLayout[] = []
+  const doors: DoorLayout[] = []
+  links.forEach(([a, b], k) => {
+    // El pasillo solo depende de la posición y el tamaño de sus dos salas (no de sus puertas ni de su contenido).
+    const same = (x?: RoomLayout, y?: RoomLayout) => !!x && !!y && x.x === y.x && x.z === y.z && x.w === y.w && x.d === y.d
+    const unchanged = prev.corridors[k] && prev.doors[k] && same(prev.rooms[a], rooms[a]) && same(prev.rooms[b], rooms[b])
+    if (unchanged) {
+      corridors.push(prev.corridors[k])
+      doors.push(prev.doors[k])
+      return
+    }
+    const link = makeLink(rooms[a], rooms[b], sides[k], k)
+    corridors.push(link.corridor)
+    doors.push(link.door)
+  })
   return {
     rooms,
     corridors,
-    doors: linkDoors,
-    colliders: [...collidersOf(rooms, corridors), pendingDoorSeal(next, streamSide(i))],
+    doors,
+    colliders: collidersOf(rooms, corridors),
     bounds: boundsOf(rooms),
-    spawn: layout.spawn,
+    spawn: prev.spawn,
+    stream: { inputs, grid, edges },
   }
 }
 
 /**
- * Cierra la puerta reservada de la última sala (ya no llegará otra) y quita el muro invisible.
- * Es lo único que cambia al terminar: solo muros y cuadros de esa sala; ninguna sala se mueve.
+ * Agrega una sala al final del layout sin mover ninguna de las anteriores. `edges` son las aristas de la sala con
+ * las anteriores (según el modo): la sala se ubica junto a la que mejor la enlaza; sin aristas, junto a la última.
+ * Una sala anterior solo cambia de objeto si se le abre una puerta hacia la nueva. Pura.
+ * Llamar a `finalizeLayout` al terminar.
  */
-export function finalizeLayout(layout: PalaceLayout): PalaceLayout {
-  const n = layout.rooms.length
-  if (n === 0) return layout
-  const last = layout.rooms[n - 1]
-  const doors = last.doors.filter((side) => side !== streamSide(n - 1))
-  if (doors.length === last.doors.length) return layout
-  const sealed: RoomLayout = {
-    ...last,
-    doors,
-    walls: roomWalls(last.x, last.z, last.w, last.d, last.height, doors),
-    paintingSlots: paintingSlots(last.x, last.z, last.w, last.d, doors),
-  }
-  const rooms = [...layout.rooms.slice(0, n - 1), sealed]
-  return { ...layout, rooms, colliders: collidersOf(rooms, layout.corridors), bounds: boundsOf(rooms) }
+export function appendRoomToLayout(layout: PalaceLayout, room: RoomInput, edges: GraphEdge[] = []): PalaceLayout {
+  const state = layout.stream ?? { inputs: [], grid: emptyGrid(), edges: [] }
+  const i = state.inputs.length
+  const known = i === 0 || edges.length > 0 ? edges : [{ from: state.grid.ids[i - 1], to: room.id, kind: 'next' as const }]
+  const grid = placeRoom(state.grid, room.id, known)
+  const have = new Set(state.edges.map((e) => `${e.from}>${e.to}:${e.kind}`))
+  const allEdges = [...state.edges, ...known.filter((e) => !have.has(`${e.from}>${e.to}:${e.kind}`))]
+  return assembleStream(layout, [...state.inputs, room], grid, allEdges, grid.links)
+}
+
+/** Aristas conocidas del palacio que se está levantando (para el grafo provisional del museo). */
+export const streamEdges = (layout: PalaceLayout): GraphEdge[] => layout.stream?.edges ?? []
+
+/**
+ * Cierra el layout al terminar: con el museo final, añade las puertas extra de su grafo (bucles y atajos entre salas
+ * que quedaron vecinas) y refresca el contenido de cada sala (modelos 3D, dioramas, búsquedas) sin moverla.
+ * Sin museo, usa las aristas conocidas. Devuelve el mismo objeto si no hay nada que cambiar.
+ */
+export function finalizeLayout(layout: PalaceLayout, museum?: Pick<Museum, 'rooms' | 'graph'>): PalaceLayout {
+  const state = layout.stream
+  if (!state || state.inputs.length === 0) return layout
+  const byId = new Map((museum?.rooms ?? []).map((r) => [r.id, r]))
+  const inputs = state.inputs.map((input) => byId.get(input.id) ?? input)
+  const edges = museum?.graph?.edges ?? state.edges
+  const links = [...state.grid.links, ...extraGridLinks(state.grid, edges)]
+  if (links.length === layout.corridors.length && inputs.every((input, i) => input === state.inputs[i])) return layout
+  return assembleStream(layout, inputs, state.grid, edges, links)
 }
 
 export function roomAt(layout: PalaceLayout, x: number, z: number): RoomLayout | null {
@@ -467,24 +482,35 @@ export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: n
   return { x: nx, z: nz }
 }
 
-export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string; roomId?: string; diorama?: Diorama }
+/** Imagen subida por el usuario y asignada por la IA a una pieza (vive solo en memoria). */
+export type UserImage = { src: string; title: string }
+
+export type PaintingAssignment = {
+  slot: PaintingSlot
+  key: string
+  /** Búsqueda en Wikimedia; falta cuando el cuadro muestra una imagen del usuario. */
+  search?: ImageSearch
+  userImage?: UserImage
+  roomId?: string
+  diorama?: Diorama
+}
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
 
 /**
- * La búsqueda de la sala va al cuadro principal; cada pieza con búsqueda, al hueco libre
- * más cercano a su pedestal. Si faltan huecos, las piezas sobrantes se quedan sin cuadro.
+ * La búsqueda de la sala va al cuadro principal. Después, las piezas con una imagen del usuario
+ * (si sigue en memoria) y luego las piezas con búsqueda, cada una al hueco libre más cercano a su
+ * pedestal. Si faltan huecos, las piezas sobrantes se quedan sin cuadro.
  */
-export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
+export function assignPaintings(room: RoomLayout, userImages: Record<string, string> = {}): PaintingAssignment[] {
   const out: PaintingAssignment[] = []
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
-  if (main && hasSearch(room.imageSearch)) {
-    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
+  if (main && (hasSearch(room.imageSearch) || room.diorama)) {
+    out.push({ slot: main, search: hasSearch(room.imageSearch) ? room.imageSearch : undefined, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
     free.splice(free.indexOf(main), 1)
   }
-  for (const p of room.pedestals) {
-    if (!hasSearch(p.concept.imageSearch) || free.length === 0) continue
+  const nearestFree = (p: PedestalLayout) => {
     let best = 0
     let bestD = Infinity
     free.forEach((s, i) => {
@@ -494,8 +520,17 @@ export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
         best = i
       }
     })
-    out.push({ slot: free[best], search: p.concept.imageSearch, key: `piece:${p.concept.id}` })
-    free.splice(best, 1)
+    return free.splice(best, 1)[0]
+  }
+  const userSrc = (p: PedestalLayout) => (p.concept.image ? userImages[p.concept.image.imageId] : undefined)
+  for (const p of room.pedestals) {
+    const src = userSrc(p)
+    if (!src || free.length === 0) continue
+    out.push({ slot: nearestFree(p), userImage: { src, title: p.concept.title }, key: `user:${p.concept.id}` })
+  }
+  for (const p of room.pedestals) {
+    if (userSrc(p) || !hasSearch(p.concept.imageSearch) || free.length === 0) continue
+    out.push({ slot: nearestFree(p), search: p.concept.imageSearch, key: `piece:${p.concept.id}` })
   }
   return out
 }

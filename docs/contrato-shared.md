@@ -20,12 +20,14 @@ Tests: `schema.test.ts`, `sources.test.ts`, `diorama.test.ts`, `grid.test.ts`.
 | Clave | Valor | Uso |
 |---|---|---|
 | `maxNotesChars` | 20 000 | Texto total (prompt + fuentes) y prompt de apuntes |
-| `maxRooms` | 8 | Salas por museo |
+| `maxRooms` | 12 | Salas por museo (3 a 12 según el volumen de contenido; 12 solo con mucha documentación) |
 | `maxPiecesPerRoom` | 12 | Piezas por sala |
 | `maxTitle` | 80 | Títulos de sala, pieza y del museo |
 | `maxText` | 400 | Descripciones, `text` y `fact` |
 | `maxImages` | 6 | Imágenes subidas por el usuario en una generación |
 | `maxQuote` | 240 | Cita de fuente |
+| `maxDigestInputChars` | 200 000 | Texto total que acepta `/api/digest-sources` |
+| `maxDigestChars` | 15 000 | Largo máximo del temario base (prompt + temario < 20 000) |
 
 Otros límites: `DIORAMA_HALF = 14` (los props viven en [-14, 14] m), `MAX_PROPS = 24`.
 Coordenadas de piezas acotadas a ±5 y rotaciones a ±7 para que una salida descuidada no rompa la escena.
@@ -99,10 +101,12 @@ Reglas (`checkGraph` y `checkModeGraph` en `schema.ts`):
 
 | Modo | Forma exigida | Campos extra |
 |---|---|---|
-| `exploration` (por defecto) | Árbol: exactamente `salas − 1` aristas | — |
-| `education` | Aristas `next` forman un único camino que empieza en `start` y cubre todas las salas | — |
-| `biography` | Igual que `education` (cadena cronológica) | `period` obligatorio en cada sala |
-| `quiz` | Árbol (aristas `related`) | `quiz` obligatorio en cada pieza |
+| `exploration` (por defecto) | Conexo; árbol con conexiones transversales permitidas (no tiene que ser lineal) | — |
+| `education` | Un camino `next` por todas las salas **o** un DAG de aristas dirigidas (`next`/`prerequisite`, sin ciclos) alcanzable desde `start`: ramas y convergencias | — |
+| `biography` | Cadena cronológica `next` por todas las salas (las `related` son cruces extra) | `period` obligatorio en cada sala |
+| `quiz` | Conexo (árbol de temas + cruces `related`) | `quiz` obligatorio en cada pieza |
+
+Hasta `MAX_EDGES` = 28 aristas (árbol de 11 + conexiones transversales con 12 salas).
 
 Además, `checkMuseum` exige: ids de sala y de pieza únicos; cada `image.imageId` se usa en una sola pieza.
 
@@ -136,7 +140,7 @@ Detalle en [diorama.md](./diorama.md).
 ## 5. Fuentes (`SourceSchema`) y request de generación
 
 ```ts
-Source = { name (≤120), kind: docx|xlsx|csv|txt, text (≤20 000) }   // texto ya extraído en el navegador
+Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json, text (≤20 000) }   // texto ya extraído en el navegador
 
 GenerateMuseumRequest = {
   mode: MuseumMode (default "exploration"),
@@ -148,6 +152,18 @@ GenerateMuseumRequest = {
 
 `ImprovePromptRequestSchema` es lo mismo sin imágenes. Solo se usa en la ruta de depuración.
 
+`SourceKindSchema` es el enum de `kind`, compartido con el digest.
+
+### Temario base (`/api/digest-sources`)
+
+```ts
+DigestSourcesRequest = { sources: { name (1..120), kind: SourceKind, text (1..100 000) }[] (1..10) }
+                       // total de texto ≤ LIMITS.maxDigestInputChars (200 000)
+DigestSourcesResponse = { digest: string (1..LIMITS.maxDigestChars) }
+```
+
+El navegador lo pide solo cuando el texto extraído supera `LIMITS.maxNotesChars`; el `digest` pasa a ser la única fuente del request de generación.
+
 Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..200 car.) o `{ notes }`.
 
 ## 6. Cómo se usan los esquemas
@@ -156,6 +172,8 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 |---|---|---|
 | `apps/server/src/claude.ts` | `MuseumSchema` sobre la salida de Claude | Reintenta una vez con el error |
 | `apps/server/src/app.ts` | `GenerateMuseumRequestSchema` / formato legacy | HTTP 400 |
+| `apps/server/src/app.ts` | `DigestSourcesRequestSchema` | HTTP 400 |
+| `apps/server/src/claude.ts` | `DigestSourcesResponseSchema` sobre el temario | HTTP 502 |
 | `apps/web/src/lib/api.ts` | `MuseumSchema` sobre la respuesta | Error "La IA devolvió un palacio inválido" |
 | `apps/web/src/store.ts` (`merge`) | `MuseumSchema` sobre lo guardado en `localStorage` | Se descarta el palacio guardado |
 | `apps/web/src/palace/parse.ts` | `MuseumSchema` sobre el parser local | Error con mensaje para el usuario |
@@ -165,7 +183,7 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 `MuseumMode`, `Museum`, `Room`, `Piece`, `Model`, `Part`, `Glyph`, `Quiz`, `ImageSearch`, `ResolvedImage`,
 `PieceSource`, `Graph`, `GraphEdge`, `Diorama`, `DioramaProp`, `DioramaKind`, `DioramaPose`,
 `DioramaTerrain`, `DioramaTime`, `FlagPattern`, `Source`, `InputImage`, `GenerateMuseumRequest`,
-`ImprovePromptRequest`, `ImprovePromptResponse`.
+`ImprovePromptRequest`, `ImprovePromptResponse`, `SourceKind`, `DigestSourcesRequest`, `DigestSourcesResponse`.
 
 ## 8. Cómo cambiar el contrato sin romper nada
 
@@ -174,3 +192,8 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 3. Si la IA debe producirlo, actualiza el prompt en `apps/server/src/prompts.ts`.
 4. Si el frontend lo pinta, actualiza `apps/web`. Un palacio viejo debe seguir validando.
 5. Corre `npm test` en `shared`, `server` y `web`.
+
+## Modelos dinámicos en `Piece`
+
+- `searchKeyword?`: sustantivo físico en inglés (regex `SearchKeywordSchema`); lo propone la IA (campo 4 de `PIECE:` en el DSL).
+- `dynamicAsset?` (`DynamicAssetSchema`): `{ assetId, url, title, author, license: "CC0" | "CC-BY", sourceUrl }`. Lo rellena el servidor; `url` solo puede ser `/api/assets/<id>.glb`. Ambos campos usan `.catch(undefined)`: un valor inválido se descarta sin romper el museo.

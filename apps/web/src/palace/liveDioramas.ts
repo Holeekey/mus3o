@@ -1,20 +1,29 @@
 import type { Museum, Room } from '@mus3o/shared'
+import { attachComposedDioramas } from '../diorama/compose'
 import { attachLibraryDioramas } from '../diorama/library'
+import { DEFAULT_THEME, roomPalettes } from '../theme'
 
 /**
- * PUNTO DE ENGANCHE de la construcción en vivo: lo que se hace con los dioramas de una sala en cuanto
- * llega de la IA. Hoy recupera uno de la biblioteca si encaja (igual que `enterPalace` con el museo completo,
- * pero con las salas vistas hasta ahora: una entrada de la biblioteca solo se usa una vez).
+ * Dioramas de una sala en cuanto llega de la IA, con el mismo criterio que `enterPalace` con el museo completo:
+ * primero la biblioteca (si encaja; una entrada solo se usa una vez entre las salas vistas hasta ahora) y luego un
+ * diorama compuesto —sin IA— con el pigmento del fresco de la sala. Así todas las salas llevan cuadro vivo.
  *
- * Si se añade un paso que componga dioramas por sala (p. ej. `composeDiorama`), se cambia solo esta función:
- * recibe las salas ya levantadas y la que llega, y devuelve la sala que se mostrará.
+ * Recibe las salas ya levantadas (que ya tienen su diorama y no se tocan) y la que llega, y devuelve la sala que se
+ * mostrará. El pigmento depende del orden de llegada (`roomPalettes` es estable por prefijo), igual que en el museo final.
  */
-export function attachDioramasToArrivingRoom(existing: Room[], room: Room): Room {
-  const partial = attachLibraryDioramas({ rooms: [...existing, room] } as Museum)
-  return partial.rooms[partial.rooms.length - 1]
+export function attachDioramasToArrivingRoom(existing: Room[], room: Room, title = ''): Room {
+  const partial = { title, rooms: [...existing, room] } as Museum
+  const withDioramas = completeDioramas(attachLibraryDioramas(partial))
+  return withDioramas.rooms[withDioramas.rooms.length - 1]
 }
 
 /** Lo mismo para el museo final: completa las salas que aún no tengan diorama sin tocar las que ya lo tienen. */
 export function attachDioramasToFinalMuseum(museum: Museum): Museum {
-  return attachLibraryDioramas(museum)
+  return completeDioramas(attachLibraryDioramas(museum))
+}
+
+/** Las salas sin diorama reciben uno compuesto con el pigmento de su fresco (los que ya tienen no cambian). */
+function completeDioramas(museum: Museum): Museum {
+  const pigments = roomPalettes(DEFAULT_THEME, museum.rooms.map((r) => r.name))
+  return attachComposedDioramas(museum, (i) => pigments[i])
 }

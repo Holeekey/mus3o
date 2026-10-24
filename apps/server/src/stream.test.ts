@@ -2,6 +2,7 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  LIMITS,
   MuseumSchema,
   MuseumStreamEventSchema,
   parseMus3oDSL,
@@ -9,7 +10,7 @@ import {
   type MuseumStreamEvent,
 } from "@mus3o/shared";
 import { app } from "./app";
-import { enrichMuseum, setTextStreamerForTests, type TextStreamer } from "./claude";
+import { completeMuseum, enrichMuseum, parseFlowDsl, setTextStreamerForTests, type TextStreamer } from "./claude";
 import { streamNewMuseum } from "./stream";
 
 const DSL = [
@@ -95,7 +96,7 @@ describe("streamNewMuseum", () => {
 
   it("stops asking the model once the room cap is reached", async () => {
     let consumed = 0;
-    const many = Array.from({ length: 12 }, (_, i) => `ROOM: s${i} | Sala ${i} | void | #fff | #000 | torus |\nPIECE: X${i} | box | c`).join("\n");
+    const many = Array.from({ length: LIMITS.maxRooms + 4 }, (_, i) => `ROOM: s${i} | Sala ${i} | void | #fff | #000 | torus |\nPIECE: X${i} | box | c`).join("\n");
     const streamer: TextStreamer = async function* () {
       for (const line of many.split("\n")) {
         consumed++;
@@ -103,8 +104,8 @@ describe("streamNewMuseum", () => {
       }
     };
     const events = await collect(streamNewMuseum({ topic: "T" }, { streamText: streamer, ...live() }));
-    expect(events.filter((e) => e.type === "room")).toHaveLength(8);
-    expect(consumed).toBeLessThan(24);
+    expect(events.filter((e) => e.type === "room")).toHaveLength(LIMITS.maxRooms);
+    expect(consumed).toBeLessThan((LIMITS.maxRooms + 4) * 2);
   });
 
   it("falls back to the JSON parser when the model ignores the DSL", async () => {
@@ -135,6 +136,99 @@ describe("streamNewMuseum", () => {
     };
     const events = await collect(streamNewMuseum({ topic: "T" }, { streamText: streamer, signal: ac.signal }));
     expect(events.some((e) => e.type === "done" || e.type === "error")).toBe(false);
+  });
+});
+
+// DSL del flujo completo: TITLE, modo, PERIOD, QUIZ, IMAGE y un cruce `related` (sin dioramas: no hay IA en las pruebas).
+const FLOW_DSL = [
+  "TITLE: Roma antigua",
+  "ROOM: origen | Origen | ancient | #112233 | #000000 | torus |",
+  "PERIOD: 753 a. C.",
+  "PIECE: Rómulo | box | Un lobo amamanta | wolf | Fundador legendario",
+  "QUIZ: ¿Quién fundó Roma? | Rómulo | Remo | Numa | 0",
+  "IMAGE: img-1",
+  "ROOM: republica | República | ancient | #223344 | #000011 | crystal | origen",
+  "PERIOD: 509 a. C.",
+  "PIECE: Senado | cube | Togas en círculo | column | Órgano de gobierno",
+  "QUIZ: ¿Qué es el Senado? | Un consejo | Un río | 0",
+  "ROOM: imperio | Imperio | cathedral | #334455 | #000022 | torus | origen | | republica",
+  "PERIOD: 27 a. C.",
+  "PIECE: Augusto | shield | Corona de laurel | statue | Primer emperador",
+  "QUIZ: ¿Primer emperador? | Augusto | Nerón | 0",
+].join("\n");
+
+const IMAGE = { id: "img-1", name: "loba.png", mediaType: "image/png" as const, data: "aGVsbG8=" };
+const flowRequest = (over = {}) => ({ mode: "quiz" as const, prompt: "Roma antigua", sources: [], images: [IMAGE], ...over });
+
+describe("streamNewMuseum: flujo completo (modo, imágenes, fuentes)", () => {
+  const live = (signal = new AbortController().signal) => ({ signal });
+
+  it("pide al modelo lo mismo que la generación sin streaming y emite las aristas de cada sala", async () => {
+    const seen: Parameters<TextStreamer>[0][] = [];
+    const streamer: TextStreamer = async function* (params) {
+      seen.push(params);
+      for (const c of chunked(FLOW_DSL)) yield c;
+    };
+    const request = flowRequest();
+    const events = await collect(streamNewMuseum(request, { streamText: streamer, ...live() }));
+    // Mismo prompt de sistema (con caché) y contenido (imagen + texto) que el flujo sin streaming.
+    expect(seen).toHaveLength(1);
+    expect(Array.isArray(seen[0].system)).toBe(true);
+    expect(JSON.stringify(seen[0].content)).toContain("img-1");
+    expect(events.map((e) => e.type)).toEqual(["meta", "room", "room", "room", "done"]);
+    events.forEach((e) => expect(MuseumStreamEventSchema.safeParse(e).success).toBe(true));
+    expect(events[0]).toEqual({ type: "meta", title: "Roma antigua" });
+    // Modo quiz: árbol desde la primera sala; cada sala llega con su arista al padre.
+    const rooms = events.flatMap((e) => (e.type === "room" ? [e] : []));
+    expect(rooms.map((e) => e.edges)).toEqual([
+      [],
+      [{ from: "origen", to: "republica", kind: "related" }],
+      [{ from: "origen", to: "imperio", kind: "related" }, { from: "republica", to: "imperio", kind: "related" }],
+    ]);
+  });
+
+  it("el museo final es igual al de la generación sin streaming (modo, imágenes, quiz, período, enriquecimiento)", async () => {
+    const request = flowRequest();
+    const events = await collect(streamNewMuseum(request, { streamText: fakeStreamer(FLOW_DSL), ...live() }));
+    const done = events[events.length - 1];
+    if (done.type !== "done") throw new Error("sin done");
+    const reference = await completeMuseum(enrichMuseum(parseFlowDsl(FLOW_DSL, request), "Roma antigua"), []);
+
+    expect(done.museum.mode).toBe("quiz");
+    expect(done.museum.rooms.map((r) => r.id)).toEqual(reference.rooms.map((r) => r.id));
+    expect(done.museum.graph).toEqual(reference.graph);
+    expect(done.museum.rooms[0].pieces[0].quiz).toBeDefined();
+    expect(done.museum.rooms[0].pieces[0].image).toEqual({ imageId: "img-1" });
+    expect(done.museum.rooms[0].period).toBe("753 a. C.");
+    expect(done.museum.rooms.map((r) => r.pieces.map((p) => p.imageSearch))).toEqual(reference.rooms.map((r) => r.pieces.map((p) => p.imageSearch)));
+    expect(MuseumSchema.safeParse(done.museum).success).toBe(true);
+  });
+
+  it("ignora un id de imagen que no vino en el pedido", async () => {
+    const events = await collect(streamNewMuseum(flowRequest({ images: [] }), { streamText: fakeStreamer(FLOW_DSL), ...live() }));
+    const done = events[events.length - 1];
+    if (done.type !== "done") throw new Error("sin done");
+    expect(done.museum.rooms.flatMap((r) => r.pieces).some((p) => p.image)).toBe(false);
+  });
+
+  it("las aristas provisionales de cada sala son las del grafo final (sin repetir ni inventar)", async () => {
+    for (const mode of ["exploration", "education", "biography", "quiz"] as const) {
+      const events = await collect(streamNewMuseum(flowRequest({ mode, images: [] }), { streamText: fakeStreamer(FLOW_DSL), ...live() }));
+      const done = events[events.length - 1];
+      if (done.type !== "done") throw new Error("sin done");
+      const provisional = events.flatMap((e) => (e.type === "room" ? (e.edges ?? []) : []));
+      const key = (e: { from: string; to: string; kind: string }) => `${e.from}>${e.to}:${e.kind}`;
+      expect(new Set(provisional.map(key))).toEqual(new Set((done.museum.graph?.edges ?? []).map(key)));
+    }
+  });
+
+  it("legacy (tema): las salas llevan sus aristas provisionales (prerrequisito y cadena)", async () => {
+    const events = await collect(streamNewMuseum({ topic: "Computadores" }, { streamText: fakeStreamer(), ...live() }));
+    const rooms = events.flatMap((e) => (e.type === "room" ? [e] : []));
+    expect(rooms[1].edges).toEqual([
+      { from: "r1", to: "r2", kind: "prerequisite" },
+      { from: "r1", to: "r2", kind: "next" },
+    ]);
   });
 });
 
@@ -260,6 +354,19 @@ describe("POST /api/generate-museum/stream", () => {
     expect(events.map((e) => e.type)).toEqual(["meta", "room", "error"]);
     await collect(lines(await post({ topic: "Falla a medias" })));
     expect(calls.n).toBe(2);
+  });
+
+  it("accepts the full-flow body (mode, images) like /api/generate-museum and shares its cache entry", async () => {
+    const calls = { n: 0 };
+    setTextStreamerForTests(fakeStreamer(FLOW_DSL, calls));
+    const body = flowRequest({ prompt: "Roma  antigua http" });
+    const events = await collect(lines(await post(body)));
+    expect(events.map((e) => e.type)).toEqual(["meta", "room", "room", "room", "done"]);
+    expect(calls.n).toBe(1);
+    // La misma petición (ignorando mayúsculas y espacios) se sirve de la caché de la generación completa.
+    const again = await collect(lines(await post({ ...body, prompt: "roma antigua HTTP" })));
+    expect(calls.n).toBe(1);
+    expect(again.map((e) => e.type)).toEqual(["meta", "room", "room", "room", "done"]);
   });
 
   it("rejects invalid bodies before streaming", async () => {

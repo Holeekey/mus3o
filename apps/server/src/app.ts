@@ -7,20 +7,25 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import {
+  DigestSourcesRequestSchema,
   GenerateMuseumRequestSchema,
   ImprovePromptRequestSchema,
   LIMITS,
   sanitizeUntrustedText,
   NDJSON_CONTENT_TYPE,
   sampleMuseum,
+  type GenerateMuseumRequest,
   type Museum,
   type MuseumStreamEvent,
 } from "@mus3o/shared";
-import { AiUnavailableError, currentTextStreamer, enrichMuseum, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
-import { replayMuseum, streamNewMuseum } from "./stream";
+import { AiUnavailableError, currentTextStreamer, digestSources, enrichMuseum, flowStreamable, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
+import { generateThenReplay, isFlowInput, replayMuseum, streamNewMuseum, type StreamInput } from "./stream";
 import { imageRouter } from "./images";
+import { infoRouter } from "./info";
 import { ttsRouter } from "./tts";
-import { getCached, setCached } from "./cache";
+import { assetRouter } from "./assetRoutes";
+import { arisRouter } from "./arisHelp";
+import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
 export const app = express();
 // Detrás del proxy de Render: la IP real viene en X-Forwarded-For. Sin esto todos los usuarios
@@ -47,12 +52,19 @@ app.get("/api/health", (_req, res) => {
 const smallJson = express.json({ limit: "100kb" });
 // generate-museum además recibe hasta LIMITS.maxImages imágenes en base64 (≤ 1024 px, en memoria).
 const generateJson = express.json({ limit: "8mb" });
-app.use((req, res, next) => (req.path === "/api/generate-museum" ? generateJson : smallJson)(req, res, next));
+// digest-sources recibe hasta LIMITS.maxDigestInputChars caracteres de texto ya extraído.
+const digestJson = express.json({ limit: "1mb" });
+const jsonParserFor = (path: string) =>
+  path === "/api/generate-museum" || path === "/api/generate-museum/stream" ? generateJson : path === "/api/digest-sources" ? digestJson : smallJson;
+app.use((req, res, next) => jsonParserFor(req.path)(req, res, next));
 // Las imágenes se piden por decenas al entrar a un museo: límite aparte y más alto.
-app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
+app.use(["/api/image", "/api/info"], rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
+app.use("/api", infoRouter);
 app.use("/api", ttsRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", assetRouter);
+app.use("/api", arisRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets") || req.originalUrl.startsWith("/api/aris-help"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
@@ -75,6 +87,9 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 // La clave de caché no guarda los apuntes en claro.
 const cacheKey = (input: GenerateInput) => ("notes" in input ? "notes:" + sha256(input.notes) : input.topic);
 
+// Pedidos idénticos simultáneos comparten UNA generación (y un solo cupo diario) en lugar de pagarla varias veces.
+const inFlight = new Map<string, Promise<Museum>>();
+
 async function respondWithMuseum(res: express.Response, key: string, generate: () => Promise<Museum>) {
   const started = Date.now();
   try {
@@ -83,13 +98,21 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
       res.json(cached);
       return;
     }
-    if (!takeDailySlot()) {
-      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
-      return;
+    let pending = inFlight.get(key);
+    if (!pending) {
+      if (!takeDailySlot()) {
+        res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+        return;
+      }
+      pending = generate()
+        .then((m) => {
+          setCached(key, m);
+          return m;
+        })
+        .finally(() => inFlight.delete(key));
+      inFlight.set(key, pending);
     }
-    const museum = await generate();
-    setCached(key, museum);
-    res.json(museum);
+    res.json(await pending);
   } catch (err) {
     if (err instanceof AiUnavailableError) {
       res.status(503).json({ error: "IA no configurada" });
@@ -101,22 +124,21 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
   }
 }
 
-app.post("/api/generate-museum", async (req, res) => {
-  const legacy = RequestSchema.safeParse(req.body);
+/**
+ * Valida y limpia el cuerpo de una generación (tema, apuntes o flujo completo) y calcula su clave de caché.
+ * Lo comparten `/api/generate-museum` y `/api/generate-museum/stream`: mismo pedido, misma clave, misma caché.
+ */
+function prepareGeneration(body: unknown): { input: GenerateInput | GenerateMuseumRequest; key: string } | null {
+  const legacy = RequestSchema.safeParse(body);
   if (legacy.success) {
     const cleanInput: GenerateInput =
       "notes" in legacy.data
         ? { notes: sanitizeUntrustedText(legacy.data.notes, LIMITS.maxNotesChars) }
         : { topic: sanitizeUntrustedText(legacy.data.topic, 200) };
-
-    await respondWithMuseum(res, cacheKey(cleanInput), () => generateMuseum(cleanInput));
-    return;
+    return { input: cleanInput, key: cacheKey(cleanInput) };
   }
-  const flow = GenerateMuseumRequestSchema.safeParse(req.body);
-  if (!flow.success) {
-    res.status(400).json({ error: `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)` });
-    return;
-  }
+  const flow = GenerateMuseumRequestSchema.safeParse(body);
+  if (!flow.success) return null;
   const cleanFlow = {
     ...flow.data,
     prompt: sanitizeUntrustedText(flow.data.prompt, LIMITS.maxNotesChars),
@@ -126,7 +148,60 @@ app.post("/api/generate-museum", async (req, res) => {
     })),
   };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
-  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
+  // La clave ignora mayúsculas y espacios del pedido: "Roma  " y "roma" son el mismo museo (y el mismo gasto).
+  const keyed = { ...cleanFlow, prompt: cleanFlow.prompt.replace(/\s+/g, " ").trim().toLowerCase() };
+  return { input: cleanFlow, key: "flow:" + sha256(JSON.stringify(keyed)) };
+}
+
+const BAD_GENERATE_REQUEST = `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)`;
+
+app.post("/api/generate-museum", async (req, res) => {
+  const prepared = prepareGeneration(req.body);
+  if (!prepared) {
+    res.status(400).json({ error: BAD_GENERATE_REQUEST });
+    return;
+  }
+  const { input, key } = prepared;
+  await respondWithMuseum(res, key, () => (isFlowInput(input) ? generateFlowMuseum(input) : generateMuseum(input)));
+});
+
+// Fuentes que superan LIMITS.maxNotesChars: un modelo barato las resume en un temario base.
+app.post("/api/digest-sources", async (req, res) => {
+  const parsed = DigestSourcesRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: `Envía "sources" (1-10 fuentes, hasta ${LIMITS.maxDigestInputChars} caracteres en total)` });
+    return;
+  }
+  const sources = parsed.data.sources.map((s) => ({
+    ...s,
+    name: sanitizeUntrustedText(s.name, 120),
+    text: sanitizeUntrustedText(s.text, LIMITS.maxDigestInputChars),
+  }));
+  // La clave no guarda las fuentes en claro.
+  const key = "digest:" + sha256(JSON.stringify(sources));
+  const started = Date.now();
+  try {
+    const cached = getCachedDigest(key);
+    if (cached !== undefined) {
+      res.json({ digest: cached });
+      return;
+    }
+    if (!takeDailySlot()) {
+      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones" });
+      return;
+    }
+    const { digest } = await digestSources(sources);
+    setCachedDigest(key, digest);
+    res.json({ digest });
+  } catch (err) {
+    if (err instanceof AiUnavailableError) {
+      res.status(503).json({ error: "IA no configurada" });
+      return;
+    }
+    // Solo el tipo de error y la latencia: nunca las fuentes ni la respuesta del modelo.
+    console.error(`digest-sources falló tras ${Date.now() - started} ms: ${(err as Error).name}`);
+    res.status(502).json({ error: "No se pudo resumir las fuentes" });
+  }
 });
 
 // Pausa entre salas al reproducir un museo en caché por el stream (da el efecto de "se va construyendo").
@@ -136,30 +211,29 @@ const replayDelayMs = () => {
 };
 
 /**
- * Igual que /api/generate-museum, pero responde en NDJSON (`MuseumStreamEvent`, un evento por línea y
- * vaciado en cada uno) para que el cliente construya el palacio sala a sala mientras la IA escribe.
- * Solo temas y apuntes; el flujo con imágenes sigue por el endpoint sin streaming.
+ * Igual que /api/generate-museum (mismo cuerpo, validación, caché, tope diario y límite de solicitudes), pero
+ * responde en NDJSON (`MuseumStreamEvent`, un evento por línea y vaciado en cada uno) para que el cliente
+ * construya el palacio sala a sala mientras la IA escribe. Acepta tema, apuntes y el flujo completo (modo,
+ * fuentes e imágenes).
  */
 app.post("/api/generate-museum/stream", async (req, res) => {
-  const parsed = RequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)` });
+  const prepared = prepareGeneration(req.body);
+  if (!prepared) {
+    res.status(400).json({ error: BAD_GENERATE_REQUEST });
     return;
   }
-  const input: GenerateInput =
-    "notes" in parsed.data
-      ? { notes: sanitizeUntrustedText(parsed.data.notes, LIMITS.maxNotesChars) }
-      : { topic: sanitizeUntrustedText(parsed.data.topic, 200) };
-  const key = cacheKey(input);
+  const { input, key } = prepared;
   const controller = new AbortController();
   const hasKey = !!process.env.ANTHROPIC_API_KEY;
+  const delayMs = replayDelayMs();
 
   let events: AsyncGenerator<MuseumStreamEvent>;
   let cacheResult = false;
   const cached = getCached(key);
   if (cached) {
-    events = replayMuseum(cached, { signal: controller.signal, delayMs: replayDelayMs() });
-  } else if (!hasKey && "notes" in input) {
+    events = replayMuseum(cached, { signal: controller.signal, delayMs });
+  } else if (!hasKey && (isFlowInput(input) || "notes" in input)) {
+    // Con apuntes o archivos un mock no sirve: el cliente cae a su parser local.
     res.status(503).json({ error: "IA no configurada" });
     return;
   } else if (!takeDailySlot()) {
@@ -167,13 +241,14 @@ app.post("/api/generate-museum/stream", async (req, res) => {
     return;
   } else if (!hasKey) {
     console.warn("ANTHROPIC_API_KEY no definida: devolviendo mus3o mock");
-    events = replayMuseum(enrichMuseum({ ...sampleMuseum, title: (input as { topic: string }).topic }), {
-      signal: controller.signal,
-      delayMs: replayDelayMs(),
-    });
+    events = replayMuseum(enrichMuseum({ ...sampleMuseum, title: (input as { topic: string }).topic }), { signal: controller.signal, delayMs });
+  } else if (isFlowInput(input) && !flowStreamable()) {
+    // FLOW_FORMAT=json no se puede leer por partes: se genera entero y se reproduce sala a sala.
+    cacheResult = true;
+    events = generateThenReplay(() => generateFlowMuseum(input), { signal: controller.signal, delayMs });
   } else {
     cacheResult = true;
-    events = streamNewMuseum(input, { streamText: currentTextStreamer(), signal: controller.signal });
+    events = streamNewMuseum(input as StreamInput, { streamText: currentTextStreamer(), signal: controller.signal });
   }
 
   // Si el cliente se va, se corta la conexión con el modelo para no seguir gastando tokens.
