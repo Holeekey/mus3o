@@ -38,6 +38,7 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 |---|---|---|
 | `ANTHROPIC_API_KEY` | No (sin ella hay mock) | — |
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-5-5` |
+| `ANTHROPIC_DIGEST_MODEL` | No | `claude-haiku-5-5` (modelo barato de `/api/digest-sources`) |
 | `PORT` | No | `3001` |
 | `WEB_ORIGIN` | No | `http://localhost:5173` |
 | `MAX_DAILY_GENERATIONS` | No | `200` |
