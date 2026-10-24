@@ -4,6 +4,7 @@ import { useEffect, useRef, type ComponentRef } from 'react'
 import { Vector3 } from 'three'
 
 import type { Piece } from '@mus3o/shared'
+import { canOpenDoor } from '../palace/keys'
 import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import { playerPose, useStore, isDoorOpen } from '../store'
@@ -42,9 +43,8 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       const s = useStore.getState()
       if (e.code === 'KeyE') {
         if (s.focusedDoorId && !isDoorOpen(s, s.focusedDoorId)) {
-          if (s.hasKey) {
-            s.unlockDoor(s.focusedDoorId)
-          }
+          const door = layout.doors.find((d) => d.id === s.focusedDoorId)
+          if (door && canOpenDoor(door, s.hasKey, s.roomKeys)) s.unlockDoor(door.id)
           return
         }
         if (s.openId) s.set({ openId: null })

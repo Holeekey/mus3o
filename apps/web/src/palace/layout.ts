@@ -44,6 +44,8 @@ export type CorridorLayout = { floor: Box; walls: Box[] }
 export type DoorLayout = {
   id: string
   corridorIndex: number
+  /** Sala de la que sale la puerta: se abre con su llave. */
+  fromRoomId: string
   x: number
   z: number
   w: number
@@ -269,6 +271,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       doors.push({
         id: `door-${corridorIndex}-entrance`,
         corridorIndex,
+        fromRoomId: a.id,
         x: doorX,
         z: a.z,
         w: 0.6,
@@ -291,6 +294,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       doors.push({
         id: `door-${corridorIndex}-entrance`,
         corridorIndex,
+        fromRoomId: a.id,
         x: a.x,
         z: doorZ,
         w: DOOR_W,
