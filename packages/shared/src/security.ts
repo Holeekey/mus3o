@@ -10,7 +10,7 @@ const INVISIBLE_CHARS_REGEX = /[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E\u20
 const RESERVED_DELIMITERS_REGEX = /<\/?(user_notes|notes|source|untrusted_study_data)\b[^>]*>/gi;
 
 /** Patrones de tokens de control de modelos y wrappers (Llama, Anthropic, ChatGPT). */
-const CONTROL_TOKENS_REGEX = /<\|(?:im_start|im_end|endoftext|system|user|assistant)\|>/gi;
+const CONTROL_TOKENS_REGEX = /<\|[^|<>\n]{1,40}\|>|\[\/?INST\]|<<\/?SYS>>|<\/?s>/gi;
 
 /**
  * Sanitiza texto no confiable provisto por el usuario:
@@ -53,6 +53,27 @@ export function sanitizeDisplayText(raw: string, maxLen: number): string {
     .replace(/[\r\n\t]+/g, " ")
     .trim();
   return plain.slice(0, maxLen);
+}
+
+/** La búsqueda de imagen sale hacia servicios externos: solo texto plano y corto. */
+function sanitizeImageSearch(search: NonNullable<Piece["imageSearch"]>): NonNullable<Piece["imageSearch"]> {
+  return {
+    ...search,
+    wikiTitle: search.wikiTitle ? sanitizeDisplayText(search.wikiTitle, 120) : undefined,
+    commonsQuery: search.commonsQuery ? sanitizeDisplayText(search.commonsQuery, 120) : undefined,
+  };
+}
+
+/** Limpia los textos de un diorama generado por el modelo (título y rótulos de props). */
+function sanitizeDiorama(diorama: NonNullable<Room["diorama"]>): NonNullable<Room["diorama"]> {
+  return {
+    ...diorama,
+    title: sanitizeDisplayText(diorama.title, 80) || "Diorama",
+    props: diorama.props.map((p) => ({
+      ...p,
+      label: p.label ? sanitizeDisplayText(p.label, 40) || undefined : undefined,
+    })),
+  };
 }
 
 /** Clampea un número a un rango [min, max], o devuelve default si no es finito. */
@@ -126,8 +147,24 @@ export function repairAndSanitizePiece(piece: Piece): Piece {
     };
   }
 
+  // Campos secundarios que también llegan del modelo.
+  const quiz = piece.quiz
+    ? {
+        ...piece.quiz,
+        question: sanitizeDisplayText(piece.quiz.question, 200) || "?",
+        options: piece.quiz.options.map((o) => sanitizeDisplayText(o, 100) || "-"),
+      }
+    : undefined;
+  const source = piece.source
+    ? { ...piece.source, quote: sanitizeDisplayText(piece.source.quote, LIMITS.maxQuote) || "-" }
+    : undefined;
+  const imageSearch = piece.imageSearch ? sanitizeImageSearch(piece.imageSearch) : undefined;
+
   return {
     ...piece,
+    quiz,
+    source,
+    imageSearch,
     title: cleanTitle,
     text: cleanText,
     fact: cleanFact,
@@ -167,6 +204,9 @@ export function repairAndSanitizeMuseum(museum: Museum): Museum {
       id: roomId,
       name: cleanRoomName,
       description: cleanRoomDesc,
+      period: room.period ? sanitizeDisplayText(room.period, 40) || undefined : undefined,
+      imageSearch: room.imageSearch ? sanitizeImageSearch(room.imageSearch) : undefined,
+      diorama: room.diorama ? sanitizeDiorama(room.diorama) : undefined,
       pieces,
     };
   });

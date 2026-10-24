@@ -132,4 +132,10 @@ Cobertura de la matriz V1–V6 y cambios de esta revisión:
 - **V6 (exposición):** sin modo debug; `/api/improve-prompt` solo con `ENABLE_DEBUG_ROUTES=true`. Nuevo: cabeceras `nosniff` y `Referrer-Policy`, y se oculta `X-Powered-By`.
 - **V3:** no aplica (la inferencia es la API de Anthropic, no un servidor local con `-c`).
 - **Corregido:** el modelo por defecto había retrocedido a `claude-sonnet-4-20250514`; vuelve a `claude-sonnet-5-5`.
-- **Pendiente:** sanear `label`/`title` del diorama y `piece.sources` en `repairAndSanitizeMuseum`; `listen` enlaza a todas las interfaces (requerido en Render).
+- **Salida del modelo (V5, completo):** `repairAndSanitizeMuseum` sanea título, salas (`name`, `description`, `period`), piezas (`title`, `text`, `fact`, `mnemonicCue`, `quiz`, `source.quote`), `imageSearch` (sale hacia Wikipedia/Commons) y el diorama (título y `label` de props).
+- **Tokens de control:** `sanitizeUntrustedText` elimina `<|…|>` genéricos, `[INST]`, `<<SYS>>` y `<s>`.
+- **Rate limit tras proxy:** `trust proxy = 1` en producción (Render).
+- **CORS:** en producción sin `WEB_ORIGIN` no se habilita CORS (el servidor sirve el frontend en el mismo origen); en desarrollo queda abierto.
+- **Arranque:** si `ANTHROPIC_API_KEY` está definida con formato inválido, el proceso se detiene (vacía sigue permitiendo el modo mock).
+- **Tests:** payloads de `testbench-cases.md` convertidos en regresión en `packages/shared/src/security.test.ts`.
+- **Pendiente:** `render.yaml` fija `ANTHROPIC_MODEL=claude-sonnet-4-20250514` (decisión de despliegue, no tocada); `listen` enlaza a todas las interfaces (necesario en Render).

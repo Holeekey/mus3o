@@ -20,12 +20,17 @@ export const app = express();
 const WEB_ORIGIN = process.env.WEB_ORIGIN;
 
 app.disable("x-powered-by");
+// Render (y cualquier PaaS) pone un proxy delante: sin esto el rate limit ve siempre la IP del proxy.
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
   next();
 });
-app.use(cors(WEB_ORIGIN ? { origin: WEB_ORIGIN } : undefined));
+// En producción el servidor sirve el frontend (mismo origen): sin WEB_ORIGIN no se abre CORS a terceros.
+const IS_PROD = process.env.NODE_ENV === "production";
+if (WEB_ORIGIN) app.use(cors({ origin: WEB_ORIGIN }));
+else if (!IS_PROD) app.use(cors());
 
 // Health check endpoint for Render and uptime monitoring
 app.get("/api/health", (_req, res) => {
