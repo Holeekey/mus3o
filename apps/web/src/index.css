@@ -1117,6 +1117,20 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     padding: 14px 16px 24px;
   }
 
+  /* Panel de pausa */
+  .pause-panel {
+    width: calc(100vw - 20px);
+    max-height: 85dvh;
+    overflow-y: auto;
+    padding: 16px 14px;
+  }
+  .pause-panel h1 { font-size: 1.4rem; }
+  .pause-actions { flex-direction: column; align-items: stretch; }
+  .pause-actions .btn { width: 100%; text-align: center; }
+}
+
+/* Pantallas chicas: teléfono vertical (ancho) o teléfono horizontal (alto). Minimapa como botón y HUD compacto. */
+@media (max-width: 768px), (max-height: 520px) {
   /* Minimapa Popup en móvil */
   .minimap-mobile-fab {
     display: flex;
@@ -1211,18 +1225,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     max-width: 90vw;
     text-align: center;
   }
-
-  /* Panel de pausa */
-  .pause-panel {
-    width: calc(100vw - 20px);
-    max-height: 85dvh;
-    overflow-y: auto;
-    padding: 16px 14px;
-  }
-  .pause-panel h1 { font-size: 1.4rem; }
-  .pause-actions { flex-direction: column; align-items: stretch; }
-  .pause-actions .btn { width: 100%; text-align: center; }
 }
+
 
 @media (max-width: 480px) {
   .landing {
@@ -1363,12 +1367,9 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .key-hint-btn::after { content: ' ›'; }
 .hint:has(> .key-hint-btn) { z-index: 36; pointer-events: auto; }
 
-/* En táctil el botón 🤖 de la botonera reemplaza al de escritorio, y el narrador sube sobre el joystick. */
+/* En táctil el botón 🤖 de la botonera reemplaza al de escritorio. */
 :root[data-touch] .aris-trigger-btn { display: none; }
-:root[data-touch] .narrator { left: 16px; bottom: 150px; z-index: 36; }
 :root[data-touch] .hud-legend { display: none; }
-/* Los avisos suben sobre el narrador y el joystick (también los del cuadro, que fijan bottom en línea). */
-:root[data-touch] .hint { bottom: 30% !important; }
 
 /* Fichas largas: el contenido se desplaza (también con la rueda y el puntero bloqueado, ver ui/cardScroll.ts),
    se desvanece abajo mientras queda texto y el pie con el estado queda fijo. */
@@ -1398,3 +1399,87 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   text-align: center;
 }
 .card-more-hint:hover { color: var(--ink); }
+
+/* ---------- HUD responsive (teléfonos y tablets) ----------
+   Tamaños fluidos (escalan con el lado corto de la pantalla) y posiciones encadenadas: el narrador va
+   sobre el joystick y los avisos sobre ambos y sobre la botonera, así no se pisan en ningún tamaño. */
+:root {
+  --edge-t: max(8px, env(safe-area-inset-top));
+  --edge-r: max(8px, env(safe-area-inset-right));
+  --edge-b: max(8px, env(safe-area-inset-bottom));
+  --edge-l: max(8px, env(safe-area-inset-left));
+  --hud-gap: clamp(6px, 1.6vmin, 12px);
+  --hud-font: clamp(0.68rem, 0.52rem + 0.7vmin, 0.88rem);
+  --hud-shadow: clamp(2px, 0.5vmin, 4px);
+  --joy: clamp(80px, 21vmin, 112px);
+  --btn: clamp(38px, 8.5vmin, 52px);
+  /* Alto de la botonera 🤖 ✓ 👁️: columna en pantallas altas, fila en las bajas. */
+  --cluster-h: calc(var(--btn) * 3 + var(--hud-gap) * 2);
+  /* Alto aproximado del botón del narrador (una línea de --hud-font con su relleno). */
+  --narrator-h: calc(var(--hud-font) * 1.4 + 12px);
+  /* Por encima de esto quedan libres los avisos centrados. */
+  --hud-bottom-stack: max(calc(var(--joy) + var(--narrator-h) + var(--hud-gap) * 2), var(--cluster-h));
+}
+@media (max-height: 520px) {
+  :root { --cluster-h: var(--btn); }
+}
+
+/* Joystick, botonera, narrador y avisos táctiles */
+.touch-joystick-base { width: var(--joy); height: var(--joy); }
+.touch-joystick-knob { top: 25%; left: 25%; width: 50%; height: 50%; }
+.touch-joystick-base.is-idle { left: calc(var(--edge-l) + var(--hud-gap)); bottom: calc(var(--edge-b) + var(--hud-gap)); }
+.touch-actions-cluster { right: calc(var(--edge-r) + var(--hud-gap)); bottom: calc(var(--edge-b) + var(--hud-gap)); gap: var(--hud-gap); }
+.touch-action-btn { width: var(--btn); height: var(--btn); font-size: calc(var(--btn) * 0.4); box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+@media (max-height: 520px) {
+  .touch-actions-cluster { flex-direction: row; }
+}
+:root[data-touch] .narrator {
+  left: calc(var(--edge-l) + var(--hud-gap));
+  bottom: calc(var(--edge-b) + var(--hud-gap) * 2 + var(--joy));
+  z-index: 36;
+}
+/* También los avisos del cuadro, que fijan bottom en línea. */
+:root[data-touch] .hint {
+  bottom: calc(var(--edge-b) + var(--hud-gap) * 2 + var(--hud-bottom-stack)) !important;
+  max-width: calc(100vw - var(--edge-l) - var(--edge-r) - var(--hud-gap) * 2);
+}
+
+/* La ayuda inicial cede su lugar a cualquier aviso (del palacio o del cuadro): nunca se ven juntos. */
+body:has(.hint) .touch-tip { display: none; }
+:root[data-touch] .touch-tip { max-width: calc(100vw - var(--edge-l) - var(--edge-r) - var(--hud-gap) * 2); }
+
+/* HUD de pantallas chicas: márgenes seguros, tipografía fluida, sombras suaves. */
+@media (max-width: 768px), (max-height: 520px) {
+  .plaque {
+    top: var(--edge-t);
+    left: var(--edge-l);
+    /* Deja libre la columna derecha (minimapa y contadores). */
+    max-width: calc(100vw - var(--edge-l) - var(--edge-r) - 11rem);
+    padding: 6px 10px;
+    box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow);
+  }
+  .plaque-title {
+    font-size: clamp(0.95rem, 0.7rem + 1.3vmin, 1.25rem);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .plaque-meta, .plaque-memory { font-size: var(--hud-font); }
+  .hud-right { top: var(--edge-t); right: var(--edge-r); gap: calc(var(--hud-gap) * 0.6); }
+  .minimap-mobile-fab { width: var(--btn); height: var(--btn); font-size: calc(var(--btn) * 0.4); box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hud-progress, .hud-due, .key-badge { font-size: var(--hud-font); padding: 2px 7px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hud-due:not(.hud-due-on) { display: none; }
+  .narrator { font-size: var(--hud-font); padding: 4px 8px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hint { font-size: calc(var(--hud-font) * 1.1); padding: 4px 10px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .touch-tip { font-size: var(--hud-font); }
+  /* El minimapa del cuadro no tiene botón 🗺️: se muestra pequeño en vez de ocultarse. */
+  .minimap-wrapper.minimap-inline { display: flex; }
+  .minimap-inline .minimap-header { display: none; }
+  .minimap-inline .minimap { width: clamp(80px, 22vmin, 140px) !important; height: clamp(80px, 22vmin, 140px) !important; }
+}
+/* Poco espacio (teléfono angosto o en horizontal): la placa muestra solo el título. */
+@media (max-width: 420px), (max-height: 520px) {
+  .plaque-meta, .plaque-memory { display: none; }
+}
+

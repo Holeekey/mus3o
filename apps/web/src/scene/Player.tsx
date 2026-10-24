@@ -10,7 +10,8 @@ import { isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
 import { examine, openAris, toggleMemorize } from './actions'
-import { consumeTouchLook, touchInput } from './touchInput'
+import { applyTouchLook, moveAxes } from './moveInput'
+import { touchInput } from './touchInput'
 
 const EYE = 1.7
 const WALK = 4.5
@@ -93,13 +94,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     const s = useStore.getState()
 
     // Rotación táctil de la cámara (yaw y pitch)
-    const { dx: lookDx, dy: lookDy } = consumeTouchLook()
-    if (lookDx !== 0 || lookDy !== 0) {
-      camera.rotation.y -= lookDx
-      // Clampear pitch vertical entre -80° y +80° (-1.4 a +1.4 rad)
-      const newPitch = Math.max(-1.4, Math.min(1.4, camera.rotation.x - lookDy))
-      camera.rotation.x = newPitch
-    }
+    applyTouchLook(camera)
 
     const k = keys.current
     const f = forward.current
@@ -108,17 +103,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     f.normalize()
 
     if (s.locked) {
-      const keyAx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      const keyAz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      const keyRunning = k.ShiftLeft || k.ShiftRight
-
-      const touchAx = touchInput.moveX
-      const touchAz = touchInput.moveZ
-      const touchRunning = touchInput.isRunning
-
-      const ax = keyAx !== 0 ? keyAx : touchAx
-      const az = keyAz !== 0 ? keyAz : touchAz
-      const isRunning = keyRunning || touchRunning
+      const { ax, az, running: isRunning } = moveAxes(k)
 
       if (ax !== 0 || az !== 0) {
         const speed = (isRunning ? RUN : WALK) * dt

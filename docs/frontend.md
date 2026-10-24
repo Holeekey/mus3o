@@ -171,6 +171,16 @@ Se activan con un puntero grueso (`pointer: coarse`) o con el primer toque (`ui/
 | Botones en las fichas ("marcar como memorizado", ✕) y en el examen ("reintentar", "escribir") | `M`, `E`, `R`, `Y` |
 | Tocar "Narrador" | `N` |
 
+El joystick y la mirada táctil funcionan igual dentro del cuadro: `scene/moveInput.ts` (`moveAxes`, `applyTouchLook`) lo comparten `Player.tsx` y `diorama/DioramaRuntime.tsx`.
+
+HUD responsive (sección "HUD responsive" al final de `index.css`):
+
+- **Tamaños fluidos.** Variables en `:root` que escalan con el lado corto de la pantalla (`clamp()` + `vmin`): `--joy` (joystick), `--btn` (🤖 ✓ 👁️ y 🗺️), `--hud-font`, `--hud-gap`, `--hud-shadow`. El JS del joystick lee su radio del tamaño real (`TouchControls.tsx`).
+- **Posiciones encadenadas, no fijas.** El narrador va sobre el joystick (`--joy`); los avisos van sobre el más alto entre joystick+narrador y la botonera (`--hud-bottom-stack`). La ayuda inicial se oculta mientras hay un aviso.
+- **Márgenes seguros** con `env(safe-area-inset-*)` (mínimo 8 px).
+- **Pantallas chicas** (`max-width: 768px` o `max-height: 520px`): minimapa como botón 🗺️ (el del cuadro, pequeño), título de la placa en dos renglones como máximo, "Repasos pendientes" solo si hay. Con poco espacio (`max-width: 420px` o `max-height: 520px`) la placa muestra solo el título. En pantallas bajas la botonera va en fila.
+- **Verificación.** Barrido de 57 tamaños (320–1366 × 320–1024) con título y aviso largos: sin elementos superpuestos ni fuera de pantalla.
+
 `ui/KeyHint.tsx` dibuja cada atajo: en escritorio `<kbd>E</kbd> Examinar`; en táctil un botón con la misma acción, o nada si la tecla no tiene equivalente. La primera vez se muestra la ayuda "Arrastra a la izquierda para moverte · desliza a la derecha para mirar" hasta el primer movimiento (`localStorage` `mus3o-touch-tip`).
 
 ## 6. HUD (`ui/Hud.tsx`) y otros componentes de `ui/`
