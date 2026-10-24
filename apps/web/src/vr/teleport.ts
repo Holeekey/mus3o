@@ -1,5 +1,5 @@
 // Teletransporte: validación del destino contra los colliders del palacio (los mismos que usa Player).
-import { moveWithCollisions, roomAt, type Box, type PalaceLayout } from '../palace/layout'
+import { isBlocked, moveWithCollisions, roomAt, type Box, type PalaceLayout } from '../palace/layout'
 
 export type XZ = { x: number; z: number }
 
@@ -16,10 +16,9 @@ export function isWalkable(layout: PalaceLayout, x: number, z: number): boolean 
   return !!roomAt(layout, x, z) || layout.corridors.some((c) => inBox(c.floor, x, z))
 }
 
-/** ¿El punto choca con un collider? Usa el mismo moveWithCollisions: si no puede avanzar ni 1 mm, está bloqueado. */
+/** ¿El punto choca con un collider? (moveWithCollisions deja salir de una caja, así que no sirve para esto). */
 export function pointBlocked(colliders: readonly Box[], x: number, z: number): boolean {
-  const r = moveWithCollisions(colliders as Box[], x, z, 1e-3, 1e-3)
-  return r.x === x && r.z === z
+  return isBlocked(colliders, x, z)
 }
 
 export type TeleportCheck = { ok: true; x: number; z: number } | { ok: false; reason: 'far' | 'void' | 'blocked' | 'near' }
