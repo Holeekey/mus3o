@@ -986,3 +986,78 @@ kbd {
     text-align: center;
   }
 }
+
+/* ---------- Touch Controls 3D Layer ---------- */
+.touch-controls-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 25;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.touch-joystick-base {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+  z-index: 30;
+  will-change: transform;
+}
+.touch-joystick-knob {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  box-shadow: 2px 2px 0 var(--shadow);
+  pointer-events: none;
+  will-change: transform;
+}
+.touch-actions-cluster {
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  pointer-events: auto;
+  z-index: 35;
+}
+.touch-action-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 var(--shadow);
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-action-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--shadow);
+}
+.touch-btn-primary.is-active {
+  background: var(--accent);
+  border-color: var(--ink);
+}

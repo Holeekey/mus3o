@@ -19,6 +19,7 @@ import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
 import { SourceBlock } from './SourceBlock'
+import { TouchControls } from './TouchControls'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -227,6 +228,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <ArisDialog />
       <ArisPrompt />
+
+      <TouchControls layout={layout} />
 
       {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
         <div className="pause">
