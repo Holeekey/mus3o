@@ -1,3 +1,4 @@
+import { chooseCenterpiece, type Centerpiece } from './centerpiece'
 import { planRoomGrid, type Diorama, type Glyph, type ImageSearch, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
@@ -31,6 +32,8 @@ export type RoomLayout = {
   d: number
   height: number
   monument: Monument | MonumentType
+  /** Pieza central del tema (o null: sala despejada). Sustituye al monumento en el render. */
+  centerpiece: Centerpiece | null
   doors: Side[]
   walls: Box[]
   pedestals: PedestalLayout[]
@@ -243,6 +246,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       d,
       height,
       monument: room.monument || MONUMENTS[i % MONUMENTS.length],
+      centerpiece: chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title), hasDiorama: !!room.diorama }),
       doors: doorsOf[i],
       walls: roomWalls(x, z, w, d, height, doorsOf[i]),
       pedestals,
@@ -316,7 +320,8 @@ export function buildLayout(palace: Museum): PalaceLayout {
     ...rooms.flatMap((r) => r.walls.filter((w) => !w.y)),
     ...corridors.flatMap((c) => c.walls),
     ...rooms.flatMap((r) => r.pedestals.map((p) => ({ x: p.x, z: p.z, w: PEDESTAL_SIZE, d: PEDESTAL_SIZE, h: 1 }))),
-    ...rooms.map((r) => ({ x: r.x, z: r.z, w: 1.6, d: 1.6, h: 2 })),
+    // Solo hay collider donde hay pieza central: un centro despejado se puede cruzar.
+    ...rooms.flatMap((r) => (r.centerpiece ? [{ x: r.x, z: r.z, w: r.centerpiece.footprint[0], d: r.centerpiece.footprint[1], h: r.centerpiece.height }] : [])),
   ]
 
   const xs = rooms.flatMap((r) => [r.x - r.w / 2, r.x + r.w / 2])

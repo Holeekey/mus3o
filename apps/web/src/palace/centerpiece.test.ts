@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { buildLayout, moveWithCollisions } from './layout'
+import { parsePalace } from './parse'
 import { chooseCenterpiece, classifyRoom, type CenterpieceInput } from './centerpiece'
 
 const pieces = (n: number) => Array.from({ length: n }, (_, i) => `Pieza ${i + 1}`)
@@ -110,5 +112,40 @@ describe('chooseCenterpiece', () => {
     const none = sample.filter((r) => chooseCenterpiece(r) === null).length
     expect(none / sample.length).toBeGreaterThanOrEqual(1 / 3)
     expect(none).toBeLessThan(sample.length) // y no todas
+  })
+})
+
+describe('colliders del centro', () => {
+  const text = [
+    '# Batalla de Boyacá', '- a', '- b', '- c',
+    '# Unidad Central de Procesamiento', '- a', '- b', '- c',
+    '# El corazón', '- a', '- b',
+    '# Álgebra lineal', '- a', '- b', '- c',
+  ].join('\n')
+  const parsed = parsePalace(text)
+  if (!parsed.ok) throw new Error(parsed.error)
+  const layout = buildLayout(parsed.palace)
+  const at = (r: { x: number; z: number }) => (b: { x: number; z: number }) => b.x === r.x && b.z === r.z
+
+  it('sin pieza central no hay collider y el centro se cruza', () => {
+    const empty = layout.rooms.filter((r) => r.centerpiece === null)
+    expect(empty.length).toBeGreaterThan(0)
+    for (const r of empty) {
+      expect(layout.colliders.some(at(r))).toBe(false)
+      expect(moveWithCollisions(layout.colliders, r.x - 0.05, r.z, 0.1, 0)).toEqual({ x: r.x + 0.05, z: r.z })
+    }
+  })
+
+  it('con pieza central el collider tiene su huella', () => {
+    const full = layout.rooms.filter((r) => r.centerpiece !== null)
+    expect(full.length).toBeGreaterThan(0)
+    for (const r of full) {
+      const c = layout.colliders.find(at(r))
+      expect(c).toMatchObject({ w: r.centerpiece!.footprint[0], d: r.centerpiece!.footprint[1] })
+      // no se puede atravesar
+      let z = r.z - 3
+      for (let i = 0; i < 60; i++) z = moveWithCollisions(layout.colliders, r.x, z, 0, 0.1).z
+      expect(z).toBeLessThan(r.z)
+    }
   })
 })

@@ -11,7 +11,7 @@ import { LabelPlate } from './LabelPlate'
 import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import { AssetWall } from './DungeonAssets'
-import { ProceduralMonument } from './Monument'
+import { Centerpiece } from './Centerpiece'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 import { useIntro } from '../intro/store'
@@ -215,7 +215,7 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
         </Reveal>
       ))}
       <Reveal id={monumentKey(room.id)} mode="sink">
-        <ProceduralMonument room={room} theme={theme} />
+        <Centerpiece room={room} theme={theme} />
       </Reveal>
       {room.pedestals.map((p) => (
         <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
