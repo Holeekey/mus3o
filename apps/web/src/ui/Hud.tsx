@@ -9,7 +9,8 @@ import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
 import { useMemory } from '../memory/store'
-import { allConcepts, inExamScope, isDoorOpen, useStore } from '../store'
+import { conceptIdList } from '../palace/conceptIds'
+import { inExamScope, isDoorOpen, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
 import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
@@ -146,8 +147,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const exitToLanding = useStore((s) => s.exitToLanding)
 
   const room = layout.rooms.find((r) => r.id === currentRoomId) ?? layout.rooms[0]
-  const total = reviewIds?.length ?? allConcepts(palace).length
-  const conceptCount = allConcepts(palace).length
+  const conceptCount = conceptIdList(palace).length
+  const total = reviewIds?.length ?? conceptCount
   const memorizedCount = Object.keys(memorized).length
   const answered = Object.values(exam)
   const score = answered.filter((r) => r === 'ok').length
