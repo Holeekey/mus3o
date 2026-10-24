@@ -86,13 +86,20 @@ export const PieceSourceSchema = z.object({
   line: z.number().int().min(1).optional(),
 });
 
-/** Modelo 3D externo low-poly (Poly Pizza / CC0 / CC-BY). */
+/** Modelo 3D externo (Poly Pizza) resuelto por el servidor y servido desde /api/assets. */
 export const DynamicAssetSchema = z.object({
-  assetId: z.string().min(1),
-  glbUrl: z.string().min(1),
-  license: z.string().optional(),
-  author: z.string().optional(),
+  assetId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  /** URL relativa al servidor: nunca se guardan binarios ni URLs externas en el cliente. */
+  url: z.string().regex(/^\/api\/assets\/[A-Za-z0-9_-]{1,64}\.glb$/),
+  title: z.string().max(120),
+  author: z.string().max(120),
+  license: z.enum(["CC0", "CC-BY"]),
+  sourceUrl: z.string().max(300),
 });
+export type DynamicAsset = z.infer<typeof DynamicAssetSchema>;
+
+/** Sustantivo físico en inglés para buscar un modelo 3D (solo letras, dígitos, espacios y guiones). */
+export const SearchKeywordSchema = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9 -]{1,39}$/);
 
 export const PieceSchema = z.object({
   id: z.string().min(1),
@@ -101,10 +108,6 @@ export const PieceSchema = z.object({
   fact: z.string().max(LIMITS.maxText).default(""),
   /** Anclaje mnemotécnico visual/surrealista según el Método de Loci. */
   mnemonicCue: z.string().max(LIMITS.maxText).optional(),
-  /** Palabra clave física concreta en inglés (1-2 palabras) para buscar un tótem 3D en Poly Pizza. */
-  searchKeyword: z.string().max(60).optional(),
-  /** Modelo 3D externo low-poly hidratado dinámicamente desde Poly Pizza. */
-  dynamicAsset: DynamicAssetSchema.optional(),
   /** Opcional: el layout procedural del frontend decide la ubicación final. */
   position: z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]).optional(),
   model: ModelSchema.optional(),
@@ -114,6 +117,10 @@ export const PieceSchema = z.object({
   quiz: QuizSchema.optional(),
   /** Búsqueda de una imagen real para colgarla como cuadro. */
   imageSearch: ImageSearchSchema.optional(),
+  /** Sustantivo físico en inglés que la IA propone para buscar un modelo 3D. */
+  searchKeyword: SearchKeywordSchema.optional().catch(undefined),
+  /** Lo rellena el servidor tras resolver el modelo; nunca la IA. */
+  dynamicAsset: DynamicAssetSchema.optional().catch(undefined),
   /** Trazabilidad: de qué parte de los apuntes sale esta pieza. */
   source: PieceSourceSchema.optional(),
   /** true si la IA agregó esta idea y no se encontró en los apuntes. */
@@ -520,7 +527,6 @@ export type ImageSearch = z.infer<typeof ImageSearchSchema>;
 export type ResolvedImage = z.infer<typeof ResolvedImageSchema>;
 export type Quiz = z.infer<typeof QuizSchema>;
 export type PieceSource = z.infer<typeof PieceSourceSchema>;
-export type DynamicAsset = z.infer<typeof DynamicAssetSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
 export type Room = z.infer<typeof RoomSchema>;
 export type Diorama = z.infer<typeof DioramaSchema>;

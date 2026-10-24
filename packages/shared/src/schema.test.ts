@@ -305,13 +305,21 @@ describe("PieceSchema dynamic assets", () => {
       searchKeyword: "hourglass",
       dynamicAsset: {
         assetId: "poly-123",
-        glbUrl: "/api/assets/poly-123.glb",
-        license: "CC0",
+        url: "/api/assets/poly-123.glb",
+        title: "Hourglass",
         author: "PolyArtist",
+        license: "CC0",
+        sourceUrl: "https://poly.pizza/m/poly-123",
       },
     });
     const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });
     expect(MuseumSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("discards an invalid dynamicAsset URL instead of failing the museum", () => {
+    const p = piece("p-bad", { dynamicAsset: { assetId: "x", url: "https://evil.example/a.glb", title: "", author: "", license: "CC0", sourceUrl: "" } });
+    const parsed = MuseumSchema.parse(museum({ rooms: [room("r1", { pieces: [p] })] }));
+    expect(parsed.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
   });
 
   it("works without searchKeyword and dynamicAsset (backward compatible)", () => {

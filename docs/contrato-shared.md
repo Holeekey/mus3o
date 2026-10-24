@@ -190,3 +190,8 @@ Compatibilidad: el servidor también acepta el formato antiguo `{ topic }` (1..2
 3. Si la IA debe producirlo, actualiza el prompt en `apps/server/src/prompts.ts`.
 4. Si el frontend lo pinta, actualiza `apps/web`. Un palacio viejo debe seguir validando.
 5. Corre `npm test` en `shared`, `server` y `web`.
+
+## Modelos dinámicos en `Piece`
+
+- `searchKeyword?`: sustantivo físico en inglés (regex `SearchKeywordSchema`); lo propone la IA (campo 4 de `PIECE:` en el DSL).
+- `dynamicAsset?` (`DynamicAssetSchema`): `{ assetId, url, title, author, license: "CC0" | "CC-BY", sourceUrl }`. Lo rellena el servidor; `url` solo puede ser `/api/assets/<id>.glb`. Ambos campos usan `.catch(undefined)`: un valor inválido se descarta sin romper el museo.

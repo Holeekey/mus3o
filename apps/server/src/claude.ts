@@ -34,6 +34,7 @@ import {
   userPrompt,
 } from "./prompts";
 import { attachImageSearches, retrieveSources } from "./enrich";
+import { hydrateMuseumAssets } from "./polyPizza";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
@@ -143,7 +144,7 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
     { system: DSL_SYSTEM_PROMPT, content, maxTokens: isNotes ? 2500 : 1200 },
     (raw) => parseAdaptiveMuseum(raw, topic),
   );
-  return enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined);
+  return hydrateMuseumAssets(enrichMuseum(museum, isNotes ? cleanNotes(input.notes) : undefined));
 }
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
@@ -165,7 +166,7 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
     { system: SYSTEM_PROMPT, content: buildFlowContent(request), maxTokens: 16000 },
     (raw) => parseFlowMuseum(raw, imageIds),
   );
-  return enrichMuseum(museum, flowNotesText(request));
+  return hydrateMuseumAssets(enrichMuseum(museum, flowNotesText(request)));
 }
 
 export async function improvePrompt(request: ImprovePromptRequest): Promise<ImprovePromptResponse> {

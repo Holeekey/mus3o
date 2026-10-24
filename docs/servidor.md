@@ -27,6 +27,7 @@ Archivos:
 | `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
+| `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |
 
 ### Respuestas de error
 
@@ -154,3 +155,13 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 2. Usa `respondWithMuseum`-like: caché → tope diario → generar → error controlado. No expongas el error crudo.
 3. Si la IA produce algo nuevo, cambia el prompt en `prompts.ts` **y** el esquema. Y añade la prueba en `flow.test.ts`.
 4. Registra solo tipos y conteos en los logs, nunca el contenido.
+
+## Modelos 3D dinámicos (Poly Pizza)
+
+Tras enriquecer el museo, `hydrateMuseumAssets` (`polyPizza.ts`) resuelve en paralelo (`Promise.allSettled`, máx. 24 piezas)
+el `searchKeyword` de cada pieza: busca en Poly Pizza (CC0 primero, CC-BY de respaldo; se descartan NC/ND/SA),
+descarga el `.glb` a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`) y rellena
+`piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`). Timeout de 2500 ms por pieza (`AbortController`); ante
+cualquier fallo la pieza conserva su glifo procedural. Sin `POLY_PIZZA_API_KEY` la etapa no hace nada.
+El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra el crédito
+en la ficha (`Hud.tsx`) cuando la licencia es CC-BY.

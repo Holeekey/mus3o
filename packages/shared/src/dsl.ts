@@ -6,6 +6,7 @@ import {
   type MonumentType,
   type Glyph,
   GlyphShape,
+  SearchKeywordSchema,
   MuseumSchema,
 } from "./schema";
 
@@ -77,7 +78,7 @@ export interface ParseDslOptions {
  *
  * Format:
  * ROOM: <id> | <title> | <theme> | <primaryHex> | <fogHex> | <monumentType> | <requires_csv_or_empty>
- * PIECE: <concept> | <glyph> | <mnemonicCue>
+ * PIECE: <concept> | <glyph> | <mnemonicCue> | <searchKeyword opcional>
  */
 export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museum {
   const stripped = raw.replace(/^```[a-zA-Z]*\r?\n?/m, "").replace(/\r?\n?```$/m, "").trim();
@@ -161,6 +162,8 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
       const glyphShape: Glyph = GLYPH_MAP[rawGlyph] ?? (GlyphShape.safeParse(rawGlyph).success ? (rawGlyph as Glyph) : "box");
       const mnemonicCue = parts[2] || `Visualiza ${concept} anclado en este pedestal.`;
 
+      const keyword = SearchKeywordSchema.safeParse(parts[3] ?? "");
+
       const pieceId = `${currentRoom.id}-p${pieceCountInRoom}`;
 
       const piece: Piece = {
@@ -173,6 +176,7 @@ export function parseMus3oDSL(raw: string, options: ParseDslOptions = {}): Museu
           type: "glyph",
           shape: glyphShape,
         },
+        ...(keyword.success ? { searchKeyword: keyword.data } : {}),
       };
 
       currentRoom.pieces.push(piece);

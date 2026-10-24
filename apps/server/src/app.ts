@@ -17,6 +17,7 @@ import {
 import { AiUnavailableError, digestSources, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { ttsRouter } from "./tts";
+import { assetRouter } from "./assetRoutes";
 import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
 export const app = express();
@@ -53,7 +54,8 @@ app.use((req, res, next) => jsonParserFor(req.path)(req, res, next));
 app.use("/api/image", rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes" } }));
 app.use("/api", imageRouter);
 app.use("/api", ttsRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", assetRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
