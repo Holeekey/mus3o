@@ -5,6 +5,8 @@ import { useStore } from '../store'
 export function ArisDialog() {
   const message = useStore((s) => s.arisMessage)
   const close = useStore((s) => s.closeArisDialog)
+  const isMuted = useStore((s) => s.arisMuted)
+  const toggleMute = useStore((s) => s.toggleArisMute)
 
   useEffect(() => {
     if (!message) return
@@ -24,6 +26,15 @@ export function ArisDialog() {
         <span className="aris-name">Aris</span>
         <button
           type="button"
+          className="aris-mute-btn"
+          onClick={toggleMute}
+          aria-label={isMuted ? 'Activar voz' : 'Silenciar voz'}
+          title={isMuted ? 'Activar voz' : 'Silenciar voz'}
+        >
+          {isMuted ? '🔇' : '🔊'}
+        </button>
+        <button
+          type="button"
           className="aris-close-btn"
           onClick={close}
           aria-label="Cerrar mensaje"
@@ -40,6 +51,8 @@ export function ArisPrompt() {
   const isOpen = useStore((s) => s.arisPromptOpen)
   const setOpen = useStore((s) => s.setArisPromptOpen)
   const askAris = useStore((s) => s.askAris)
+  const isMuted = useStore((s) => s.arisMuted)
+  const toggleMute = useStore((s) => s.toggleArisMute)
   const [query, setQuery] = useState('')
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<any>(null)
@@ -120,6 +133,15 @@ export function ArisPrompt() {
               Pregúntale qué falta memorizar, adónde ir o pistas sobre la sala.
             </p>
           </div>
+          <button
+            type="button"
+            className="aris-mute-btn"
+            onClick={toggleMute}
+            aria-label={isMuted ? 'Activar voz' : 'Silenciar voz'}
+            title={isMuted ? 'Activar voz' : 'Silenciar voz'}
+          >
+            {isMuted ? '🔇' : '🔊'}
+          </button>
           <button type="button" className="aris-close-btn" onClick={cancel}>
             ✕
           </button>

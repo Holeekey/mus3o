@@ -40,6 +40,7 @@ type State = {
   lastKeyRoomId: string | null
   arisMessage: string | null
   arisPromptOpen: boolean
+  arisMuted: boolean
 
   enterPalace: (palace: Museum, sourceText?: string | null) => void
   resume: () => void
@@ -55,6 +56,7 @@ type State = {
   askAris: (query: string) => void
   setArisPromptOpen: (open: boolean) => void
   closeArisDialog: () => void
+  toggleArisMute: () => void
   set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId' | 'arisMessage' | 'arisPromptOpen'>>) => void
 }
 
@@ -106,6 +108,7 @@ export const useStore = create<State>()(
       lastKeyRoomId: null,
       arisMessage: null,
       arisPromptOpen: false,
+      arisMuted: false,
 
       enterPalace: (palace, sourceText) =>
         set({
@@ -175,11 +178,12 @@ export const useStore = create<State>()(
             roomKeys: s.roomKeys,
             mode: s.mode,
           })
-          speakAris(res.text)
+          speakAris(res.text, s.arisMuted)
           return { arisMessage: res.text, arisPromptOpen: false }
         }),
       setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
       closeArisDialog: () => set({ arisMessage: null }),
+      toggleArisMute: () => set((s) => ({ arisMuted: !s.arisMuted })),
       set: (patch) => set(patch),
     }),
     {
@@ -193,21 +197,23 @@ export const useStore = create<State>()(
         unlockedDoors: s.unlockedDoors,
         freeExplore: s.freeExplore,
         sourceText: s.sourceText,
+        arisMuted: s.arisMuted,
       }),
       // Lo guardado puede estar corrupto o venir de otra versión: se valida antes de usarlo.
       merge: (persisted, current) => {
         const p = persisted as
-          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown; freeExplore?: unknown; sourceText?: unknown }
+          | { palace?: unknown; memorized?: unknown; roomKeys?: unknown; unlockedDoors?: unknown; freeExplore?: unknown; sourceText?: unknown; arisMuted?: unknown }
           | undefined
         const freeExplore = typeof p?.freeExplore === 'boolean' ? p.freeExplore : current.freeExplore
+        const arisMuted = typeof p?.arisMuted === 'boolean' ? p.arisMuted : current.arisMuted
         const palace = MuseumSchema.safeParse(p?.palace)
-        if (!palace.success) return { ...current, freeExplore }
+        if (!palace.success) return { ...current, freeExplore, arisMuted }
         const record = (value: unknown) =>
           value && typeof value === 'object' ? (value as Record<string, true>) : {}
         const memorized = record(p?.memorized)
         // Las llaves guardadas se completan con las que corresponden al progreso guardado.
         const roomKeys = { ...record(p?.roomKeys), ...earnedRoomKeys(palace.data, memorized, {}) }
-        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore, sourceText: capSourceText(p?.sourceText) }
+        return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore, arisMuted, sourceText: capSourceText(p?.sourceText) }
       },
     },
   ),
