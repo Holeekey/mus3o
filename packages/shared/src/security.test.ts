@@ -149,3 +149,9 @@ describe("repairAndSanitizeMuseum", () => {
     expect(pieceIds[0]).toBe("duplicate_id");
   });
 });
+
+describe("sanitizeDisplayText hardening", () => {
+  it("drops unclosed tags and invisible characters", () => {
+    expect(sanitizeDisplayText("Hola <script src=x​ mundo", 80)).not.toMatch(/[<>​]/);
+  });
+});

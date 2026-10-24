@@ -28,7 +28,7 @@ import {
   userPrompt,
 } from "./prompts";
 
-const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
+const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 let client: Anthropic | undefined;
 
 const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();

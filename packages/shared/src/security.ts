@@ -47,6 +47,9 @@ export function sanitizeDisplayText(raw: string, maxLen: number): string {
   if (typeof raw !== "string") return "";
   const plain = raw
     .replace(/<[^>]*>/g, "")
+    .replace(/[<>]/g, "") // etiquetas sin cerrar ("<script src=x") no deben sobrevivir
+    .replace(CONTROL_CHARS_REGEX, "")
+    .replace(INVISIBLE_CHARS_REGEX, "")
     .replace(/[\r\n\t]+/g, " ")
     .trim();
   return plain.slice(0, maxLen);

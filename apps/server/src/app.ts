@@ -19,6 +19,12 @@ import { getCached, setCached } from "./cache";
 export const app = express();
 const WEB_ORIGIN = process.env.WEB_ORIGIN;
 
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
 app.use(cors(WEB_ORIGIN ? { origin: WEB_ORIGIN } : undefined));
 
 // Health check endpoint for Render and uptime monitoring

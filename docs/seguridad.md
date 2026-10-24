@@ -121,3 +121,15 @@ Discrepancias detectadas entre esta guía y el código actual. Resolver antes de
 - **Nombres:** la guía usa `Palace3D`; `dev` usa `@mus3o/shared` y `MuseumSchema`. Unificar el nombre del paquete y del contrato.
 - **Subida de archivos:** `multer` no está en el código actual. Los parsers del cliente leen texto, JSON y CSV sin enviar archivos al servidor.
 - **Rate limit:** `dev` tiene 10 peticiones por minuto. La guía propone 5 generaciones cada 15 minutos. Son límites distintos; elegir uno.
+
+## 9. Revisión con `inference-security-hardening` (rama `feature/deterministic-ai-security`)
+
+Cobertura de la matriz V1–V6 y cambios de esta revisión:
+
+- **V1/V2 (óptica y canales secundarios):** prompts con rol anclado, imágenes como datos pasivos, delimitadores saneados de forma recursiva (`sanitizeUntrustedText`). Nuevo: las imágenes de entrada validan base64 y tamaño (`MAX_IMAGE_BASE64_CHARS`).
+- **V4 (secuestro de rol):** ancla de rol en los prompts; la salida pasa por `repairAndSanitizeMuseum` y por el reintento con validación.
+- **V5 (salida):** el frontend no usa `innerHTML` ni `dangerouslySetInnerHTML`. `sanitizeDisplayText` ahora también descarta `<`/`>` sueltos, caracteres de control e invisibles.
+- **V6 (exposición):** sin modo debug; `/api/improve-prompt` solo con `ENABLE_DEBUG_ROUTES=true`. Nuevo: cabeceras `nosniff` y `Referrer-Policy`, y se oculta `X-Powered-By`.
+- **V3:** no aplica (la inferencia es la API de Anthropic, no un servidor local con `-c`).
+- **Corregido:** el modelo por defecto había retrocedido a `claude-sonnet-4-20250514`; vuelve a `claude-sonnet-5-5`.
+- **Pendiente:** sanear `label`/`title` del diorama y `piece.sources` en `repairAndSanitizeMuseum`; `listen` enlaza a todas las interfaces (requerido en Render).
