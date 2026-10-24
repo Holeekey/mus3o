@@ -27,7 +27,7 @@ import {
   userPrompt,
 } from "./prompts";
 
-const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
 let client: Anthropic | undefined;
 
 const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -122,10 +122,13 @@ export async function generateMuseum(input: GenerateInput): Promise<Museum> {
 
 /** Cada imagen va precedida de su id para que la IA pueda referenciarla en `piece.image`. */
 export function buildFlowContent(request: GenerateMuseumRequest): Anthropic.ContentBlockParam[] {
-  const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => [
-    { type: "text", text: `Imagen ${JSON.stringify(image.id)} (${image.name.replace(/[<>]/g, "")}):` },
-    { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
-  ]);
+  const images = request.images.flatMap((image): Anthropic.ContentBlockParam[] => {
+    const safeName = image.name.replace(/[<>\r\n]/g, "").slice(0, 80);
+    return [
+      { type: "text", text: `Imagen ${JSON.stringify(image.id)} (${safeName}):` },
+      { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
+    ];
+  });
   return [...images, { type: "text", text: flowPrompt(request) }];
 }
 
