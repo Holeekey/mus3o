@@ -25,21 +25,35 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 ## 2. Landing (`ui/Landing.tsx`)
 
-- Editor "Tus apuntes" (texto libre) con vista previa en vivo del palacio que sale del parser local.
-- **Subir archivo:** solo `.txt` y `.md`, máximo **200 KB**. No hay extracción de docx, xlsx ni csv en la interfaz todavía.
+- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los palacios destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
+- **Equipo:** `#equipo` muestra una página aparte (`ui/TeamSection.tsx`, elegida en `App.tsx` con `ui/useHash.ts`): galería vertical donde la tarjeta en el centro de la pantalla va a color y el resto en blanco y negro. Fotos en `public/team/<nombre>.jpg`.
+- Editor "Tus apuntes" (texto libre); el palacio se valida con el parser local (salas y conceptos en la barra de estado).
+- **"+ Fuentes"** abre y cierra una columna **dentro del recuadro del editor**, a la derecha del texto (debajo en pantallas ≤ 640 px) (`ui/SourcesPanel.tsx`); también se cierra con ✕ o Escape: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
+
+| Tipo | Cómo se lee |
+|---|---|
+| `.docx` | `mammoth.extractRawText` |
+| `.xlsx` | `read-excel-file/universal`; cada fila queda como `encabezado: valor; ...` |
+| `.csv` | Separador `,` o `;` detectado, con comillas; mismo formato que `.xlsx` |
+| `.json` | Aplanado a líneas `ruta: valor` |
+| `.txt`, `.md` | Texto tal cual |
+| `.png`, `.jpg`, `.jpeg`, `.webp` | Se achica a ≤ 1024 px y se pasa a JPEG (`readImageAttachment`); máx. `LIMITS.maxImages` (6) |
+| `.doc`, `.xls` | Rechazados con "Guárdalo como .docx / .xlsx" |
+
+  Todo el texto pasa por `compactText` (espacios normalizados, sin líneas vacías ni repetidas). Límites: hasta 10 archivos de texto, 100 000 caracteres por archivo y `LIMITS.maxDigestInputChars` (200 000) en total.
 - **Botones:**
 
 | Botón | Qué hace |
 |---|---|
 | Construir palacio | Usa el parser local (`parsePalace`), sin IA |
-| Generar con IA | `lib/api.ts#generateMuseum`: envía `{topic}` si es una línea corta, o `{notes}` si no |
+| Generar con IA | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
 | Entrar al palacio | Aparece tras generar con IA |
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
 | Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
 
 - Mensajes de error y "demasiadas solicitudes" (429) ya están manejados.
-- **Lo que la interfaz NO envía todavía:** `mode`, `sources[]`, `images[]`, ni llama a `/api/improve-prompt`. El contrato y el servidor sí lo soportan (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
+- **Lo que la interfaz envía:** `sources[]` e `images[]` cuando hay adjuntos, siempre con `mode: "exploration"`. **Todavía no** hay selector de modo ni llama a `/api/improve-prompt` (ver [estado-y-pendientes.md](./estado-y-pendientes.md)).
 
 ### Parser local de apuntes (`palace/parse.ts`)
 
@@ -116,7 +130,8 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `LabelPlate.tsx` | Cartela con el título del concepto |
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
 | `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
-| `Preview.tsx` | Vista previa del palacio en la landing |
+| `RoomPeek.tsx` | Sala de ejemplo de la landing con la cámara que sigue el scroll |
+| `Preview.tsx` | Maqueta isométrica del palacio (ya no se usa en la landing) |
 | `pointerLock.ts` | Utilidad para bloquear el puntero |
 
 ### Controles

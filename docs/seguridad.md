@@ -121,3 +121,28 @@ Discrepancias detectadas entre esta guía y el código actual. Resolver antes de
 - **Nombres:** la guía usa `Palace3D`; `dev` usa `@mus3o/shared` y `MuseumSchema`. Unificar el nombre del paquete y del contrato.
 - **Subida de archivos:** `multer` no está en el código actual. Los parsers del cliente leen texto, JSON y CSV sin enviar archivos al servidor.
 - **Rate limit:** `dev` tiene 10 peticiones por minuto. La guía propone 5 generaciones cada 15 minutos. Son límites distintos; elegir uno.
+
+## 9. Revisión con `inference-security-hardening` (rama `feature/deterministic-ai-security`)
+
+Cobertura de la matriz V1–V6 y cambios de esta revisión:
+
+- **V1/V2 (óptica y canales secundarios):** prompts con rol anclado, imágenes como datos pasivos, delimitadores saneados de forma recursiva (`sanitizeUntrustedText`). Nuevo: las imágenes de entrada validan base64 y tamaño (`MAX_IMAGE_BASE64_CHARS`).
+- **V4 (secuestro de rol):** ancla de rol en los prompts; la salida pasa por `repairAndSanitizeMuseum` y por el reintento con validación.
+- **V5 (salida):** el frontend no usa `innerHTML` ni `dangerouslySetInnerHTML`. `sanitizeDisplayText` ahora también descarta `<`/`>` sueltos, caracteres de control e invisibles.
+- **V6 (exposición):** sin modo debug; `/api/improve-prompt` solo con `ENABLE_DEBUG_ROUTES=true`. Nuevo: cabeceras `nosniff` y `Referrer-Policy`, y se oculta `X-Powered-By`.
+- **V3:** no aplica (la inferencia es la API de Anthropic, no un servidor local con `-c`).
+- **Corregido:** el modelo por defecto había retrocedido a `claude-sonnet-4-20250514`; vuelve a `claude-sonnet-5-5`.
+- **Salida del modelo (V5, completo):** `repairAndSanitizeMuseum` sanea título, salas (`name`, `description`, `period`), piezas (`title`, `text`, `fact`, `mnemonicCue`, `quiz`, `source.quote`), `imageSearch` (sale hacia Wikipedia/Commons) y el diorama (título y `label` de props).
+- **Tokens de control:** `sanitizeUntrustedText` elimina `<|…|>` genéricos, `[INST]`, `<<SYS>>` y `<s>`.
+- **Rate limit tras proxy:** `trust proxy = 1` en producción (Render).
+- **CORS:** en producción sin `WEB_ORIGIN` no se habilita CORS (el servidor sirve el frontend en el mismo origen); en desarrollo queda abierto.
+- **Arranque:** si `ANTHROPIC_API_KEY` está definida con formato inválido, el proceso se detiene (vacía sigue permitiendo el modo mock).
+- **Tests:** payloads de `testbench-cases.md` convertidos en regresión en `packages/shared/src/security.test.ts`.
+- **Verificado en ejecución (build `dist`, Node 24):** clave inválida → el proceso sale con código 1; en producción un origen ajeno no recibe `Access-Control-Allow-Origin`, y en desarrollo sí; con `X-Forwarded-For` distintos cada IP tiene su propio contador (429 en la petición 11); las cabeceras `nosniff` y `Referrer-Policy` están presentes.
+- **Bug de despliegue corregido:** el build ESM de producción fallaba con `__dirname is not defined`; ahora se calcula con `import.meta.url`.
+- **`render.yaml`:** `ANTHROPIC_MODEL` pasa a `claude-sonnet-5-5`.
+- **Decisión consciente:** `listen` enlaza a todas las interfaces porque Render necesita que el servicio sea alcanzable por su proxy; la exposición se limita con rate limit, tope diario y la validación de entrada.
+
+## 10. Voz con ElevenLabs (opcional)
+
+La clave `ELEVENLABS_API_KEY` solo la lee el servidor (`apps/server/src/tts.ts`); el navegador llama a `/api/tts`. Protecciones: texto de 1-500 caracteres con `.strict()` y saneado, límite de 30 peticiones/min por IP, tope diario de caracteres, id de voz validado, timeout de 15 s y nunca se reenvía el cuerpo de error del proveedor. Si falla o no está configurado, `apps/web/src/lib/voice.ts` cae a la síntesis del navegador. Estado: **código listo, sin clave configurada**.

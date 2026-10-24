@@ -72,7 +72,7 @@ Si prefieres crearlo manualmente desde el dashboard:
 5. En la sección **Environment Variables**:
    - `NODE_ENV`: `production`
    - `PORT`: `10000`
-   - `ANTHROPIC_MODEL`: `claude-sonnet-4-20250514`
+   - `ANTHROPIC_MODEL`: `claude-sonnet-5-5`
    - `MAX_DAILY_GENERATIONS`: `200`
    - `ANTHROPIC_API_KEY`: `[Tu API Key]`
 6. Haz clic en **Create Web Service**.

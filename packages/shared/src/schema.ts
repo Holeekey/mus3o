@@ -19,7 +19,14 @@ export const LIMITS = {
   maxText: 400,
   maxImages: 6,
   maxQuote: 240,
+  /** Texto total que acepta /api/digest-sources (suma de todas las fuentes). */
+  maxDigestInputChars: 200_000,
+  /** Largo máximo del temario base: prompt + temario queda bajo maxNotesChars. */
+  maxDigestChars: 15_000,
 } as const;
+
+/** ~1,5 MB por imagen en base64 (las del cliente van a <= 1024 px). */
+export const MAX_IMAGE_BASE64_CHARS = 2_000_000;
 
 export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "education"]);
 
@@ -54,6 +61,8 @@ export const ImageSearchSchema = z.object({
   /** 2 a 4 palabras clave en inglés para buscar en Commons. */
   commonsQuery: z.string().max(120).optional(),
   lang: z.string().regex(/^[a-z]{2}$/).optional(),
+  /** Contexto para desambiguar (sala o tema): el servidor lo usa al buscar, no se muestra. */
+  context: z.string().max(120).optional(),
 });
 
 /** Respuesta de GET /api/image. */
@@ -410,9 +419,11 @@ export function findImageAssignmentIssues(museum: Museum, requestImageIds: strin
   );
 }
 
+export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json"]);
+
 export const SourceSchema = z.object({
   name: z.string().min(1).max(120),
-  kind: z.enum(["docx", "xlsx", "csv", "txt"]),
+  kind: SourceKindSchema,
   /** Texto ya extraído en el navegador: los archivos nunca llegan al servidor. */
   text: z.string().max(LIMITS.maxNotesChars),
 });
@@ -423,7 +434,7 @@ export const InputImageSchema = z.object({
   name: z.string().min(1).max(120),
   mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
   /** Base64, redimensionada en el navegador a <= 1024 px. */
-  data: z.string().min(1),
+  data: z.string().min(1).max(MAX_IMAGE_BASE64_CHARS).regex(/^[A-Za-z0-9+/]+={0,2}$/, "base64 inválido"),
 });
 
 const RequestObjectSchema = z.object({
@@ -459,6 +470,33 @@ export const ImprovePromptResponseSchema = z.object({
   improvedPrompt: z.string().min(1).max(2_000),
 });
 
+/** Fuentes demasiado largas para el flujo: un modelo barato las resume en un temario base. */
+export const DigestSourcesRequestSchema = z.object({
+  sources: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        kind: SourceKindSchema,
+        text: z.string().min(1).max(100_000),
+      }),
+    )
+    .min(1)
+    .max(10),
+}).superRefine((request, ctx) => {
+  const total = request.sources.reduce((sum, s) => sum + s.text.length, 0);
+  if (total > LIMITS.maxDigestInputChars) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `el texto total supera ${LIMITS.maxDigestInputChars} caracteres`,
+      path: ["sources"],
+    });
+  }
+});
+
+export const DigestSourcesResponseSchema = z.object({
+  digest: z.string().min(1).max(LIMITS.maxDigestChars),
+});
+
 export type RoomTheme = z.infer<typeof RoomThemeSchema>;
 export type MonumentType = z.infer<typeof MonumentTypeSchema>;
 export type RoomPaletteDescriptor = z.infer<typeof RoomPaletteSchema>;
@@ -490,4 +528,7 @@ export type Source = z.infer<typeof SourceSchema>;
 export type InputImage = z.infer<typeof InputImageSchema>;
 export type GenerateMuseumRequest = z.infer<typeof GenerateMuseumRequestSchema>;
 export type ImprovePromptRequest = z.infer<typeof ImprovePromptRequestSchema>;
+export type SourceKind = z.infer<typeof SourceKindSchema>;
+export type DigestSourcesRequest = z.infer<typeof DigestSourcesRequestSchema>;
+export type DigestSourcesResponse = z.infer<typeof DigestSourcesResponseSchema>;
 export type ImprovePromptResponse = z.infer<typeof ImprovePromptResponseSchema>;
