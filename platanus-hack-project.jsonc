@@ -1,12 +1,12 @@
 {
   // Your project's name, as it will appear on the voting page.
-  "project-name": "<FILL THIS>",
+  "project-name": "mus3o",
 
   // Short one-line summary of your project (in Spanish).
-  "project-oneliner-spanish": "<FILL THIS>",
+  "project-oneliner-spanish": "Convierte tus apuntes en un palacio de la memoria 3D que recorres en primera persona.",
 
   // Brief description of your project (in Spanish).
-  "project-description-spanish": "<FILL THIS>",
+  "project-description-spanish": "mus3o transforma apuntes de estudio o un tema en un museo 3D explorable. Cada tema es una sala, cada concepto es una pieza con su propio objeto, y un sistema de repaso espaciado te avisa qué está por olvidarse. Se genera con IA (Claude) a partir de tus apuntes, con citas verificadas contra el texto original.",
 
   // Public URL where your project is deployed and running.
   // Must be a valid URL, for example: https://my-project.vercel.app
