@@ -1,4 +1,4 @@
-import { planRoomGrid, type Glyph, type Museum, type Piece } from '@mus3o/shared'
+import { planRoomGrid, type Glyph, type ImageSearch, type Museum, type Piece } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
 export type Box = { x: number; z: number; w: number; d: number; h: number; y?: number }
@@ -35,6 +35,8 @@ export type RoomLayout = {
   walls: Box[]
   pedestals: PedestalLayout[]
   paintingSlots: PaintingSlot[]
+  /** Búsqueda del cuadro principal de la sala. */
+  imageSearch?: ImageSearch
 }
 
 export type CorridorLayout = { floor: Box; walls: Box[] }
@@ -228,6 +230,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
       walls: roomWalls(x, z, w, d, height, doorsOf[i]),
       pedestals,
       paintingSlots: paintingSlots(x, z, w, d, doorsOf[i]),
+      imageSearch: room.imageSearch,
     }
   })
 
@@ -307,4 +310,37 @@ export function moveWithCollisions(colliders: Box[], x: number, z: number, dx: n
   let nz = z + dz
   if (colliders.some((b) => hits(nx, nz, b))) nz = z
   return { x: nx, z: nz }
+}
+
+export type PaintingAssignment = { slot: PaintingSlot; search: ImageSearch; key: string }
+
+const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
+
+/**
+ * La búsqueda de la sala va al cuadro principal; cada pieza con búsqueda, al hueco libre
+ * más cercano a su pedestal. Si faltan huecos, las piezas sobrantes se quedan sin cuadro.
+ */
+export function assignPaintings(room: RoomLayout): PaintingAssignment[] {
+  const out: PaintingAssignment[] = []
+  const free = [...room.paintingSlots]
+  const main = free.find((s) => s.main)
+  if (main && hasSearch(room.imageSearch)) {
+    out.push({ slot: main, search: room.imageSearch, key: `room:${room.id}` })
+    free.splice(free.indexOf(main), 1)
+  }
+  for (const p of room.pedestals) {
+    if (!hasSearch(p.concept.imageSearch) || free.length === 0) continue
+    let best = 0
+    let bestD = Infinity
+    free.forEach((s, i) => {
+      const d = Math.hypot(s.x - p.x, s.z - p.z)
+      if (d < bestD) {
+        bestD = d
+        best = i
+      }
+    })
+    out.push({ slot: free[best], search: p.concept.imageSearch, key: `piece:${p.concept.id}` })
+    free.splice(best, 1)
+  }
+  return out
 }

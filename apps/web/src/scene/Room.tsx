@@ -1,9 +1,10 @@
 import { Billboard, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { Suspense, useRef } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import type { Mesh, Object3D } from 'three'
-import type { Box, PedestalLayout, RoomLayout, Side } from '../palace/layout'
+import { assignPaintings, type Box, type PedestalLayout, RoomLayout, Side } from '../palace/layout'
 import { useStore } from '../store'
+import { Painting } from './Painting'
 import type { RoomPalette, Theme } from '../theme'
 import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
@@ -78,12 +79,12 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
   const inset = 0.2 + 0.03 // mitad del muro + holgura
   const pos: [number, number, number] =
     side === 'n'
-      ? [room.x, 3.1, room.z - room.d / 2 + inset]
+      ? [room.x, 3.85, room.z - room.d / 2 + inset]
       : side === 's'
-        ? [room.x, 3.1, room.z + room.d / 2 - inset]
+        ? [room.x, 3.85, room.z + room.d / 2 - inset]
         : side === 'e'
-          ? [room.x + room.w / 2 - inset, 3.1, room.z]
-          : [room.x - room.w / 2 + inset, 3.1, room.z]
+          ? [room.x + room.w / 2 - inset, 3.85, room.z]
+          : [room.x - room.w / 2 + inset, 3.85, room.z]
   const rotY = side === 'n' ? 0 : side === 's' ? Math.PI : side === 'e' ? -Math.PI / 2 : Math.PI / 2
   return (
     <Suspense fallback={null}>
@@ -176,6 +177,7 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
 
 export function Room({ room, palette, theme }: { room: RoomLayout; palette: RoomPalette; theme: Theme }) {
   const { cornice, plinth } = theme.scene.architecture
+  const paintings = useMemo(() => assignPaintings(room), [room])
   return (
     <group>
       <mesh position={[room.x, -0.05, room.z]} receiveShadow>
@@ -189,6 +191,9 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
         </group>
       ))}
       <Inscription room={room} palette={palette} />
+      {paintings.map((a) => (
+        <Painting key={a.key} slot={a.slot} search={a.search} palette={palette} theme={theme} />
+      ))}
       <Monument room={room} theme={theme} />
       {room.pedestals.map((p) => (
         <Pedestal key={p.concept.id} p={p} palette={palette} theme={theme} />

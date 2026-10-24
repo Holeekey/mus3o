@@ -1,0 +1,107 @@
+import { Text } from '@react-three/drei'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
+import { type ImageSearch } from '@mus3o/shared'
+import { creditLine, useResolvedImage } from '../lib/images'
+import type { PaintingSlot } from '../palace/layout'
+import type { RoomPalette, Theme } from '../theme'
+
+const FONT_BODY = '/fonts/HankenGrotesk.ttf'
+const FRAME_T = 0.07 // ancho de la moldura
+const FRAME_DEPTH = 0.11
+const MAT = 0.05 // ancho del passe-partout
+const WALL_Z = -0.06 // el muro queda atrás del grupo (el slot está 0.06 m separado)
+
+const loader = new TextureLoader().setCrossOrigin('anonymous')
+
+function useTexture(src?: string): Texture | null {
+  const [state, setState] = useState<{ src: string; texture: Texture } | null>(null)
+  useEffect(() => {
+    if (!src) return
+    let alive = true
+    let loaded: Texture | null = null
+    loader.load(
+      src,
+      (texture) => {
+        texture.colorSpace = SRGBColorSpace
+        texture.anisotropy = 8
+        loaded = texture
+        if (alive) setState({ src, texture })
+        else texture.dispose()
+      },
+      undefined,
+      () => {},
+    )
+    return () => {
+      alive = false
+      loaded?.dispose()
+    }
+  }, [src])
+  return src && state?.src === src ? state.texture : null
+}
+
+/** Cuadro enmarcado con su placa. No dibuja nada hasta que la imagen carga. */
+export function Painting({ slot, search, palette, theme }: { slot: PaintingSlot; search: ImageSearch; palette: RoomPalette; theme: Theme }) {
+  const image = useResolvedImage(search)
+  const texture = useTexture(image?.src)
+  const matColor = useMemo(() => new Color(theme.scene.object.color).multiplyScalar(0.92), [theme])
+  if (!image || !texture) return null
+
+  const aspect = (texture.image as { width: number; height: number }).width / (texture.image as { width: number; height: number }).height
+  const maxW = slot.maxWidth - 2 * (FRAME_T + MAT)
+  const maxH = slot.maxHeight - 2 * (FRAME_T + MAT)
+  const w = Math.min(maxW, maxH * aspect)
+  const h = w / aspect
+  const ow = w + 2 * MAT // abertura del marco
+  const oh = h + 2 * MAT
+  const roughness = theme.scene.object.roughness
+  const frame = palette.trim
+
+  const bars: [number, number, number, number][] = [
+    [0, oh / 2 + FRAME_T / 2, ow + 2 * FRAME_T, FRAME_T],
+    [0, -oh / 2 - FRAME_T / 2, ow + 2 * FRAME_T, FRAME_T],
+    [-ow / 2 - FRAME_T / 2, 0, FRAME_T, oh],
+    [ow / 2 + FRAME_T / 2, 0, FRAME_T, oh],
+  ]
+  const bottom = -oh / 2 - FRAME_T
+
+  return (
+    <group position={[slot.x, slot.y, slot.z]} rotation={[0, slot.rotationY, 0]}>
+      {/* Passe-partout: yeso un poco más profundo que el objeto. */}
+      <mesh position={[0, 0, WALL_Z + 0.025]} castShadow receiveShadow>
+        <boxGeometry args={[ow, oh, 0.05]} />
+        <meshStandardMaterial color={matColor} roughness={roughness} flatShading />
+      </mesh>
+      <mesh position={[0, 0, WALL_Z + 0.0505]} receiveShadow>
+        <planeGeometry args={[w, h]} />
+        <meshStandardMaterial map={texture} roughness={1} />
+      </mesh>
+      {bars.map(([x, y, bw, bh], i) => (
+        <group key={i} position={[x, y, WALL_Z + FRAME_DEPTH / 2]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[bw, bh, FRAME_DEPTH]} />
+            <meshStandardMaterial color={frame} roughness={0.9} flatShading />
+          </mesh>
+          {/* Filete biselado: una pestaña más delgada y saliente. */}
+          <mesh position={[0, 0, FRAME_DEPTH / 2 + 0.01]} castShadow>
+            <boxGeometry args={[bw * (bw > bh ? 0.97 : 0.55), bh * (bw > bh ? 0.55 : 0.97), 0.02]} />
+            <meshStandardMaterial color={frame} roughness={0.9} flatShading />
+          </mesh>
+        </group>
+      ))}
+      <Suspense fallback={null}>
+        <Text
+          position={[0, bottom - 0.12, WALL_Z + 0.02]}
+          font={FONT_BODY}
+          fontSize={slot.main ? 0.095 : 0.075}
+          maxWidth={Math.max(slot.maxWidth + 0.4, 1.8)}
+          textAlign="center"
+          anchorY="top"
+          color={palette.ink}
+        >
+          {creditLine(image)}
+        </Text>
+      </Suspense>
+    </group>
+  )
+}
