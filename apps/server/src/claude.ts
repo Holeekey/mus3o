@@ -5,6 +5,7 @@ import {
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
+  repairAndSanitizeMuseum,
   sampleMuseum,
   sanitizeRawSources,
   verifySources,
@@ -33,14 +34,15 @@ let client: Anthropic | undefined;
 const stripFence = (raw: string) => raw.replace(/^```(?:json|dsl)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
 
 function parseMuseum(raw: string): Museum {
-  // Las citas largas se recortan antes de validar: lo que cuenta es que luego se verifiquen.
-  return MuseumSchema.parse(sanitizeRawSources(JSON.parse(stripFence(raw))));
+  // Las citas largas se recortan antes de validar y la salida se desinfecta deterministamente.
+  const parsed = MuseumSchema.parse(sanitizeRawSources(JSON.parse(stripFence(raw))));
+  return repairAndSanitizeMuseum(parsed);
 }
 
 export function parseAdaptiveMuseum(raw: string, topic?: string): Museum {
   const stripped = stripFence(raw);
   if (stripped.includes("ROOM:") || stripped.startsWith("ROOM:")) {
-    return parseMus3oDSL(stripped, { title: topic });
+    return repairAndSanitizeMuseum(parseMus3oDSL(stripped, { title: topic }));
   }
   return parseMuseum(raw);
 }

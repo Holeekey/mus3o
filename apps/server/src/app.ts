@@ -5,7 +5,13 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
-import { GenerateMuseumRequestSchema, ImprovePromptRequestSchema, LIMITS, type Museum } from "@mus3o/shared";
+import {
+  GenerateMuseumRequestSchema,
+  ImprovePromptRequestSchema,
+  LIMITS,
+  sanitizeUntrustedText,
+  type Museum,
+} from "@mus3o/shared";
 import { AiUnavailableError, generateFlowMuseum, generateMuseum, improvePrompt, type GenerateInput } from "./claude";
 import { imageRouter } from "./images";
 import { getCached, setCached } from "./cache";
@@ -79,7 +85,12 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
 app.post("/api/generate-museum", async (req, res) => {
   const legacy = RequestSchema.safeParse(req.body);
   if (legacy.success) {
-    await respondWithMuseum(res, cacheKey(legacy.data), () => generateMuseum(legacy.data));
+    const cleanInput: GenerateInput =
+      "notes" in legacy.data
+        ? { notes: sanitizeUntrustedText(legacy.data.notes, LIMITS.maxNotesChars) }
+        : { topic: sanitizeUntrustedText(legacy.data.topic, 200) };
+
+    await respondWithMuseum(res, cacheKey(cleanInput), () => generateMuseum(cleanInput));
     return;
   }
   const flow = GenerateMuseumRequestSchema.safeParse(req.body);
@@ -87,8 +98,16 @@ app.post("/api/generate-museum", async (req, res) => {
     res.status(400).json({ error: `Envía "topic" (1-200 caracteres) o "notes" (hasta ${LIMITS.maxNotesChars} caracteres)` });
     return;
   }
+  const cleanFlow = {
+    ...flow.data,
+    prompt: sanitizeUntrustedText(flow.data.prompt, LIMITS.maxNotesChars),
+    sources: flow.data.sources.map((s) => ({
+      ...s,
+      text: sanitizeUntrustedText(s.text, LIMITS.maxNotesChars),
+    })),
+  };
   // La clave incluye modo, fuentes e imágenes, no solo el texto.
-  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(flow.data)), () => generateFlowMuseum(flow.data));
+  await respondWithMuseum(res, "flow:" + sha256(JSON.stringify(cleanFlow)), () => generateFlowMuseum(cleanFlow));
 });
 
 // Solo para depurar el flujo: sugiere mejoras al pedido antes de generar.
