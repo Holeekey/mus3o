@@ -9,6 +9,7 @@ npm install
 npm run dev                          # web http://localhost:5173 · server http://localhost:3001
 ```
 
+- **Después de cada `git pull` de `dev`, corre `npm install`.** El equipo suma dependencias seguido; si no se instalan, Vite falla con `Failed to resolve import` (ver §9).
 - Sin `ANTHROPIC_API_KEY`: los temas devuelven un museo mock y los apuntes responden 503. El cliente usa su parser local.
 - Atajos de navegador: `http://localhost:5173/?demo`, `?demo=ia`, `?demo=historia`, `?demo=dungeon`. Ver [frontend.md](./frontend.md) §1.
 
@@ -150,6 +151,9 @@ Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
 | `error: packfile … index unavailable` al hacer `git pull` | Un paquete de objetos de git incompleto en el clon local | Observado una vez en esta sesión; el pull terminó como fast-forward. Si vuelve, `git fsck` muestra el estado |
+| Vite: `Failed to resolve import "mammoth" from "src/lib/files.ts"` (u otro paquete) | Se hizo `git pull` con dependencias nuevas sin instalarlas | `npm install` en la raíz; Vite lo toma solo, recarga la página |
+| `git pull`: `git-lfs filter-process: git-lfs: command not found` | El repo usa Git LFS para assets y no está instalado | `brew install git-lfs` y repite el pull |
+| "No pudimos generar el palacio con IA" y en el server `generate-museum falló tras … ms: Error` | La API de Anthropic rechaza la llamada; visto con `400 Your credit balance is too low` (cuenta sin créditos) | Revisa los créditos en la consola de Anthropic. Reintentar no sirve hasta cargarlos |
 | La landing dice "IA no configurada" | Falta `ANTHROPIC_API_KEY` | Añádela en `.env` y reinicia el server |
 | "Demasiadas solicitudes" (429) | Rate limit 10/min o tope diario de 200 | Espera un minuto; el tope diario se reinicia a medianoche UTC |
 | Un palacio guardado no carga | No pasa `MuseumSchema` tras un cambio de contrato | `merge` lo descarta a propósito. Borra `mus3o-v1` en `localStorage` o regenera el palacio |
