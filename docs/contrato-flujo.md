@@ -1,6 +1,6 @@
 # Propuesta: contrato del flujo de generación
 
-> Estado: **borrador para revisar con el equipo** (rama `feature/flow`). Todavía no hay código.
+> Estado: **implementado** en `feature/flow` (contrato en `packages/shared`, server en `apps/server`).
 > Base: `packages/shared/src/schema.ts` en `dev` (`20cb28e`).
 
 ## 1. Objetivo
@@ -40,7 +40,7 @@ export const MuseumModeSchema = z.enum(["exploration", "quiz", "biography", "edu
 export const SourceSchema = z.object({
   name: z.string().min(1).max(120),
   kind: z.enum(["docx", "xlsx", "csv", "txt"]),
-  text: z.string().max(50_000), // texto ya extraído en el navegador
+  text: z.string().max(LIMITS.maxNotesChars), // texto ya extraído en el navegador
 });
 
 export const InputImageSchema = z.object({
@@ -52,14 +52,14 @@ export const InputImageSchema = z.object({
 
 export const GenerateMuseumRequestSchema = z.object({
   mode: MuseumModeSchema.default("exploration"),
-  prompt: z.string().trim().min(1).max(2_000),
+  prompt: z.string().trim().min(1).max(LIMITS.maxNotesChars),
   sources: z.array(SourceSchema).max(5).default([]),
-  images: z.array(InputImageSchema).max(6).default([]),
+  images: z.array(InputImageSchema).max(LIMITS.maxImages).default([]), // 6
 });
 ```
 
-- Compatibilidad: si llega el formato viejo `{ topic }`, se transforma en `{ mode: "exploration", prompt: topic }`.
-- El texto total (`prompt` + `sources[].text`) no supera 50.000 caracteres (`docs/seguridad.md` §3).
+- Compatibilidad: los formatos viejos `{ topic }` y `{ notes }` siguen funcionando igual; el server los atiende por el camino anterior.
+- El texto total (`prompt` + `sources[].text`) no supera `LIMITS.maxNotesChars` (20.000 caracteres).
 - Las imágenes deben tener ids únicos.
 
 ### `POST /api/improve-prompt` (solo debug)
