@@ -7,8 +7,6 @@ import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage
 import { closeCard, interact, toggleMemorize } from '../scene/actions'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
-import { TIME_STEPS } from '../memory/model'
-import { useMemory } from '../memory/store'
 import { conceptIdList } from '../palace/conceptIds'
 import { inExamScope, isDoorOpen, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
@@ -166,8 +164,6 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const roomDone = roomIds.filter((id) => memorized[id]).length
   const legendShown = useLegendShown(locked && !open && !touch)
   const [moreOptions, setMoreOptions] = useState(false)
-  const offsetDays = useMemory((s) => s.timeOffsetDays)
-  const setOffset = useMemory((s) => s.setOffset)
 
   // Aviso de llave ganada: se muestra unos segundos.
   useEffect(() => {
@@ -350,7 +346,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
             <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
               {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
             </button>
-            {!moreOptions && <p className="muted pause-more-hint">Editar apuntes · exploración libre · simular el paso del tiempo</p>}
+            {!moreOptions && <p className="muted pause-more-hint">Editar apuntes · exploración libre</p>}
             {moreOptions && (
               <>
                 <div className="pause-actions pause-more-actions">
@@ -360,32 +356,6 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
                 <div className="memory-panel">
                   {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
-                  <fieldset className="time-machine">
-                    <legend>Simular el paso del tiempo</legend>
-                    <div className="time-steps" role="group" aria-label="Días simulados">
-                      {TIME_STEPS.map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          className={offsetDays === d ? 'btn btn-step is-on' : 'btn btn-step'}
-                          aria-pressed={offsetDays === d}
-                          onClick={() => setOffset(d)}
-                        >
-                          {d === 0 ? 'Hoy' : `${d} ${d === 1 ? 'día' : 'días'}`}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={30}
-                      step={1}
-                      value={Math.min(offsetDays, 30)}
-                      onChange={(e) => setOffset(Number(e.target.value))}
-                      aria-label="Días que han pasado"
-                    />
-                    <p className="muted memory-note">{offsetDays === 0 ? 'Es hoy.' : `Han pasado ${offsetDays} ${offsetDays === 1 ? 'día' : 'días'}.`}</p>
-                  </fieldset>
                 </div>
               </>
             )}

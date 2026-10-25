@@ -1242,12 +1242,6 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .due-chip { font-weight: 600; }
 .memory-panel { margin-top: 22px; padding-top: 18px; border-top: 2px solid var(--line); display: grid; gap: 12px; }
 .memory-note { font-size: 0.85rem; }
-.time-machine { margin: 0; padding: 12px; border: 2px solid var(--line); border-radius: var(--radius); display: grid; gap: 10px; }
-.time-machine legend { padding: 0 6px; font-weight: 700; }
-.time-steps { display: flex; flex-wrap: wrap; gap: 6px; }
-.btn-step { padding: 4px 10px; font-size: 0.85rem; background: var(--surface); color: var(--ink); }
-.btn-step.is-on { background: var(--ink); color: var(--surface); }
-.time-machine input[type='range'] { width: 100%; accent-color: var(--ink); }
 
 /* ---------- Intro: "El palacio se levanta" ---------- */
 .palace.intro-on .hud { visibility: hidden; }
