@@ -1,8 +1,17 @@
 # Diorama: "entrar al cuadro"
 
-Cuando una sala tiene un `diorama` (solo en 1 o 2 salas, las que son representables: un evento
-histórico, un lugar, un paisaje, un ecosistema), su cuadro principal se vuelve una **ventana** a
-una maqueta 3D explorable. Con `E` se entra; con `Q` se vuelve a la sala.
+Cuando el cuadro principal de una sala tiene un diorama, se vuelve una **ventana** a una maqueta 3D
+explorable. Con `E` se entra; con `Q` se vuelve a la sala.
+
+**De dónde sale el diorama** (en este orden):
+
+1. **Biblioteca** (`library.ts`, hecha a mano: Carabobo, corazón, célula, neurona): manda donde el tema coincide.
+2. **La foto real del cuadro** (`photoDiorama.ts`, `usePhotoDiorama.ts`, servidor `POST /api/diorama-from-image`, ver `servidor.md`): cuando la imagen del cuadro principal ya se resolvió, Claude (visión) clasifica si es una escena recreable (batalla, paisaje, lugar, interior, escena microscópica) y, si lo es, la describe con la biblioteca de props. **Si no es una escena (retrato, diagrama, mapa, texto, logo) o no hay IA, el cuadro queda normal, sin portal.** Nunca se arma un mundo con los conceptos de la sala.
+3. Nada más. El compositor por conceptos (`compose.ts`) ya no se usa por defecto; solo lo llama la demo `?demo=compuesto`.
+
+Dentro del mundo de foto, la imagen original se ve como **panel curvo al fondo** (`Backdrop` en `DioramaScene.tsx`, campo `diorama.backdrop`) para reconocer la escena, los props siguen la composición de la imagen y la paleta sale de ella. Cada prop lleva un `label` en español (qué representa en la imagen), útil para la narración.
+
+Cliente: pide **solo** el cuadro principal sin diorama de biblioteca, con imagen de Wikimedia (no las subidas por el usuario ni las clasificadas como `diagram`), solo cuando la sala está a ≤ 64 m de la del jugador (o de la inicial), **2 peticiones a la vez** y la sala del jugador primero; cada imagen se pide una sola vez por sesión y un fallo transitorio se reintenta pasado 1 min. `usePhotoDioramaStore.ready` hace que `World` cargue el runtime de dioramas aunque ninguna sala traiga uno de biblioteca.
 
 La IA **no escribe geometría**. Elige de una biblioteca cerrada (tipos de prop, terrenos, horas
 del día) y coloca. El cliente construye todo con primitivas low-poly.
@@ -13,8 +22,10 @@ del día) y coloca. El cliente construye todo con primitivas low-poly.
 
 | Archivo | Qué hace |
 |---|---|
-| `packages/shared/src/schema.ts` | `DioramaSchema`, `DioramaPropSchema`, `KINDS`, `POSES`, `TERRAINS`, `TIMES`, `MAX_PROPS` |
-| `apps/server/src/prompts.ts` (`DIORAMA_RULES`) | Qué pedirle a la IA y cómo colocar |
+| `packages/shared/src/schema.ts` | `DioramaSchema` (con `backdrop` opcional), `DioramaPropSchema`, `KINDS`, `POSES`, `TERRAINS`, `TIMES`, `MAX_PROPS`, `PhotoDioramaRequestSchema` y `PhotoDioramaResponseSchema` |
+| `apps/web/src/diorama/photoDiorama.ts`, `usePhotoDiorama.ts` | Cola de peticiones (2 a la vez), caché por imagen y hook que decide el portal de cada cuadro |
+| `apps/server/src/photoDiorama.ts` | Endpoint que recrea la escena de una imagen real |
+| `apps/server/src/prompts.ts` (`DIORAMA_RULES`) | Qué pedirle a la IA y cómo colocar (dioramas que la IA marca al generar el museo; los de foto usan `PHOTO_SYSTEM_PROMPT`) |
 | `apps/web/src/diorama/dioramaStore.ts` | Fase de la transición, portales registrados, atajos `E` y `Q` |
 | `apps/web/src/diorama/DioramaRuntime.tsx` | Transiciones, cámara, colisiones dentro del diorama, cuadro-portal (`MeshPortalMaterial`) |
 | `apps/web/src/diorama/DioramaScene.tsx` | Escena de la maqueta: cielo, luz, suelo, props instanciados |
@@ -37,6 +48,7 @@ Tests: `apps/web/src/diorama/diorama.test.ts` y `packages/shared/src/diorama.tes
 ```ts
 Diorama = {
   title, terrain, time,
+  backdrop?,                          // solo dioramas de foto: ruta del proxy de imágenes
   palette: { ground, sky, accent },   // hex de 6 dígitos
   props: DioramaProp[]                // máx. 24; inválidos se descartan
 }
@@ -129,7 +141,7 @@ pieza. Máximo 5 enlaces recomendados en el prompt.
 
 ## 5. Cómo probarlo
 
-- Demo rápida: `?demo=historia` (tiene dioramas) o el palacio con una sala que tenga `diorama`.
+- Demo rápida: `?demo=historia` (Carabobo de biblioteca; Boyacá, Angostura y Maracaibo se recrean desde su foto, con semillas del repo) o el palacio con una sala que tenga `diorama`.
 - Validación visual y de rendimiento (draw calls, FPS, capturas): skill `3d-validation`.
 - Lógica (colocación, terreno determinista, esquema): `npm test -w @mus3o/web` y `-w @mus3o/shared`.
 

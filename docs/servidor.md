@@ -13,6 +13,7 @@ Archivos:
 | `src/prompts.ts` | Todos los prompts y reglas (sistema, apuntes, flujo, diorama, imágenes, mejora) |
 | `src/cache.ts` | Caché en memoria, máx. 100 museos y LRU aparte de 100 temarios (`getCachedDigest`) |
 | `src/images.ts` | Proxy de Wikipedia/Commons: resolución, descarga, LRU de archivos |
+| `src/photoDiorama.ts` | `POST /api/diorama-from-image`: recrea en 3D la escena de una imagen real (visión), caché y semillas |
 
 ---
 
@@ -27,6 +28,7 @@ Archivos:
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
 | `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
+| `POST /api/diorama-from-image` | `{ imageUrl, title, roomTitle, concepts[] }` (estricto) | `{ recreatable, reason?, diorama? }` | Ver sección «Dioramas desde la foto». 400 URL no permitida; 429 límite o tope diario; 502/503 (el cliente deja el cuadro normal) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 | `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |
 | `GET /api/assets-review?status=` | `pending` \| `approved` \| `rejected` (opcional) | `{ assets: [{ assetId, keywords, title, author, license, score, sourceUrl, status, uses }] }` | **Solo curaduría**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
@@ -277,3 +279,15 @@ Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequi
 - **Modelo:** Haiku (`ANTHROPIC_ARIS_MODEL`, luego `ANTHROPIC_FALLBACK_MODEL`, por defecto `claude-haiku-5-5`), sin razonamiento, `max_tokens` 80, timeout 8 s, sin reintentos. Respuesta de 1-2 frases, recortada a 280 caracteres.
 - **Límites:** 8 solicitudes/min por IP (límite propio, fuera del general), caché en memoria de 200 respuestas (palacio + sala + pregunta; un acierto no gasta cupo) y tope diario `MAX_DAILY_ARIS_HELP` (150 por defecto).
 - **Salida:** `{ answer }`. Errores: 400 entrada inválida, 429 tope diario, 502 fallo del modelo, 503 sin `ANTHROPIC_API_KEY`. El cliente trata cualquier error como "usa el respaldo".
+
+## Dioramas desde la foto (`POST /api/diorama-from-image`)
+
+`apps/server/src/photoDiorama.ts`. El mundo de un cuadro vivo ya no se arma con los conceptos de la sala: se **recrea la foto o el cuadro real** del tema.
+
+- **Entrada** (estricta, `PhotoDioramaRequestSchema`): `imageUrl` (≤ 2048), `title`, `roomTitle` (≤ 120), `concepts[]` (≤ 12 de ≤ 80; opcional, solo contexto, nunca se dibujan por sí solos; el cliente web **no los envía**: los apuntes del usuario no salen del navegador, solo el título de la sala y el de la imagen pública).
+- **Seguridad (SSRF):** `imageUrl` pasa por `parseAllowedUrl` de `images.ts` (https y solo `upload.wikimedia.org` / `thumb.wikimedia.org`); cualquier otra cosa es 400 sin tocar la red ni la IA. La imagen se descarga con el cliente cortés de `images.ts` (`loadImageFile`: tope 8 MB, timeout, semilla y caché) y se envía a Claude solo si es JPEG/PNG/WebP/GIF de ≤ 3,7 MB (las miniaturas de Wikimedia son de 960 px; no hay reducción adicional ni dependencias nuevas). Un SVG se clasifica como diagrama sin gastar llamada.
+- **Modelo:** `ANTHROPIC_DIORAMA_MODEL` → `ANTHROPIC_MODEL` → `claude-sonnet-5-5`, visión, herramienta `recreate_scene` con `tool_choice: auto` (Sonnet 5.5 rechaza el `tool_choice` forzado: «type tool and any are not supported for this model») y `thinking: { type: "between_tools" }` (sin razonamiento previo; en este modelo `disabled` no se admite). `max_tokens` 3000, timeout 60 s, 1 reintento. Esquema de la herramienta: `imageKind` (battle, landscape, place, event, interior, microscopic = recreables; portrait, diagram, map, text, logo, chart, object, other = no), `recreatable`, `reason`, `title`, `terrain`, `time`, `palette` muestreada de la imagen y `props[]` (kinds de la biblioteca sin `custom`; `pos [x,z]` que refleja la composición: x izquierda a derecha, z fondo a primer plano; `label` en español por prop).
+- **Saneado** (`buildPhotoDiorama`, puro y probado): `recreatable` solo vale con un `imageKind` recreable; kinds fuera de la biblioteca, `custom`, `pieceId`, `parts` y `flow` se descartan; `parseDiorama` recorta cuentas, posiciones y escala; tope de 160 instancias en total; sin rótulo se usa uno por tipo; los rótulos pasan por `sanitizeUntrustedText` y sin `<>`; con menos de 3 props queda «no recreable». `diorama.backdrop` es la ruta del proxy de imágenes de esa misma imagen (`BACKDROP_RE` en shared).
+- **Caché y semillas:** clave `v1|<url canónica>` (la versión del prompt invalida lo anterior). Orden: semilla del repo `apps/server/seed/dioramas/` (`DIORAMA_SEED_DIR`, sirve sin clave de API) → memoria (300) → disco en la carpeta de imágenes (`IMAGE_CACHE_DIR`, mismo tope). También se guarda «no recreable»; los fallos de la IA nunca. Peticiones iguales simultáneas comparten una sola llamada. Las semillas de la demo `historia` (Boyacá, Angostura, Maracaibo) se generaron con la API real; la demo `medicina` no pide nada porque sus tres salas usan dioramas de la biblioteca.
+- **Límites:** 20/min por IP (`PHOTO_DIORAMA_RATE_LIMIT`, fuera del límite general de 10/min), 2 llamadas de IA a la vez por proceso (hasta 8 esperando; si no, 503), tope diario `MAX_DAILY_PHOTO_DIORAMAS` (150, solo fallos de caché). Sin `ANTHROPIC_API_KEY` y sin caché ni semilla: 503.
+- **Costo medido** (Sonnet 5.5, imagen de 960 px): ≈ 1 000 tokens de entrada, ≈ 1 000 de salida y 12-16 s por escena nueva; con caché o semilla, 0.
