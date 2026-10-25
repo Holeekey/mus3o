@@ -1,4 +1,5 @@
 import { chooseCenterpiece, type Centerpiece } from './centerpiece'
+import { buildDecor, decorBox, hash, pickIdentity, type FloorStyle, type RoomDecor, type RoomIdentity } from './roomIdentity'
 import { emptyGrid, extraGridLinks, placeRoom, planRoomGrid, type Diorama, type Glyph, type GraphEdge, type ImageSearch, type IncrementalGrid, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
@@ -19,6 +20,9 @@ export type PaintingSlot = {
   side: Side
 }
 
+export { hash }
+export type { FloorStyle, RoomDecor }
+
 export type PedestalLayout = { concept: Piece; x: number; z: number; shape: Shape; facing: number }
 
 export type RoomLayout = {
@@ -34,6 +38,10 @@ export type RoomLayout = {
   monument: Monument | MonumentType
   /** Pieza central del tema (o null: sala despejada). Sustituye al monumento en el render. */
   centerpiece: Centerpiece | null
+  /** Dibujo del suelo (deriva del título de la sala; distinto al de la sala anterior). */
+  floorStyle: FloorStyle
+  /** Decoración arquitectónica en las esquinas, con sus colisionadores (kind null: sala sin decoración). */
+  decor: RoomDecor
   doors: Side[]
   walls: Box[]
   pedestals: PedestalLayout[]
@@ -154,10 +162,27 @@ function paintingSlots(x: number, z: number, w: number, d: number, doors: Side[]
   return slots.slice(0, MAX_SLOTS)
 }
 
-export function hash(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
-  return h >>> 0
+// Zona libre frente a cada puerta (el hueco más el paso hacia el interior).
+export function doorOpenings(room: Pick<RoomLayout, 'x' | 'z' | 'w' | 'd' | 'doors'>): Box[] {
+  const depth = 3
+  const inset = 1.2
+  return room.doors.map((side) => {
+    const sign = side === 'n' || side === 'w' ? 1 : -1 // hacia el interior
+    return side === 'n' || side === 's'
+      ? { x: room.x, z: (side === 'n' ? room.z - room.d / 2 : room.z + room.d / 2) + sign * inset, w: DOOR_W + 0.8, d: depth, h: 3 }
+      : { x: (side === 'w' ? room.x - room.w / 2 : room.x + room.w / 2) + sign * inset, z: room.z, w: depth, d: DOOR_W + 0.8, h: 3 }
+  })
+}
+
+const SLOT_CLEAR = 0.6 // fondo (m) que se mantiene libre delante de un cuadro
+
+/** Volumen que ocupa un cuadro y su marco, más el paso delante de él: nada de decoración dentro. */
+export function slotZone(slot: PaintingSlot): Box {
+  const sign = slot.side === 'n' || slot.side === 'w' ? 1 : -1 // hacia el interior
+  const along = slot.maxWidth + 0.3
+  return slot.side === 'n' || slot.side === 's'
+    ? { x: slot.x, z: slot.z + sign * (SLOT_CLEAR / 2 - SLOT_OFFSET), w: along, d: SLOT_CLEAR, h: 3.4 }
+    : { x: slot.x + sign * (SLOT_CLEAR / 2 - SLOT_OFFSET), z: slot.z, w: SLOT_CLEAR, d: along, h: 3.4 }
 }
 
 function sideToward(a: { row: number; col: number }, b: { row: number; col: number }): Side {
@@ -206,7 +231,14 @@ function roomSize(room: { pieces: unknown[] }, i: number): RoomSize {
 
 type RoomInput = Pick<Museum['rooms'][number], 'id' | 'name' | 'pieces' | 'palette' | 'monument' | 'imageSearch' | 'theme' | 'diorama'>
 
-function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[]): RoomLayout {
+/** Punto de entrada de la sala inicial: una esquina sin puerta (la decoración lo deja libre). */
+const entryCorner = (r: Pick<RoomLayout, 'x' | 'z' | 'w' | 'd'>) => ({ x: r.x - r.w / 2 + 1.5, z: r.z - r.d / 2 + 1.5 })
+
+/**
+ * `prev` es la identidad de la sala anterior (para no repetir estilo) y `spawn` el punto de entrada si el jugador
+ * aparece en esta sala. Todo lo demás sale de la propia sala: no cambia cuando llegan salas nuevas.
+ */
+function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[], prev: RoomIdentity | null, spawn: { x: number; z: number } | null): RoomLayout {
   const { w, d, radius, aspect } = size
   const height = 4.5 + (hash(room.name) % 3) * 1.2
   const count = room.pieces.length
@@ -223,6 +255,17 @@ function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: 
       facing: Math.atan2(px - x, pz - z), // mira hacia afuera, al visitante
     }
   })
+  const centerpiece = chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title) })
+  const slots = paintingSlots(x, z, w, d, doors)
+  const identity = pickIdentity(room.name, prev)
+  const avoid: Box[] = [
+    ...doorOpenings({ x, z, w, d, doors }),
+    ...slots.map(slotZone),
+    ...pedestals.map((p) => ({ x: p.x, z: p.z, w: PEDESTAL_SIZE, d: PEDESTAL_SIZE, h: 1 })),
+    // Con o sin pieza central, el centro queda libre.
+    { x, z, w: Math.max(centerpiece?.footprint[0] ?? 0, 1.6), d: Math.max(centerpiece?.footprint[1] ?? 0, 1.6), h: 2 },
+  ]
+  if (spawn) avoid.push({ x: spawn.x, z: spawn.z, w: 1.2, d: 1.2, h: 1 })
   return {
     id: room.id,
     index: i,
@@ -235,11 +278,13 @@ function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: 
     height,
     monument: room.monument || MONUMENTS[i % MONUMENTS.length],
     // Sin hasDiorama: ahora todas las salas llevan cuadro vivo, así que ya no distingue nada.
-    centerpiece: chooseCenterpiece({ title: room.name, pieceTitles: room.pieces.map((p) => p.title) }),
+    centerpiece,
+    floorStyle: identity.floorStyle,
+    decor: buildDecor({ x, z, w, d, height, kind: identity.decorKind, avoid }),
     doors,
     walls: roomWalls(x, z, w, d, height, doors),
     pedestals,
-    paintingSlots: paintingSlots(x, z, w, d, doors),
+    paintingSlots: slots,
     imageSearch: room.imageSearch,
     theme: room.theme,
     palette: room.palette,
@@ -309,6 +354,8 @@ function collidersOf(rooms: RoomLayout[], corridors: CorridorLayout[]): Box[] {
     ...rooms.flatMap((r) => r.pedestals.map((p) => ({ x: p.x, z: p.z, w: PEDESTAL_SIZE, d: PEDESTAL_SIZE, h: 1 }))),
     // Solo hay collider donde hay pieza central: un centro despejado se puede cruzar.
     ...rooms.flatMap((r) => (r.centerpiece ? [{ x: r.x, z: r.z, w: r.centerpiece.footprint[0], d: r.centerpiece.footprint[1], h: r.centerpiece.height }] : [])),
+    // Columnas, arcos y nichos: sólidos (también para el teletransporte de VR, que valida contra estos colliders).
+    ...rooms.flatMap((r) => (r.decor.kind ? r.decor.items.map((it) => decorBox(r.decor.kind!, it, r.height)) : [])),
   ]
 }
 
@@ -320,8 +367,7 @@ function boundsOf(rooms: RoomLayout[]): PalaceLayout['bounds'] {
 
 // Aparece en una esquina sin puerta, mirando al monumento: lejos del anillo de pedestales.
 function spawnIn(first: RoomLayout): PalaceLayout['spawn'] {
-  const sx = first.x - first.w / 2 + 1.5
-  const sz = first.z - first.d / 2 + 1.5
+  const { x: sx, z: sz } = entryCorner(first)
   return { x: sx, z: sz, yaw: Math.atan2(-(first.x - sx), -(first.z - sz)) }
 }
 
@@ -342,9 +388,15 @@ export function buildLayout(palace: Museum): PalaceLayout {
     doorsOf[j].push(opposite[s])
   }
 
-  const rooms: RoomLayout[] = palace.rooms.map((room, i) =>
-    makeRoomLayout(room, i, cells[i].col * cell, cells[i].row * cell, sizes[i], doorsOf[i]),
-  )
+  const startIndex = indexOf.get(plan.start) ?? 0
+  const rooms: RoomLayout[] = []
+  palace.rooms.forEach((room, i) => {
+    const x = cells[i].col * cell
+    const z = cells[i].row * cell
+    const prev = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
+    const spawn = i === startIndex ? entryCorner({ x, z, w: sizes[i].w, d: sizes[i].d }) : null
+    rooms.push(makeRoomLayout(room, i, x, z, sizes[i], doorsOf[i], prev, spawn))
+  })
 
   const corridors: CorridorLayout[] = []
   const doors: DoorLayout[] = []
@@ -360,7 +412,7 @@ export function buildLayout(palace: Museum): PalaceLayout {
     colliders: collidersOf(rooms, corridors),
     doors,
     bounds: boundsOf(rooms),
-    spawn: spawnIn(rooms[indexOf.get(plan.start) ?? 0]),
+    spawn: spawnIn(rooms[startIndex]),
   }
 }
 
@@ -394,11 +446,19 @@ function assembleStream(prev: PalaceLayout, inputs: RoomInput[], grid: Increment
     doorsOf[a].push(sides[k])
     doorsOf[b].push(opposite[sides[k]])
   })
-  const rooms = inputs.map((input, i) => {
+  const rooms: RoomLayout[] = []
+  inputs.forEach((input, i) => {
     const old = prev.rooms[i]
     // Misma sala, mismo contenido y mismas puertas: se conserva el objeto.
-    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i])) return old
-    return makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i])
+    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i])) {
+      rooms.push(old)
+      return
+    }
+    const before = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
+    // La primera sala es donde aparece el jugador (STREAM_SPAWN).
+    rooms.push(
+      makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i], before, i === 0 ? STREAM_SPAWN : null),
+    )
   })
   const corridors: CorridorLayout[] = []
   const doors: DoorLayout[] = []
@@ -471,6 +531,11 @@ const PLAYER_R = 0.35
 
 function hits(x: number, z: number, b: Box) {
   return Math.abs(x - b.x) < b.w / 2 + PLAYER_R && Math.abs(z - b.z) < b.d / 2 + PLAYER_R
+}
+
+/** ¿El jugador, de pie en (x, z), se solapa con algún collider? */
+export function isBlocked(colliders: readonly Box[], x: number, z: number) {
+  return colliders.some((b) => hits(x, z, b))
 }
 
 // Mueve por ejes separados para poder deslizarse contra las paredes.

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sampleMuseum, type DynamicAsset, type Museum } from "@mus3o/shared";
-import { findCandidates, hydrateMuseumAssets, polyBlocked, resetPolyBreaker, keywordVariants, pickCandidate, rankCandidates, relevance, type PolyCandidate } from "./polyPizza";
-import { isAllowedDownload, isGlb } from "./assetStore";
+import { findCandidates, hydrateMuseumAssets, polyBlocked, resetPolyBreaker, resetPolyFound, keywordVariants, pickCandidate, rankCandidates, relevance, type PolyCandidate } from "./polyPizza";
+import { ensureAsset, isAllowedDownload, isGlb } from "./assetStore";
 
 const r = (ID: string, Licence: string, Title = ID, extra: object = {}) => ({ ID, Licence, Title, Download: `https://static.poly.pizza/${ID}.glb`, Creator: { Username: "ana" }, ...extra });
 const asset: DynamicAsset = { assetId: "abc", url: "/api/assets/abc.glb", title: "t", author: "a", license: "CC0", sourceUrl: "https://poly.pizza/m/abc" };
@@ -61,6 +61,21 @@ describe("assetStore helpers", () => {
   it("reconoce la firma glTF", () => {
     expect(isGlb(Buffer.from("glTF" + "\0".repeat(8), "latin1"))).toBe(true);
     expect(isGlb(Buffer.from("<html>not a model"))).toBe(false);
+  });
+  it("rechaza descargas que redirigen a dominios externos no permitidos", async () => {
+    vi.stubGlobal("fetch", async () => {
+      return {
+        ok: true,
+        status: 200,
+        url: "https://attacker.example/malicious.glb",
+        headers: new Headers({ "content-type": "model/gltf-binary" }),
+        body: (async function* () {
+          yield Buffer.from("glTF" + "\0".repeat(8), "latin1");
+        })(),
+      } as unknown as Response;
+    });
+    const ok = await ensureAsset("test-ssrf", "https://poly.pizza/download/test-ssrf.glb");
+    expect(ok).toBe(false);
   });
 });
 
@@ -126,6 +141,22 @@ describe("hydrateMuseumAssets", () => {
 });
 
 describe("cortacircuito de descargas", () => {
+  it("cachea resultados y acota el mapa found", async () => {
+    resetPolyFound();
+    vi.stubEnv("POLY_PIZZA_API_KEY", "k");
+    let count = 0;
+    vi.stubGlobal("fetch", async () => {
+      count++;
+      return new Response(JSON.stringify({ results: [r("cand1", "CC0", "test")] }), { status: 200 });
+    });
+    const first = await findCandidates("test-kw");
+    expect(count).toBe(1);
+    const second = await findCandidates("test-kw");
+    expect(count).toBe(1);
+    expect(second).toEqual(first);
+    resetPolyFound();
+  });
+
   it("tras un bloqueo 403 deja de buscar y descargar", async () => {
     resetPolyBreaker();
     vi.stubEnv("POLY_PIZZA_API_KEY", "k");

@@ -132,12 +132,13 @@ describe("HTTP routes without ANTHROPIC_API_KEY", () => {
       body: typeof body === "string" ? body : JSON.stringify(body),
     });
 
-  it("answers 200 on /api/health for Render health checks", async () => {
-    const res = await fetch(`${baseUrl}/api/health`);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.status).toBe("ok");
-    expect(data.uptime).toBeGreaterThanOrEqual(0);
+  it("answers 200 on /api/health for Render health checks and is not rate limited", async () => {
+    for (let i = 0; i < 12; i++) {
+      const res = await fetch(`${baseUrl}/api/health`);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe("ok");
+    }
   });
 
   it("keeps the legacy { topic } request returning the mock museum", async () => {

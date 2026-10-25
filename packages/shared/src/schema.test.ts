@@ -338,6 +338,21 @@ describe("PieceSchema dynamic assets", () => {
     expect(parsed.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
   });
 
+  it("discards dynamicAsset with malicious javascript URI or non-http protocol in sourceUrl", () => {
+    const pXss = piece("p-xss", {
+      dynamicAsset: {
+        assetId: "xss",
+        url: "/api/assets/xss.glb",
+        title: "Malicious",
+        author: "Hacker",
+        license: "CC0",
+        sourceUrl: "javascript:alert(document.cookie)",
+      },
+    });
+    const parsed = MuseumSchema.parse(museum({ rooms: [room("r1", { pieces: [pXss] })] }));
+    expect(parsed.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
+  });
+
   it("works without searchKeyword and dynamicAsset (backward compatible)", () => {
     const p = piece("p-plain");
     const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });

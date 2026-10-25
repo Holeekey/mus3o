@@ -116,24 +116,42 @@ export const resetPolyBreaker = () => {
   blockedUntil = 0;
 };
 
+const MAX_FOUND_ENTRIES = 200;
 const found = new Map<string, PolyCandidate[]>();
+
+export const resetPolyFound = () => {
+  found.clear();
+};
+
+function cacheFound(key: string, list: PolyCandidate[]): void {
+  found.delete(key);
+  if (found.size >= MAX_FOUND_ENTRIES) {
+    const oldest = found.keys().next().value;
+    if (oldest !== undefined) found.delete(oldest);
+  }
+  found.set(key, list);
+}
 
 /** Candidatos ordenados para una palabra clave (con respaldo a su última palabra). [] ante fallo o timeout. */
 export async function findCandidates(keyword: string, timeoutMs = POLY_TIMEOUT_MS): Promise<PolyCandidate[]> {
   const key = keyword.trim().toLowerCase();
   const hit = found.get(key);
-  if (hit) return hit;
+  if (hit) {
+    found.delete(key);
+    found.set(key, hit);
+    return hit;
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     for (const variant of keywordVariants(key)) {
       const list = await searchPoly(variant, ctrl.signal);
       if (list.length > 0) {
-        found.set(key, list);
+        cacheFound(key, list);
         return list;
       }
     }
-    found.set(key, []);
+    cacheFound(key, []);
     return [];
   } catch (err) {
     // Los fallos transitorios (timeout, red) no se recuerdan: la próxima generación reintenta.
