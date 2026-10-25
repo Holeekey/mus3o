@@ -346,11 +346,11 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
             <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
               {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
             </button>
-            {!moreOptions && <p className="muted pause-more-hint">Editar apuntes · exploración libre</p>}
+            {!moreOptions && <p className="muted pause-more-hint">Salir del museo · exploración libre</p>}
             {moreOptions && (
               <>
                 <div className="pause-actions pause-more-actions">
-                  <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
+                  <button className="btn btn-ghost" onClick={exitToLanding}>Salir del museo</button>
                 </div>
                 <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 
