@@ -1,14 +1,14 @@
 # Reporte de Costos por Implementación de Museo y Ahorro por Automatizaciones
 
 **Proyecto:** mus3o — Palacios de la Memoria 3D  
-**Fecha:** 24 de Octubre, 2026  
+**Fecha:** 24 de Octubre, 2026 (actualizado el 25 de Octubre con la medición del micro-DSL de dioramas, §4.3)  
 **Modelos Evaluados:** Anthropic Claude 3.5 Sonnet (`claude-sonnet-5-5`), Claude 3.5 Haiku (`claude-haiku-5-5`), Poly Pizza API, Wikimedia API.
 
 ---
 
 ## 1. Resumen Ejecutivo
 
-A través de la reingeniería arquitectónica del flujo de generación (paso de JSON monolítico procedural a DSL semántico de bajo consumo, prompt caching, hidratación externa de modelos 3D y desacoplamiento condicional de dioramas), el costo directo de IA por museo se redujo en un **70.8% en el caso con diorama** y hasta un **84.3% en museos sin diorama**, con una aceleración en los tiempos de respuesta de **2.6×**.
+A través de la reingeniería arquitectónica del flujo de generación (paso de JSON monolítico procedural a DSL semántico de bajo consumo, prompt caching, hidratación externa de modelos 3D y desacoplamiento condicional de dioramas y, después, fusión de los dioramas históricos en la llamada principal con el micro-DSL `DIO`/`D_PROP`), el costo directo de IA por museo se redujo en un **70.8% en el caso con diorama** y hasta un **84.3% en museos sin diorama**, con una aceleración en los tiempos de respuesta de **2.6×**.
 
 Adicionalmente, los mecanismos de caché persistente (disco + LRU) y deduplicación de llamadas en vuelo reducen el costo a **$0.00 USD (100% de ahorro)** para solicitudes repetidas o concurrentes.
 
@@ -47,12 +47,14 @@ flowchart TD
         F2 --> H2["2. Fallback en lote con Haiku 3.5 (Solo piezas faltantes, noThinking)"]
         F2 --> I2["3. Citas & Wikimedia deterministas (0 tokens LLM)"]
         F2 --> J2{"¿Salas marcadas con diorama?"}
-        J2 -- "Sí (máx 2)" --> K2["Llamada aislada Diorama (~1.518 tokens)"]
+        J2 -- "Sí, histórico/geográfico/natural" --> K2["Micro-DSL DIO/D_PROP en la misma llamada (+~170 tokens, sin llamada extra)"]
+        J2 -- "Sí, científico (máx 2)" --> K3["Llamada aislada Diorama (JSON)"]
         J2 -- "No" --> L2["Omite llamada (Ahorro total)"]
         G2 --> M2["Ensamblado, validación Zod y guardado en disco"]
         H2 --> M2
         I2 --> M2
         K2 --> M2
+        K3 --> M2
         L2 --> M2
         M2 --> N2["Cliente 3D (Latencia ~27s | Costo: $0.028 - $0.052 USD)"]
     end
@@ -116,7 +118,7 @@ flowchart LR
   - Salida: 1,847 tokens (DSL compacto).
     - `1.847 × $0.015 = $0.02770 USD`
   - Subtotal DSL: **$0.0287 USD**
-- **Diorama Condicional (Sonnet 3.5 — solo si hay salas históricas marcadas):**
+- **Diorama Condicional (llamada aparte, ahora solo para dioramas científicos; los históricos/geográficos/naturales van fusionados, ver §4.3). Estimación previa de la llamada aparte:**
   - Entrada: 155 tokens nuevos + prompt cacheado (~1,200 tokens).
     - `(0.155 × $0.003) + (1.2 × $0.0003) = $0.00082 USD`
   - Salida: 1,518 tokens.
@@ -129,6 +131,24 @@ flowchart LR
 - **Costo Total:**
   - Museo completo con Diorama: **$0.0523 USD** (Ahorro: 70.8%).
   - Museo estándar sin Diorama: **$0.0287 USD** (Ahorro: 84.3%).
+
+### 4.3. Medición real: diorama fusionado (micro-DSL `DIO`/`D_PROP`)
+
+Los dioramas históricos, geográficos y naturales ya no usan una segunda llamada: la IA añade líneas `DIO`/`D_PROP` (sin coordenadas) bajo su sala en la misma salida DSL y el cliente los compone. Los científicos (`organic`/`cellular`/`vessel`) siguen en llamada aparte.
+
+Medición con `claude-sonnet-5-5`, mismo tema en ambos casos ("Revolución francesa: Bastilla, Asamblea Nacional y Terror", 5 salas), tokens de salida del log:
+
+| | Antes (JSON aparte) | Ahora (micro-DSL fusionado) | Diferencia |
+|---|---|---|---|
+| Llamada principal | 3,341 | 3,514 (+173 por `DIO`/`D_PROP`) | +5.2% |
+| Llamada de diorama | 2,825 | **no existe** | -100% |
+| **Salida total** | **6,166** | **3,514** | **-43%** |
+| Costo de salida a $15/MTok (tarifa de §3) | ~$0.092 | ~$0.053 | **-$0.040** |
+
+- La llamada de diorama en JSON gastó **2,825 tokens**, casi el doble de los ~1,518 estimados en §4.2: el ahorro real del caso con diorama es mayor que el estimado. Las cifras de §1 y §5 siguen siendo las estimaciones originales y no se recalcularon con esta medición.
+- **Latencia: no concluyente.** 45.0 s antes y 40.9 s ahora, ambos dominados por el 403 de `poly.pizza` y el respaldo de modelos en el entorno de prueba. Hay que repetir con red normal.
+- La muestra es pequeña (2 museos nuevos, 1 pareado): confirma el orden de magnitud, no fija porcentajes.
+- Pendiente de medir: el costo del respaldo de Haiku cuando `poly.pizza` bloquea las descargas (hoy todas las piezas caen al respaldo en este entorno).
 
 ---
 
