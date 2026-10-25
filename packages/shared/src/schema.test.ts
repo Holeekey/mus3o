@@ -110,14 +110,12 @@ describe("MuseumSchema mode rules", () => {
     expect(MuseumSchema.safeParse(withMode("exploration", { graph })).success).toBe(true);
   });
 
-  it("exploration rejects a graph that is not a tree", () => {
+  it("exploration accepts cross links on top of the tree (not only a strict tree)", () => {
     const graph = {
       start: "a",
       edges: [...chain.edges, { from: "a", to: "c", kind: "related" as const }],
     };
-    expect(issues(withMode("exploration", { graph }))).toContain(
-      "modo exploration: el grafo debe ser un árbol desde graph.start",
-    );
+    expect(MuseumSchema.safeParse(withMode("exploration", { graph })).success).toBe(true);
   });
 
   it("education accepts an ordered next path with optional prerequisites", () => {
@@ -125,17 +123,35 @@ describe("MuseumSchema mode rules", () => {
     expect(MuseumSchema.safeParse(withMode("education", { graph })).success).toBe(true);
   });
 
-  it("education rejects a next chain that does not cover every room", () => {
+  it("education accepts a prerequisite DAG with branches and merges", () => {
     const graph = {
+      start: "a",
+      edges: [
+        { from: "a", to: "b", kind: "prerequisite" as const },
+        { from: "a", to: "c", kind: "prerequisite" as const },
+      ],
+    };
+    expect(MuseumSchema.safeParse(withMode("education", { graph })).success).toBe(true);
+  });
+
+  it("education rejects when the directed edges do not reach every room or contain a cycle", () => {
+    const unreachable = {
       start: "a",
       edges: [
         { from: "a", to: "b", kind: "next" as const },
         { from: "a", to: "c", kind: "related" as const },
       ],
     };
-    expect(issues(withMode("education", { graph }))).toContain(
-      "modo education: las aristas next deben formar un único camino desde graph.start que recorra todas las salas",
-    );
+    expect(issues(withMode("education", { graph: unreachable }))[0]).toContain("modo education");
+    const cycle = {
+      start: "a",
+      edges: [
+        { from: "a", to: "b", kind: "prerequisite" as const },
+        { from: "b", to: "c", kind: "prerequisite" as const },
+        { from: "c", to: "b", kind: "prerequisite" as const },
+      ],
+    };
+    expect(issues(withMode("education", { graph: cycle }))[0]).toContain("modo education");
   });
 
   it("biography requires a period in every room", () => {
@@ -296,5 +312,50 @@ describe("digest sources contract", () => {
     expect(DigestSourcesResponseSchema.safeParse({ digest: "x".repeat(LIMITS.maxDigestChars + 1) }).success).toBe(false);
     expect(DigestSourcesResponseSchema.safeParse({ digest: "" }).success).toBe(false);
     expect(LIMITS.maxDigestChars).toBe(15_000);
+  });
+});
+
+describe("PieceSchema dynamic assets", () => {
+  it("accepts searchKeyword and dynamicAsset", () => {
+    const p = piece("p-dyn", {
+      searchKeyword: "hourglass",
+      dynamicAsset: {
+        assetId: "poly-123",
+        url: "/api/assets/poly-123.glb",
+        title: "Hourglass",
+        author: "PolyArtist",
+        license: "CC0",
+        sourceUrl: "https://poly.pizza/m/poly-123",
+      },
+    });
+    const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });
+    expect(MuseumSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("discards an invalid dynamicAsset URL instead of failing the museum", () => {
+    const p = piece("p-bad", { dynamicAsset: { assetId: "x", url: "https://evil.example/a.glb", title: "", author: "", license: "CC0", sourceUrl: "" } });
+    const parsed = MuseumSchema.parse(museum({ rooms: [room("r1", { pieces: [p] })] }));
+    expect(parsed.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
+  });
+
+  it("discards dynamicAsset with malicious javascript URI or non-http protocol in sourceUrl", () => {
+    const pXss = piece("p-xss", {
+      dynamicAsset: {
+        assetId: "xss",
+        url: "/api/assets/xss.glb",
+        title: "Malicious",
+        author: "Hacker",
+        license: "CC0",
+        sourceUrl: "javascript:alert(document.cookie)",
+      },
+    });
+    const parsed = MuseumSchema.parse(museum({ rooms: [room("r1", { pieces: [pXss] })] }));
+    expect(parsed.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
+  });
+
+  it("works without searchKeyword and dynamicAsset (backward compatible)", () => {
+    const p = piece("p-plain");
+    const parsed = museum({ rooms: [room("r1", { pieces: [p] })] });
+    expect(MuseumSchema.safeParse(parsed).success).toBe(true);
   });
 });

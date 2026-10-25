@@ -2,14 +2,17 @@ import { MeshPortalMaterial, Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { moveWithCollisions, type PalaceLayout } from '../palace/layout'
+import { freeSpotInFront, moveWithCollisions, type PalaceLayout } from '../palace/layout'
 import { conceptIdSet } from '../palace/conceptIds'
 import { playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
+import { DIORAMA_SPAWN } from './guide'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
+import { applyTouchLook, moveAxes } from '../scene/moveInput'
+import { vrRuntime } from '../vr/runtime'
 
 // El mundo del diorama vive muy lejos del palacio, en el mismo Canvas: así el cambio de
 // mundo es solo mover la cámara y no hay segundo renderer ni recarga.
@@ -21,13 +24,14 @@ const RUN = 9
 const REACH = 7
 const BOUND = 13.4
 const PLAYER_R = 0.4
-const SPAWN_Z = 10.6
+const SPAWN_Z: number = DIORAMA_SPAWN.z
 const GATE_Z = 13.2
 const ENTER_SECS = 1.05
 const LEAVE_SECS = 0.8
 const FADE_IN_SECS = 0.85
 
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// En VR las transiciones son cortas (sin travelling): el movimiento de cámara ajeno a la cabeza marea.
+const reducedMotion = () => vrRuntime.active || (typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 const easeOut = (u: number) => 1 - Math.pow(1 - u, 3)
 const easeIn = (u: number) => u * u
 const smooth = (a: number, b: number, v: number) => {
@@ -70,9 +74,14 @@ function ReturnGate({ layout, theme, roomId, center, rotationY }: { layout: Pala
       </mesh>
       <mesh position={[0, H / 2 + 0.12, 0]}>
         <planeGeometry args={[W, H]} />
-        <MeshPortalMaterial resolution={768} blur={0}>
-          <RoomEcho room={room} palette={palette} theme={theme} wall={[center[0], center[2]]} rotationY={rotationY} />
-        </MeshPortalMaterial>
+        {vrRuntime.active ? (
+          // En VR la ventana se muestrea en coordenadas de pantalla y no de cada ojo: placa lisa con el color de la sala.
+          <meshBasicMaterial color={palette.wall} />
+        ) : (
+          <MeshPortalMaterial resolution={768} blur={0}>
+            <RoomEcho room={room} palette={palette} theme={theme} wall={[center[0], center[2]]} rotationY={rotationY} />
+          </MeshPortalMaterial>
+        )}
       </mesh>
       <Suspense fallback={null}>
         <Text position={[0, H + 0.2, 0.52]} font="/fonts/Gloock.ttf" fontSize={0.26} color={palette.ink} anchorY="middle" letterSpacing={0.04}>
@@ -243,7 +252,9 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
         const info = activeId ? ds.portals[activeId] : undefined
         if (info) {
           const n = new THREE.Vector3(Math.sin(info.rotationY), 0, Math.cos(info.rotationY))
-          camera.position.set(info.center[0] + n.x * 2.7, EYE, info.center[2] + n.z * 2.7)
+          // Delante del cuadro, pero nunca dentro de un pedestal o de la pieza central.
+          const spot = freeSpotInFront(layout, info.center[0], info.center[2], n.x, n.z)
+          camera.position.set(spot.x, EYE, spot.z)
           camera.rotation.set(0, info.rotationY, 0, 'YXZ')
         }
         tr.current = { kind: 'reveal', t: 0, frames: 0 }
@@ -271,13 +282,15 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
     f.normalize()
     const locked = useStore.getState().locked
     if (locked && t?.kind !== 'reveal') {
-      const ax = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      const az = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      if (ax || az) {
-        const speed = (k.ShiftLeft || k.ShiftRight ? RUN : WALK) * dt
-        let dx = f.x * az - f.z * ax
-        let dz = f.z * az + f.x * ax
-        const len = Math.hypot(dx, dz)
+      // Mirada y joystick táctiles: Player no corre mientras se está dentro, así que se leen aquí.
+      applyTouchLook(camera)
+      const { ax, az, running } = moveAxes(k)
+      let dx = f.x * az - f.z * ax
+      let dz = f.z * az + f.x * ax
+      const len = Math.hypot(dx, dz)
+      if (len > 0.001) {
+        // Con teclado la magnitud es 1; con el joystick, proporcional a cuánto se empuja.
+        const speed = (running ? RUN : WALK) * dt * Math.min(1, len)
         dx = (dx / len) * speed
         dz = (dz / len) * speed
         // Límites invisibles + obstáculos circulares (árboles, cañones...) + el agua.

@@ -83,7 +83,7 @@ function clamp(val: unknown, min: number, max: number, fallback: number): number
   return Math.min(Math.max(num, min), max);
 }
 
-const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
+const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 function sanitizeHexColor(hex: unknown, fallback: string = "#888888"): string {
   if (typeof hex === "string" && HEX_REGEX.test(hex.trim())) {
     return hex.trim();

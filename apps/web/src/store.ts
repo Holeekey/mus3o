@@ -1,12 +1,18 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { earnedRoomKeys } from './palace/keys'
-import { buildLayout, type PalaceLayout } from './palace/layout'
-import { evaluateArisQuery, speakAris } from './palace/arisBrain'
-import { MuseumSchema, type Museum } from '@mus3o/shared'
+import { appendRoomToLayout, buildLayout, emptyLayout, finalizeLayout, streamEdges, type PalaceLayout } from './palace/layout'
+import { arisHelpContext, evaluateArisQuery, speakAris } from './palace/arisBrain'
+import { askArisHelp } from './lib/api'
+import { countSources, edgesAtArrival, LIMITS, MuseumSchema, type GraphEdge, type Museum, type Room } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
+import { attachComposedDioramas } from './diorama/compose'
+import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum } from './palace/liveDioramas'
+import { sourceSummary } from './palace/sourceSummary'
+import { cancelBuildSession } from './build/session'
+import { DEFAULT_THEME, roomPalettes } from './theme'
 import { resetDioramaState } from './diorama/dioramaStore'
-import { abortIntro } from './intro/store'
+import { abortIntro, beginBuildIntro, introBuildDone, introRoomArrived } from './intro/store'
 import { dueIds, palaceKey, strengthOf } from './memory/model'
 import { nowMs, useMemory } from './memory/store'
 
@@ -16,6 +22,26 @@ export type ExamResult = 'ok' | 'fail'
 
 // Pose del jugador: se escribe cada frame, se lee desde el minimapa sin re-renderizar React.
 export const playerPose = { x: 0, z: 0, yaw: 0 }
+
+/**
+ * Palacio que se levanta mientras la IA lo escribe:
+ * - idle: palacio normal (o ninguno)
+ * - building: llegan salas
+ * - done: la IA terminó
+ * - cut: la conexión se cortó a medias; el palacio conserva las salas que ya había
+ */
+export type BuildStatus = 'idle' | 'building' | 'done' | 'cut'
+export type BuildInfo = {
+  status: BuildStatus
+  rooms: number
+  /** "N de M conceptos verificados" (solo con apuntes). */
+  summary: string | null
+  /** Aviso discreto, p. ej. cuando la IA se cortó. */
+  notice: string | null
+  /** Por qué se volvió a la landing sin ninguna sala. */
+  error: string | null
+}
+export const IDLE_BUILD: BuildInfo = { status: 'idle', rooms: 0, summary: null, notice: null, error: null }
 
 type State = {
   screen: Screen
@@ -46,8 +72,19 @@ type State = {
   arisMessage: string | null
   arisPromptOpen: boolean
   arisMuted: boolean
+  build: BuildInfo
 
   enterPalace: (palace: Museum, sourceText?: string | null, userImages?: Record<string, string>) => void
+  /** Entra ya al palacio en construcción (solar vacío, cámara aérea); las salas llegan con `addBuiltRoom`. */
+  beginBuildingPalace: (meta: { title: string; sourceText?: string | null; userImages?: Record<string, string>; reducedMotion?: boolean }) => void
+  setBuildTitle: (title: string) => void
+  /** Una sala llegó de la IA: se ubica junto a la que la enlaza (según `edges`) sin mover las anteriores y empieza a levantarse. */
+  addBuiltRoom: (room: Room, edges?: GraphEdge[]) => void
+  /** La IA terminó: el palacio pasa a ser el museo completo (mismo estado que `enterPalace` con ese museo). */
+  finishBuildingPalace: (museum: Museum) => void
+  /** La generación falló. Sin salas vuelve a la landing con el error; con salas conserva el palacio. */
+  failBuildingPalace: (error: string) => void
+  clearBuildError: () => void
   resume: () => void
   exitToLanding: () => void
   setMode: (mode: Mode) => void
@@ -90,6 +127,14 @@ const safeStorage = createJSONStorage(() => {
   }
 })
 
+/** Palacio que había antes de empezar a construir uno nuevo: se recupera si la IA falla sin dar ninguna sala. */
+let palaceBeforeBuild: Museum | null = null
+
+/** Palacio en construcción: las salas llegadas y las aristas provisionales conocidas hasta ahora (el grafo final llega al terminar). */
+function growing(palace: Museum, rooms: Room[], edges: GraphEdge[]): Museum {
+  return { ...palace, rooms, graph: { start: rooms[0]?.id ?? '', edges } }
+}
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -115,10 +160,14 @@ export const useStore = create<State>()(
       arisMessage: null,
       arisPromptOpen: false,
       arisMuted: false,
+      build: IDLE_BUILD,
 
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
         // Los museos generados por IA no traen dioramas: se recuperan de la biblioteca si encajan.
-        const palace = attachLibraryDioramas(rawPalace)
+        // Las salas que aún no tienen diorama reciben uno compuesto (sin IA) con el pigmento de su fresco.
+        const library = attachLibraryDioramas(rawPalace)
+        const pigments = roomPalettes(DEFAULT_THEME, library.rooms.map((r) => r.name))
+        const palace = attachComposedDioramas(library, (i) => pigments[i])
         set({
           palace,
           sourceText: capSourceText(sourceText),
@@ -141,12 +190,136 @@ export const useStore = create<State>()(
           // Las salas sin nada que memorizar ya tienen su llave.
           roomKeys: earnedRoomKeys(palace, {}, {}),
           lastKeyRoomId: null,
+          build: IDLE_BUILD,
         })
         // El cuadro activo del palacio anterior no puede sobrevivir al cambio.
         resetDioramaState()
       },
+      beginBuildingPalace: ({ title, sourceText, userImages, reducedMotion }) => {
+        const before = get()
+        // Si ya había una construcción abierta, se corta; el palacio "anterior" es el de antes de ella.
+        if (before.build.status !== 'building') palaceBeforeBuild = before.palace
+        set({
+          palace: growing({ title, theme: { palette: ['#3b82f6', '#0f172a'], ambience: 'cathedral' }, rooms: [], mode: 'education' } as unknown as Museum, [], []),
+          sourceText: capSourceText(sourceText),
+          userImages: userImages ?? {},
+          layout: emptyLayout(),
+          screen: 'palace',
+          mode: 'explore',
+          memorized: {},
+          exam: {},
+          reviewIds: null,
+          openId: null,
+          focusedId: null,
+          focusedDoorId: null,
+          currentRoomId: null,
+          locked: false,
+          arisMessage: null,
+          arisPromptOpen: false,
+          hasKey: false,
+          unlockedDoors: {},
+          roomKeys: {},
+          lastKeyRoomId: null,
+          build: { ...IDLE_BUILD, status: 'building' },
+        })
+        resetDioramaState()
+        beginBuildIntro({ reducedMotion })
+      },
+      setBuildTitle: (title) =>
+        set((s) => (s.build.status === 'building' && s.palace ? { palace: { ...s.palace, title } } : {})),
+      addBuiltRoom: (incoming, edges) => {
+        const s = get()
+        if (s.build.status !== 'building' || !s.palace || !s.layout) return
+        if (s.palace.rooms.length >= LIMITS.maxRooms || s.palace.rooms.some((r) => r.id === incoming.id)) return
+        const room = attachDioramasToArrivingRoom(s.palace.rooms, incoming, s.palace.title)
+        const layout = appendRoomToLayout(s.layout, room, edges)
+        // La llegada se registra antes de publicar la sala: cuando React la dibuja, su levantamiento ya está en el reloj.
+        introRoomArrived(layout.rooms[layout.rooms.length - 1], layout.rooms.length - 1)
+        const palace = growing(s.palace, [...s.palace.rooms, room], streamEdges(layout))
+        set({
+          palace,
+          layout,
+          roomKeys: { ...s.roomKeys, ...earnedRoomKeys(palace, {}, {}) },
+          build: { ...s.build, rooms: palace.rooms.length },
+        })
+      },
+      finishBuildingPalace: (museum) => {
+        if (get().build.status !== 'building') return
+        // Las salas que llegaron en vivo ya están ubicadas: una que faltara se agrega igual que las demás.
+        const have = new Set(get().palace?.rooms.map((r) => r.id))
+        museum.rooms.forEach((room, i) => {
+          if (!have.has(room.id)) get().addBuiltRoom(room, edgesAtArrival(museum, i))
+        })
+        const s = get()
+        if (!s.palace || !s.layout) return
+        const live = new Map(s.palace.rooms.map((r) => [r.id, r]))
+        // Se conservan los dioramas ya mostrados; la biblioteca solo completa lo que falte.
+        const palace = attachDioramasToFinalMuseum({
+          ...museum,
+          rooms: museum.rooms.map((r) => {
+            const diorama = live.get(r.id)?.diorama
+            return diorama && !r.diorama ? { ...r, diorama } : r
+          }),
+        })
+        // Ninguna sala se mueve: se abren las puertas extra del grafo final y cada sala recibe su contenido final
+        // (modelos 3D, dioramas) tal como llegó en el museo completo.
+        const layout = finalizeLayout(s.layout, palace)
+        const { verified, unverified } = countSources(palace)
+        set({
+          palace,
+          layout,
+          // Igual que enterPalace con este museo: el progreso y las llaves salen del contenido final.
+          memorized: learnedMap(palace),
+          exam: {},
+          roomKeys: earnedRoomKeys(palace, {}, {}),
+          lastKeyRoomId: null,
+          build: { ...IDLE_BUILD, status: 'done', rooms: palace.rooms.length, summary: verified + unverified > 0 ? sourceSummary(palace) : null },
+        })
+        palaceBeforeBuild = null
+        introBuildDone()
+      },
+      failBuildingPalace: (error) => {
+        const s = get()
+        if (s.build.status !== 'building') return
+        const n = s.palace?.rooms.length ?? 0
+        if (n === 0 || !s.palace || !s.layout) {
+          // Nada que conservar: de vuelta a la landing, con el palacio de antes y el error a la vista.
+          set({
+            screen: 'landing',
+            palace: palaceBeforeBuild,
+            layout: null,
+            memorized: {},
+            roomKeys: {},
+            build: { ...IDLE_BUILD, error },
+          })
+          palaceBeforeBuild = null
+          abortIntro()
+          resetDioramaState()
+          return
+        }
+        set({
+          layout: finalizeLayout(s.layout),
+          memorized: learnedMap(s.palace),
+          roomKeys: earnedRoomKeys(s.palace, {}, {}),
+          build: { ...IDLE_BUILD, status: 'cut', rooms: n, notice: `La IA se cortó; tu palacio tiene ${n} ${n === 1 ? 'sala' : 'salas'}` },
+        })
+        palaceBeforeBuild = null
+        introBuildDone()
+      },
+      clearBuildError: () => set((s) => (s.build.error ? { build: { ...s.build, error: null } } : {})),
       resume: () => set((s) => (s.palace ? { screen: 'palace', layout: s.layout ?? buildLayout(s.palace) } : {})),
       exitToLanding: () => {
+        // Salir con la IA todavía escribiendo corta la conexión; sin salas se recupera el palacio anterior.
+        if (get().build.status === 'building') {
+          cancelBuildSession()
+          const n = get().palace?.rooms.length ?? 0
+          set(
+            n === 0
+              ? { palace: palaceBeforeBuild, layout: null, build: IDLE_BUILD }
+              : { layout: finalizeLayout(get().layout ?? emptyLayout()), build: { ...IDLE_BUILD, status: 'cut', rooms: n } },
+          )
+          palaceBeforeBuild = null
+        }
         set({
           screen: 'landing',
           mode: 'explore',
@@ -177,6 +350,8 @@ export const useStore = create<State>()(
       setFreeExplore: (freeExplore) => set({ freeExplore }),
       toggleMemorized: (id) =>
         set((s) => {
+          // La clave de memoria depende del contenido: hasta que la IA termine el palacio no hay clave definitiva.
+          if (s.build.status === 'building') return {}
           const memorized = { ...s.memorized }
           const key = s.palace ? palaceKey(s.palace) : null
           const rec = key ? useMemory.getState().palaces[key]?.[id] : undefined
@@ -194,24 +369,39 @@ export const useStore = create<State>()(
         }),
       recordExam: (id, result) =>
         set((s) => {
+          if (s.build.status === 'building') return {}
           if (s.palace) useMemory.getState().exam(palaceKey(s.palace), id, result === 'ok')
           const exam = { ...s.exam, [id]: result }
           return { exam, ...withEarnedKeys(s, s.memorized, exam) }
         }),
-      askAris: (query) =>
-        set((s) => {
-          const res = evaluateArisQuery(query, {
-            palace: s.palace,
-            currentRoomId: s.currentRoomId,
-            memorized: s.memorized,
-            hasKey: s.hasKey,
-            unlockedDoors: s.unlockedDoors,
-            roomKeys: s.roomKeys,
-            mode: s.mode,
-          })
+      askAris: (query) => {
+        const s = get()
+        const ctx = {
+          palace: s.palace,
+          currentRoomId: s.currentRoomId,
+          memorized: s.memorized,
+          hasKey: s.hasKey,
+          unlockedDoors: s.unlockedDoors,
+          roomKeys: s.roomKeys,
+          mode: s.mode,
+        }
+        const res = evaluateArisQuery(query, ctx)
+        if (!res.needsHelp || !s.palace) {
           speakAris(res.text, s.arisMuted)
-          return { arisMessage: res.text, arisPromptOpen: false }
-        }),
+          set({ arisMessage: res.text, arisPromptOpen: false })
+          return
+        }
+        // Las reglas no entendieron: Haiku responde corto con la sala como contexto; si falla, el respaldo guiado.
+        const waiting = 'Aris: Déjame pensarlo un momento…'
+        set({ arisMessage: waiting, arisPromptOpen: false })
+        void askArisHelp(query, arisHelpContext(ctx)).then((answer) => {
+          // Si el jugador cerró el globo o hizo otra pregunta mientras tanto, no se pisa.
+          if (get().arisMessage !== waiting) return
+          const text = answer ? `Aris: ${answer}` : res.text
+          speakAris(text, get().arisMuted)
+          set({ arisMessage: text })
+        })
+      },
       setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
       closeArisDialog: () => set({ arisMessage: null }),
       toggleArisMute: () => set((s) => ({ arisMuted: !s.arisMuted })),
@@ -222,7 +412,8 @@ export const useStore = create<State>()(
       storage: safeStorage,
       // Solo el contenido y el progreso; el layout se recalcula.
       partialize: (s) => ({
-        palace: s.palace,
+        // Mientras no llega ninguna sala, el palacio guardado sigue siendo el de antes (el solar vacío no es un palacio).
+        palace: s.build.status === 'building' && (s.palace?.rooms.length ?? 0) === 0 ? palaceBeforeBuild : s.palace,
         memorized: s.memorized,
         roomKeys: s.roomKeys,
         unlockedDoors: s.unlockedDoors,

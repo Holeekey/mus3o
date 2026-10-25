@@ -19,6 +19,7 @@ npm run dev                          # web http://localhost:5173 · server http:
 |---|---|
 | `npm run dev` | Server (tsx watch) y web (Vite) en paralelo |
 | `npm run dev:web` / `npm run dev:server` | Uno solo |
+| `npm run dev:https` / `npm run dev:tunnel` | Web por HTTPS en la red local / aceptando un túnel de cloudflared, para probar la VR en el teléfono. Ver [vr.md](./vr.md) §4 |
 | `npm run build` | Compila `shared` → `server` (tsup) → `web` (`tsc --noEmit` + `vite build`) |
 | `npm run typecheck` | `tsc --noEmit` en todos los workspaces |
 | `npm test -w @mus3o/shared` | Vitest de contratos y verificación de citas |
@@ -43,7 +44,15 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `PORT` | No | `3001` |
 | `WEB_ORIGIN` | No | `http://localhost:5173` |
 | `MAX_DAILY_GENERATIONS` | No | `200` |
-| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt`) |
+| `MAX_DAILY_ARIS_HELP` | No | `150` |
+| `ANTHROPIC_ARIS_MODEL` | No | `claude-haiku-5-5` |
+| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt` y `/api/assets-review`) |
+| `POLY_PIZZA_API_KEY` | No | — (sin ella no se buscan modelos 3D; los pedestales usan glifos) |
+| `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
+| `MUSEUM_CACHE_DIR` | No | `.cache/museums` (museos generados, sobrevive a reinicios) |
+| `ANTHROPIC_FALLBACK_MODEL` | No | `claude-haiku-5-5` (respaldo creado de piezas sin asset) |
+| `ANTHROPIC_DIORAMA_MODEL` | No | el principal (Haiku se probó y se descartó: ver `servidor.md`) |
+| `FLOW_FORMAT` | No | `dsl` (`json` = formato anterior, más caro) |
 
 **Reglas:** `.env` está ignorado por git. Solo el servidor lee variables. Nunca uses `VITE_*` para secretos.
 
@@ -63,6 +72,13 @@ WEB_ORIGIN=http://localhost:5173
 MAX_DAILY_GENERATIONS=200
 # Solo depuración: habilita POST /api/improve-prompt (con "true"). Déjalo vacío en producción.
 ENABLE_DEBUG_ROUTES=
+# Modelos 3D (Poly Pizza), cachés y flujo: ver .env.example y servidor.md
+POLY_PIZZA_API_KEY=
+ASSET_CACHE_DIR=
+MUSEUM_CACHE_DIR=
+ANTHROPIC_FALLBACK_MODEL=claude-haiku-5-5
+ANTHROPIC_DIORAMA_MODEL=
+FLOW_FORMAT=dsl
 ```
 
 Si agregas una variable nueva, añádela aquí con un comentario y actualiza la tabla de arriba y [servidor.md](./servidor.md) §6.
@@ -159,6 +175,7 @@ Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`
 | Un palacio guardado no carga | No pasa `MuseumSchema` tras un cambio de contrato | `merge` lo descarta a propósito. Borra `mus3o-v1` en `localStorage` o regenera el palacio |
 | Cuadros sin imagen | Wikimedia con límite de tasa o artículo sin imagen | Reintenta en un minuto; sin artículo no hay cuadro (es lo esperado) |
 | Pointer lock no se activa | El navegador exige un clic del usuario | Haz clic en el palacio antes de moverte |
+| En el teléfono no aparece "Ver en VR" o los sensores no responden | La página no está en HTTPS (WebXR y sensores lo exigen) | `npm run dev:https` o el túnel de [vr.md](./vr.md) §4 |
 
 ## 10. Cómo mantener esta documentación al día
 
@@ -172,6 +189,7 @@ correspondiente en el mismo PR:
 | Pantallas, estado, controles, HUD, Aris, layout | [frontend.md](./frontend.md) |
 | Curva de olvido, llaves, examen | [memoria-y-examen.md](./memoria-y-examen.md) |
 | Diorama o props | [diorama.md](./diorama.md) |
+| Modo VR (`apps/web/src/vr/`), HTTPS para el teléfono | [vr.md](./vr.md) |
 | Citas o imágenes | [fuentes-e-imagenes.md](./fuentes-e-imagenes.md) |
 | Algo que pasa de "pendiente" a "hecho" (o al revés) | [estado-y-pendientes.md](./estado-y-pendientes.md) |
 | Comandos, variables de entorno, flujo | Este archivo |

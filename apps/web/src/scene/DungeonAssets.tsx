@@ -1,8 +1,18 @@
 import { Clone, useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Component, type ReactNode, Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Box } from '../palace/layout'
+
+class DungeonAssetBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
 
 const WALL_MODEL = '/models/dungeon/wall.gltf'
 const FLOOR_MODEL = '/models/dungeon/floor_tile_large.gltf'
@@ -44,10 +54,13 @@ function FallbackWall({ box, color }: { box: Box; color?: string }) {
 }
 
 export function AssetWall({ box, color }: { box: Box; color?: string }) {
+  const fallback = <FallbackWall box={box} color={color} />
   return (
-    <Suspense fallback={<FallbackWall box={box} color={color} />}>
-      <AssetWallInner box={box} />
-    </Suspense>
+    <DungeonAssetBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <AssetWallInner box={box} />
+      </Suspense>
+    </DungeonAssetBoundary>
   )
 }
 
@@ -65,17 +78,18 @@ function AssetFloorInner({ box }: { box: Box }) {
 }
 
 export function AssetFloor({ box, color }: { box: Box; color?: string }) {
+  const fallback = (
+    <mesh position={[box.x, -0.05, box.z]} receiveShadow>
+      <boxGeometry args={[box.w, 0.1, box.d]} />
+      <meshStandardMaterial color={color ?? '#2d3748'} flatShading roughness={1} />
+    </mesh>
+  )
   return (
-    <Suspense
-      fallback={
-        <mesh position={[box.x, -0.05, box.z]} receiveShadow>
-          <boxGeometry args={[box.w, 0.1, box.d]} />
-          <meshStandardMaterial color={color ?? '#2d3748'} flatShading roughness={1} />
-        </mesh>
-      }
-    >
-      <AssetFloorInner box={box} />
-    </Suspense>
+    <DungeonAssetBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <AssetFloorInner box={box} />
+      </Suspense>
+    </DungeonAssetBoundary>
   )
 }
 
@@ -142,9 +156,11 @@ export function AssetDoorway({
   light?: boolean
 }) {
   return (
-    <Suspense fallback={null}>
-      <AssetDoorwayInner position={position} rotation={rotation} isOpen={isOpen} light={light} />
-    </Suspense>
+    <DungeonAssetBoundary fallback={null}>
+      <Suspense fallback={null}>
+        <AssetDoorwayInner position={position} rotation={rotation} isOpen={isOpen} light={light} />
+      </Suspense>
+    </DungeonAssetBoundary>
   )
 }
 

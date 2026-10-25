@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
-import { countSources, LIMITS, type Museum, type Source } from '@mus3o/shared'
-import { generateMuseum, generateMuseumFromFiles, type FilesStage } from '../lib/api'
+import { LIMITS, type Source } from '@mus3o/shared'
+import { startLiveBuild } from '../build/liveBuild'
+import { sourceSummary } from '../palace/sourceSummary'
 import { fileKindOf, readImageAttachment, readTextAttachment } from '../lib/files'
 import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
@@ -40,13 +41,8 @@ const nextImageId = (list: Attachment[]) => {
   return `img-${n}`
 }
 
-/** "17 de 17 conceptos verificados en tus apuntes" o "15 de 17 · 2 sin fuente". */
-export function sourceSummary(palace: Museum): string {
-  const { total, verified, unverified } = countSources(palace)
-  return unverified === 0
-    ? `${verified} de ${total} conceptos verificados en tus apuntes`
-    : `${verified} de ${total} · ${unverified} sin fuente`
-}
+// El resumen "N de M verificados" ahora se muestra dentro del palacio (aviso y panel de pausa).
+export { sourceSummary }
 
 export function Landing() {
   const enterPalace = useStore((s) => s.enterPalace)
@@ -58,12 +54,11 @@ export function Landing() {
   const [fileError, setFileError] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [aiStage, setAiStage] = useState<FilesStage>('generating')
-  const [aiState, setAiState] = useState<'idle' | 'loading'>('idle')
-  const [aiError, setAiError] = useState<string | null>(null)
-  // Palacio generado con IA a la espera de entrar: deja ver cuántos conceptos se verificaron.
-  const [aiResult, setAiResult] = useState<{ palace: Museum; text: string; userImages?: Record<string, string> } | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  // Si la IA falló antes de la primera sala, el store nos devuelve aquí con el motivo.
+  const buildError = useStore((s) => s.build.error)
+  const clearBuildError = useStore((s) => s.clearBuildError)
+  const aiError = validationError ?? buildError
   const showcaseRef = useRef<HTMLElement>(null)
   const { open, full } = useShowcaseScroll(showcaseRef)
   // Caminar por el lobby: solo escritorio (alcance de la demo); el clic pide el pointer lock.
@@ -75,57 +70,42 @@ export function Landing() {
   useFreezeScroll(lobbyMode !== 'off')
   const workbenchRef = useRef<HTMLElement>(null)
   useReveal(workbenchRef)
-  useEffect(() => () => abortRef.current?.abort(), [])
   // Al volver desde #equipo con un ancla (#crear, #como-funciona) la sección recién se montó: se baja a mano.
   useEffect(() => {
     const id = window.location.hash.slice(1)
     if (id) document.getElementById(id)?.scrollIntoView()
   }, [])
 
-  const generateWithAi = async () => {
+  const generateWithAi = () => {
     const withFiles = attachments.length > 0
-    if ((!input.trim() && !withFiles) || aiState === 'loading') return
+    if (!input.trim() && !withFiles) return
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setAiError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
+      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
       return
     }
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setAiError(null)
-    setAiResult(null)
-    setAiState('loading')
-    setAiStage('generating')
-    try {
-      const sources = attachments.flatMap((a) => (a.kind === 'text' ? [a.source] : []))
-      const images = attachments.flatMap((a) => (a.kind === 'image' ? [a.image] : []))
-      // El texto de ejemplo que trae el editor no se mezcla con los archivos del usuario.
-      const typed = input === EXAMPLE_TEXT ? '' : input
-      const palace = withFiles
-        ? await generateMuseumFromFiles({ prompt: typed, sources, images: images.map((i) => i.image) }, setAiStage, controller.signal)
-        : await generateMuseum(input, controller.signal)
-      // Las imágenes del usuario se cuelgan en los cuadros: viajan al palacio por id.
-      const userImages = Object.fromEntries(images.map((i) => [i.image.id, i.previewUrl]))
-      // Texto con el que se verifican las citas: lo escrito más lo extraído de los archivos.
-      const text = [(withFiles ? typed : input).trim(), ...sources.map((s) => s.text)].filter(Boolean).join('\n\n')
-      const { verified, unverified } = countSources(palace)
-      if (verified + unverified === 0) enterPalace(palace, text, userImages)
-      else setAiResult({ palace, text, userImages })
-    } catch (e) {
-      if (controller.signal.aborted) return
-      const status = (e as { status?: number }).status
-      setAiError(
-        status === 503
-          ? 'La IA no está configurada en el servidor. Puedes construir el palacio sin IA.'
-          : status === 429
-            ? 'Demasiadas solicitudes. Intenta en un minuto.'
-            : 'No pudimos generar el palacio con IA. Intenta de nuevo o constrúyelo sin IA.',
-      )
-    } finally {
-      if (!controller.signal.aborted) setAiState('idle')
+    setValidationError(null)
+    clearBuildError()
+    if (!withFiles) {
+      // Entra al palacio ya: las salas se levantan según la IA las escribe.
+      void startLiveBuild({ kind: 'text', text: input })
+      return
     }
+    const sources = attachments.flatMap((a) => (a.kind === 'text' ? [a.source] : []))
+    const images = attachments.flatMap((a) => (a.kind === 'image' ? [a.image] : []))
+    // El texto de ejemplo que trae el editor no se mezcla con los archivos del usuario.
+    const typed = input === EXAMPLE_TEXT ? '' : input
+    void startLiveBuild({
+      kind: 'files',
+      prompt: typed,
+      sources,
+      images: images.map((i) => i.image),
+      // Las imágenes del usuario se cuelgan en los cuadros: viajan al palacio por id.
+      userImages: Object.fromEntries(images.map((i) => [i.image.id, i.previewUrl])),
+      // Texto con el que se verifican las citas: lo escrito más lo extraído de los archivos.
+      text: [typed.trim(), ...sources.map((s) => s.text)].filter(Boolean).join('\n\n'),
+    })
   }
 
   const deferred = useDeferredValue(input)
@@ -135,7 +115,8 @@ export function Landing() {
 
   const onFiles = async (files: File[]) => {
     setFileError(null)
-    setAiResult(null)
+    setValidationError(null)
+    clearBuildError()
     const errors: string[] = []
     let list = attachments
     for (const file of files) {
@@ -172,7 +153,8 @@ export function Landing() {
 
   const removeAttachment = (id: string) => {
     setAttachments((list) => list.filter((a) => a.id !== id))
-    setAiResult(null)
+    setValidationError(null)
+    clearBuildError()
   }
 
   // Los mismos elementos se muestran abajo y en la pared del lobby: comparten estado (lo escrito en uno aparece en el otro).
@@ -193,7 +175,7 @@ export function Landing() {
       <div className={sourcesOpen ? 'editor-body editor-body-split' : 'editor-body'}>
         <textarea
           value={input}
-          onChange={(e) => { setInput(e.target.value); setAiResult(null) }}
+          onChange={(e) => { setInput(e.target.value); setValidationError(null); clearBuildError() }}
           placeholder={attachments.length > 0 ? FILES_PLACEHOLDER : PLACEHOLDER}
           spellCheck={false}
           maxLength={MAX_INPUT_CHARS}
@@ -211,13 +193,11 @@ export function Landing() {
       <div className="editor-status">
         {aiError ? (
           <span className="error">{aiError}</span>
-        ) : attachments.length > 0 && !aiResult ? (
+        ) : attachments.length > 0 ? (
           <span>
             {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
             «Generar con IA»
           </span>
-        ) : aiResult ? (
-          <span>{sourceSummary(aiResult.palace)}</span>
         ) : result.ok ? (
           <span>
             {result.palace.rooms.length} salas · {conceptCount} conceptos
@@ -256,24 +236,15 @@ export function Landing() {
   )
   const primaryActions = (
     <>
-      {aiResult && (
-        <button className="btn btn-primary btn-lg" onClick={() => enterPalace(aiResult.palace, aiResult.text, aiResult.userImages)}>
-          Entrar al palacio
-        </button>
-      )}
-      <button className={aiResult ? 'btn' : 'btn btn-primary btn-lg'} disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
+      <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
         Construir palacio
       </button>
       <button
-        className={attachments.length > 0 && !aiResult ? 'btn btn-primary btn-lg' : 'btn'}
-        disabled={(!input.trim() && attachments.length === 0) || aiState === 'loading'}
+        className={attachments.length > 0 ? 'btn btn-primary btn-lg' : 'btn'}
+        disabled={!input.trim() && attachments.length === 0}
         onClick={generateWithAi}
       >
-        {aiState === 'loading'
-          ? aiStage === 'digesting'
-            ? 'Resumiendo tus archivos…'
-            : 'Levantando muros…'
-          : 'Generar con IA'}
+        Generar con IA
       </button>
     </>
   )
@@ -343,15 +314,6 @@ export function Landing() {
                   wallPanel={wallPanel}
                 />
               </Suspense>
-            )}
-            {aiState === 'loading' && (
-              <div className="preview-loading" role="status">
-                <span className="bricks" aria-hidden>
-                  <i /><i /><i /><i /><i /><i />
-                </span>
-                <p>Levantando muros…</p>
-                <p className="sub">La IA modela un objeto para cada concepto.</p>
-              </div>
             )}
             {canWalk && full && lobbyMode === 'off' && (
               <button type="button" className="walk-cta" onClick={() => walkApi.current.lock()}>

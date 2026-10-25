@@ -9,7 +9,7 @@ explorable en primera persona (método de Loci). Cada sala es un tema, cada piez
 que se memoriza con un objeto 3D, y el juego usa repaso espaciado y un examen para medir qué se
 recuerda.
 
-Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio.
+Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio (la rama VR añade un modo para visores de teléfono, ver [vr.md](./vr.md)).
 
 ---
 
@@ -19,13 +19,16 @@ Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio.
 |---|---|---|
 | [arquitectura.md](./arquitectura.md) | Monorepo, stack, flujo de punta a punta, dónde vive cada cosa | Llegas nuevo o necesitas ubicar algo |
 | [contrato-shared.md](./contrato-shared.md) | Esquemas Zod de `packages/shared`: `Museum`, salas, piezas, grafo, diorama, límites | Tocas datos, validación o el JSON que devuelve la IA |
-| [servidor.md](./servidor.md) | Endpoints, rate limits, caché, tope diario, llamadas a Claude, prompts, proxy de imágenes | Tocas `apps/server` |
+| [servidor.md](./servidor.md) | Endpoints, rate limits, caché, tope diario, llamadas a Claude, prompts, proxy de imágenes, **modelos 3D de Poly Pizza, flujo DSL, costos y mediciones** | Tocas `apps/server` |
 | [frontend.md](./frontend.md) | Pantallas, store de Zustand, parser de apuntes, layout del palacio, escena 3D, HUD, controles, Aris | Tocas `apps/web` |
 | [memoria-y-examen.md](./memoria-y-examen.md) | Curva de olvido, llaves, puertas, examen, repaso, "máquina del tiempo" | Tocas progreso, llaves o repaso |
+| [vr.md](./vr.md) | Modo VR para visores de teléfono: WebXR y respaldo cardboard, interacción por mirada, HTTPS en el teléfono | Tocas `apps/web/src/vr`, o quieres probar en un visor |
 | [diorama.md](./diorama.md) | "Entrar al cuadro": escena de maqueta, props, terreno, atmósfera | Tocas `apps/web/src/diorama` o el campo `diorama` |
 | [fuentes-e-imagenes.md](./fuentes-e-imagenes.md) | Trazabilidad de citas, verificación contra los apuntes, imágenes de Wikimedia | Tocas `sources`, citas o cuadros con imagen real |
 | [estado-y-pendientes.md](./estado-y-pendientes.md) | Qué está hecho, qué no, resultados de tests, discrepancias conocidas | Quieres saber el estado real antes de empezar |
 | [optimizaciones.md](./optimizaciones.md) | Mejoras de rendimiento ya investigadas (6 seguras, con archivo, línea, prueba y medidas del build) | Vas a optimizar peso, CPU o trabajo repetido |
+| [revision-dev.md](./revision-dev.md) | Informe de revisión formal de la rama `dev`: hallazgos de concurrencia, memoria e I/O (todos resueltos) | Vas a auditar o consultar el estado de hallazgos de `dev` |
+| [auditoria-seguridad-y-fallbacks.md](./auditoria-seguridad-y-fallbacks.md) | Auditoría de fallos delicados/medios, resiliencia WebGL, upstream de IA y fallbacks desacoplados | Analizas estabilidad, resiliencia o arquitectura de contingencia |
 | [desarrollo.md](./desarrollo.md) | Cómo correr, probar, variables de entorno, flujo de git, errores comunes | Vas a levantar el proyecto o abrir un PR |
 
 Documentos previos (decisiones de producto y de seguridad, no cambian con el código):
@@ -33,6 +36,7 @@ Documentos previos (decisiones de producto y de seguridad, no cambian con el có
 - [idea.md](./idea.md): concepto, fundamento cognitivo y visión.
 - [contrato-flujo.md](./contrato-flujo.md): propuesta original del contrato del flujo de generación (modo, grafo, imágenes).
 - [seguridad.md](./seguridad.md): prompt injection, validación de salida, límites de costo y privacidad.
+- [plan-poly-pizza-3d-assets.md](./plan-poly-pizza-3d-assets.md): plan original de los modelos 3D dinámicos (implementado; las desviaciones están en `servidor.md`).
 
 ---
 

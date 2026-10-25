@@ -782,7 +782,10 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   position: absolute;
   right: 20px;
   top: 50%;
-  transform: translateY(-40%);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px);
   width: min(380px, calc(100vw - 40px));
   background: var(--surface);
   color: var(--ink);
@@ -822,7 +825,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   transition: opacity 0.15s ease;
 }
 .card-close:hover { opacity: 0.7; }
-.card-inner { padding: 16px 20px 20px; }
+.card-inner { padding: 16px 20px 20px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
 .card h2 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1.15; }
 .card h2.ok { color: var(--ok); }
 .card h2.fail { color: var(--danger); }
@@ -872,6 +875,21 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .card-figure img { display: block; width: 100%; max-height: 150px; object-fit: contain; background: rgba(255, 255, 255, 0.4); border-radius: var(--radius); }
 .card-figure-loading { height: 150px; background: rgba(255, 255, 255, 0.4); border-radius: var(--radius); }
 .card-figure figcaption { margin-top: 4px; font-size: 0.75rem; color: var(--ink-muted); line-height: 1.35; }
+.card-more, .card-sources { margin: 12px 0 0; padding-top: 10px; border-top: 2px solid var(--line); }
+.card-more h3, .card-sources h3 { margin: 0 0 4px; font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.card-more p { margin: 0; font-size: 0.92rem; line-height: 1.5; color: var(--ink); }
+.card-more-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 4); overflow: hidden; }
+.card-more-toggle { margin-top: 4px; padding: 0; background: transparent; border: 0; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--ink); text-decoration: underline; cursor: pointer; }
+.card-skeleton { display: grid; gap: 7px; padding-top: 4px; }
+.card-skeleton i { display: block; height: 9px; background: rgba(31, 20, 17, 0.14); border-radius: var(--radius); }
+.card-skeleton i:nth-child(2) { width: 92%; }
+.card-skeleton i:nth-child(3) { width: 60%; }
+.card-sources ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.card-sources li { font-size: 0.8rem; line-height: 1.4; color: var(--ink-muted); overflow-wrap: anywhere; }
+.card-sources li.card-src-warn { color: var(--danger); font-weight: 600; }
+.card-src-url { display: block; user-select: text; -webkit-user-select: text; color: var(--ink); font-size: 0.75rem; }
+.card-src-open { display: inline-block; margin-top: 4px; padding: 2px 8px; border: 2px solid var(--line); border-radius: var(--radius); color: var(--ink); background: var(--surface); font-size: 0.75rem; font-weight: 600; text-decoration: none; box-shadow: 2px 2px 0 var(--shadow); }
+.card-src-open:hover { background: var(--accent); }
 .card-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .card input {
   width: 100%;
@@ -1013,6 +1031,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   font-size: 0.92rem;
   line-height: 1.45;
 }
+@media (prefers-reduced-motion: reduce) { .aris-bubble { animation: none; } }
 
 .aris-modal-overlay {
   position: fixed;
@@ -1161,6 +1180,12 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .palace.intro-on .hud { visibility: hidden; }
 .intro-skip { position: fixed; right: 24px; bottom: 24px; z-index: 50; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .intro-skip kbd { margin-left: 8px; font: inherit; font-size: 0.8em; color: var(--ink-muted); }
+/* Avisos del palacio que se levanta en vivo (BuildNotice): una línea discreta arriba al centro. */
+.build-note { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; align-items: center; gap: 10px; max-width: min(92vw, 560px); padding: 8px 16px; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-weight: 600; font-size: 0.9rem; pointer-events: none; }
+.build-note-live::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: build-pulse 1.1s ease-in-out infinite; }
+.build-note-close { pointer-events: auto; flex: none; border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: 1.2rem; line-height: 1; cursor: pointer; }
+@keyframes build-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .build-note-live::before { animation: none; } }
 @keyframes intro-fade { from { opacity: 1; } to { opacity: 0; } }
 
 /* ---------- Responsive Layout (Mobile / Tablet) ---------- */
@@ -1186,6 +1211,20 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     padding: 14px 16px 24px;
   }
 
+  /* Panel de pausa */
+  .pause-panel {
+    width: calc(100vw - 20px);
+    max-height: 85dvh;
+    overflow-y: auto;
+    padding: 16px 14px;
+  }
+  .pause-panel h1 { font-size: 1.4rem; }
+  .pause-actions { flex-direction: column; align-items: stretch; }
+  .pause-actions .btn { width: 100%; text-align: center; }
+}
+
+/* Pantallas chicas: teléfono vertical (ancho) o teléfono horizontal (alto). Minimapa como botón y HUD compacto. */
+@media (max-width: 768px), (max-height: 520px) {
   /* Minimapa Popup en móvil */
   .minimap-mobile-fab {
     display: flex;
@@ -1280,18 +1319,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
     max-width: 90vw;
     text-align: center;
   }
-
-  /* Panel de pausa */
-  .pause-panel {
-    width: calc(100vw - 20px);
-    max-height: 85dvh;
-    overflow-y: auto;
-    padding: 16px 14px;
-  }
-  .pause-panel h1 { font-size: 1.4rem; }
-  .pause-actions { flex-direction: column; align-items: stretch; }
-  .pause-actions .btn { width: 100%; text-align: center; }
 }
+
 
 @media (max-width: 480px) {
   .landing {
@@ -1393,3 +1422,158 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   background: var(--accent);
   border-color: var(--ink);
 }
+/* Joystick en reposo: siempre visible abajo a la izquierda para que se note que ahí se mueve. */
+.touch-joystick-base.is-idle {
+  top: auto;
+  bottom: 28px;
+  left: 28px;
+  opacity: 0.6;
+}
+.touch-tip {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  max-width: 90vw;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 3px 3px 0 var(--shadow);
+  pointer-events: none;
+}
+
+/* Avisos del HUD que en táctil son botones (KeyHint): por encima de la capa de toques. */
+.key-hint-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.key-hint-btn::after { content: ' ›'; }
+.hint:has(> .key-hint-btn) { z-index: 36; pointer-events: auto; }
+
+/* En táctil el botón 🤖 de la botonera reemplaza al de escritorio. */
+:root[data-touch] .aris-trigger-btn { display: none; }
+:root[data-touch] .hud-legend { display: none; }
+
+/* Fichas largas: el contenido se desplaza (también con la rueda y el puntero bloqueado, ver ui/cardScroll.ts),
+   se desvanece abajo mientras queda texto y el pie con el estado queda fijo. */
+.card-inner.has-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+}
+.card-footer {
+  flex-shrink: 0;
+  padding: 0 20px 14px;
+  border-top: 2px solid var(--line);
+  background: var(--surface);
+}
+.card-footer .card-actions { margin-top: 10px; }
+.card-more-hint {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 6px 0 0;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-align: center;
+}
+.card-more-hint:hover { color: var(--ink); }
+
+/* ---------- HUD responsive (teléfonos y tablets) ----------
+   Tamaños fluidos (escalan con el lado corto de la pantalla) y posiciones encadenadas: el narrador va
+   sobre el joystick y los avisos sobre ambos y sobre la botonera, así no se pisan en ningún tamaño. */
+:root {
+  --edge-t: max(8px, env(safe-area-inset-top));
+  --edge-r: max(8px, env(safe-area-inset-right));
+  --edge-b: max(8px, env(safe-area-inset-bottom));
+  --edge-l: max(8px, env(safe-area-inset-left));
+  --hud-gap: clamp(6px, 1.6vmin, 12px);
+  --hud-font: clamp(0.68rem, 0.52rem + 0.7vmin, 0.88rem);
+  --hud-shadow: clamp(2px, 0.5vmin, 4px);
+  --joy: clamp(80px, 21vmin, 112px);
+  --btn: clamp(38px, 8.5vmin, 52px);
+  /* Alto de la botonera 🤖 ✓ 👁️: columna en pantallas altas, fila en las bajas. */
+  --cluster-h: calc(var(--btn) * 3 + var(--hud-gap) * 2);
+  /* Alto aproximado del botón del narrador (una línea de --hud-font con su relleno). */
+  --narrator-h: calc(var(--hud-font) * 1.4 + 12px);
+  /* Por encima de esto quedan libres los avisos centrados. */
+  --hud-bottom-stack: max(calc(var(--joy) + var(--narrator-h) + var(--hud-gap) * 2), var(--cluster-h));
+}
+@media (max-height: 520px) {
+  :root { --cluster-h: var(--btn); }
+}
+
+/* Joystick, botonera, narrador y avisos táctiles */
+.touch-joystick-base { width: var(--joy); height: var(--joy); }
+.touch-joystick-knob { top: 25%; left: 25%; width: 50%; height: 50%; }
+.touch-joystick-base.is-idle { left: calc(var(--edge-l) + var(--hud-gap)); bottom: calc(var(--edge-b) + var(--hud-gap)); }
+.touch-actions-cluster { right: calc(var(--edge-r) + var(--hud-gap)); bottom: calc(var(--edge-b) + var(--hud-gap)); gap: var(--hud-gap); }
+.touch-action-btn { width: var(--btn); height: var(--btn); font-size: calc(var(--btn) * 0.4); box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+@media (max-height: 520px) {
+  .touch-actions-cluster { flex-direction: row; }
+}
+:root[data-touch] .narrator {
+  left: calc(var(--edge-l) + var(--hud-gap));
+  bottom: calc(var(--edge-b) + var(--hud-gap) * 2 + var(--joy));
+  z-index: 36;
+}
+/* También los avisos del cuadro, que fijan bottom en línea. */
+:root[data-touch] .hint {
+  bottom: calc(var(--edge-b) + var(--hud-gap) * 2 + var(--hud-bottom-stack)) !important;
+  max-width: calc(100vw - var(--edge-l) - var(--edge-r) - var(--hud-gap) * 2);
+}
+
+/* La ayuda inicial cede su lugar a cualquier aviso (del palacio o del cuadro): nunca se ven juntos. */
+body:has(.hint) .touch-tip { display: none; }
+:root[data-touch] .touch-tip { max-width: calc(100vw - var(--edge-l) - var(--edge-r) - var(--hud-gap) * 2); }
+
+/* HUD de pantallas chicas: márgenes seguros, tipografía fluida, sombras suaves. */
+@media (max-width: 768px), (max-height: 520px) {
+  .plaque {
+    top: var(--edge-t);
+    left: var(--edge-l);
+    /* Deja libre la columna derecha (minimapa y contadores). */
+    max-width: calc(100vw - var(--edge-l) - var(--edge-r) - 11rem);
+    padding: 6px 10px;
+    box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow);
+  }
+  .plaque-title {
+    font-size: clamp(0.95rem, 0.7rem + 1.3vmin, 1.25rem);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .plaque-meta, .plaque-memory { font-size: var(--hud-font); }
+  .hud-right { top: var(--edge-t); right: var(--edge-r); gap: calc(var(--hud-gap) * 0.6); }
+  .minimap-mobile-fab { width: var(--btn); height: var(--btn); font-size: calc(var(--btn) * 0.4); box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hud-progress, .hud-due, .key-badge { font-size: var(--hud-font); padding: 2px 7px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hud-due:not(.hud-due-on) { display: none; }
+  .narrator { font-size: var(--hud-font); padding: 4px 8px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .hint { font-size: calc(var(--hud-font) * 1.1); padding: 4px 10px; box-shadow: var(--hud-shadow) var(--hud-shadow) 0 var(--shadow); }
+  .touch-tip { font-size: var(--hud-font); }
+  /* El minimapa del cuadro no tiene botón 🗺️: se muestra pequeño en vez de ocultarse. */
+  .minimap-wrapper.minimap-inline { display: flex; }
+  .minimap-inline .minimap-header { display: none; }
+  .minimap-inline .minimap { width: clamp(80px, 22vmin, 140px) !important; height: clamp(80px, 22vmin, 140px) !important; }
+}
+/* Poco espacio (teléfono angosto o en horizontal): la placa muestra solo el título. */
+@media (max-width: 420px), (max-height: 520px) {
+  .plaque-meta, .plaque-memory { display: none; }
+}
+

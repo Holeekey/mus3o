@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ResolvedImage } from "@mus3o/shared";
+import type { ResolvedImage, WikiInfo } from "@mus3o/shared";
 
 /**
  * Almacenes de imágenes en disco:
@@ -192,6 +192,42 @@ export async function writeCacheFile(url: string, file: StoredFile): Promise<voi
     await afterWrite(dir, n);
   } catch {
     // ídem
+  }
+}
+
+// ---- Fichas informativas (GET /api/info): mismas carpetas, otro prefijo de clave ----
+const infoName = (key: string) => `${sha("info|" + key)}.json`;
+
+async function readInfoFrom(dir: string, key: string, refresh: boolean): Promise<WikiInfo | null | undefined> {
+  const path = join(dir, infoName(key));
+  const raw = await readIf(path);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw.toString("utf8"));
+    if (parsed && typeof parsed === "object" && "info" in parsed) {
+      if (refresh) touch(path);
+      return parsed.info ?? null;
+    }
+  } catch {
+    // corrupto: se vuelve a consultar
+  }
+  return undefined;
+}
+
+export const readSeedInfo = (key: string) => readInfoFrom(seedDir(), key, false);
+export const readCacheInfo = (key: string) => readInfoFrom(cacheDir(), key, true);
+
+export async function writeSeedInfo(key: string, info: WikiInfo | null): Promise<void> {
+  await atomicWrite(seedDir(), infoName(key), JSON.stringify({ info }));
+}
+
+export async function writeCacheInfo(key: string, info: WikiInfo | null): Promise<void> {
+  try {
+    const dir = cacheDir();
+    const n = await atomicWrite(dir, infoName(key), JSON.stringify({ info }));
+    await afterWrite(dir, n);
+  } catch {
+    // la caché es opcional
   }
 }
 

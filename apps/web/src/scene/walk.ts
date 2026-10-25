@@ -1,6 +1,6 @@
 import type { Camera, Vector3 } from 'three'
 import { DOOR_W, moveWithCollisions, WALL_T, type Box, type PalaceLayout, type RoomLayout } from '../palace/layout'
-import { touchInput } from './touchInput'
+import { moveAxes } from './moveInput'
 
 // Caminata en primera persona: la comparten el museo (Player) y el lobby de la landing (LobbyWalker).
 export const EYE = 1.7
@@ -12,12 +12,8 @@ export const RUN = 8
  * deslizándose contra los colliders. `forward` llega ya aplanado y normalizado.
  */
 export function stepWalk(camera: Camera, forward: Vector3, keys: Record<string, boolean>, dt: number, colliders: Box[]) {
-  const keyAx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0)
-  const keyAz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0)
-  const ax = keyAx !== 0 ? keyAx : touchInput.moveX
-  const az = keyAz !== 0 ? keyAz : touchInput.moveZ
+  const { ax, az, running } = moveAxes(keys)
   if (ax === 0 && az === 0) return
-  const running = keys.ShiftLeft || keys.ShiftRight || touchInput.isRunning
   const speed = (running ? RUN : WALK) * dt
   // derecha = forward × up = (-f.z, 0, f.x)
   let dx = forward.x * az - forward.z * ax

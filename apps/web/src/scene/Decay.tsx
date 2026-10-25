@@ -8,6 +8,7 @@ import { roomShown, roomStrength, shown, shownStrength, spinOf } from '../memory
 import { nowMs, useMemory } from '../memory/store'
 import { hash, type PalaceLayout, type RoomLayout } from '../palace/layout'
 import { useStore } from '../store'
+import { buildFloorGeometry } from './floorGeometry'
 import type { RoomPalette, Theme } from '../theme'
 
 // Desgaste visible del palacio. Todo se deduce de la fuerza del recuerdo ("mostrada", suavizada en el tiempo):
@@ -38,6 +39,9 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
   const count = items.length * SHARDS_PER_CONCEPT
   const mesh = useRef<THREE.InstancedMesh>(null)
   const last = useRef(new Map<string, number>())
+  // Acumuladores por sala reutilizados en cada frame (sin Map ni objetos nuevos).
+  const accSum = useRef(new Map<string, number>())
+  const accN = useRef(new Map<string, number>())
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const reduced = useMemo(prefersReducedMotion, [])
 
@@ -58,7 +62,10 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
     const t = performance.now()
     const now = nowMs()
     const mem = useMemory.getState().palaces[key] ?? {}
-    const acc = new Map<string, { sum: number; n: number }>()
+    const sums = accSum.current
+    const counts = accN.current
+    sums.clear()
+    counts.clear()
     let dirty = false
 
     for (let k = 0; k < items.length; k++) {
@@ -68,10 +75,8 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
       shown.set(it.id, a)
       const s = a.cur
       if (rec) {
-        const r = acc.get(it.roomId) ?? { sum: 0, n: 0 }
-        r.sum += s
-        r.n++
-        acc.set(it.roomId, r)
+        sums.set(it.roomId, (sums.get(it.roomId) ?? 0) + s)
+        counts.set(it.roomId, (counts.get(it.roomId) ?? 0) + 1)
       }
       const prev = last.current.get(it.id)
       last.current.set(it.id, s)
@@ -106,8 +111,8 @@ export function DecayField({ layout, theme }: { layout: PalaceLayout; theme: The
       }
     }
     if (dirty) m.instanceMatrix.needsUpdate = true
-    for (const [roomId, r] of acc) roomShown.set(roomId, r.sum / r.n)
-    for (const roomId of roomShown.keys()) if (!acc.has(roomId)) roomShown.set(roomId, 1)
+    for (const [roomId, sum] of sums) roomShown.set(roomId, sum / (counts.get(roomId) ?? 1))
+    for (const roomId of roomShown.keys()) if (!sums.has(roomId)) roomShown.set(roomId, 1)
   })
 
   if (!count) return null
@@ -186,7 +191,7 @@ export function DecayWrap({ id, children }: { id: string; children: ReactNode })
   })
 
   return (
-    <group ref={group} position={[0, PEDESTAL_TOP, 0]}>
+    <group ref={group} position={[0, PEDESTAL_TOP, 0]} userData={{ noMerge: true }}>
       <group position={[0, -PEDESTAL_TOP, 0]}>{children}</group>
     </group>
   )
@@ -198,22 +203,35 @@ const PALE_FLOOR = new THREE.Color('#B9B0A2')
 const PALE_PLASTER = '#DCD4C5'
 const FLAKES = 16
 
-/** Suelo de la sala: pierde el pigmento hacia yeso pálido según la memoria de la sala. */
+/**
+ * Suelo de la sala: dibujo propio (mármol, rosetón o anillos hexagonales) en una sola malla con color por vértice.
+ * Pierde el pigmento hacia yeso pálido según la memoria de la sala: el shader mezcla cada vértice con `uPale`
+ * en la misma proporción en que antes se mezclaba el color liso del suelo.
+ */
 export function FadingFloor({ room, palette }: { room: RoomLayout; palette: RoomPalette }) {
-  const mat = useRef<THREE.MeshStandardMaterial>(null)
-  const base = useMemo(() => new THREE.Color(palette.floor), [palette.floor])
-  useFrame(() => {
-    const m = mat.current
-    if (!m) return
-    const fade = clamp01((1 - roomStrength(room.id)) / 0.7) * 0.75
-    m.color.copy(base).lerp(PALE_FLOOR, fade)
-  })
-  return (
-    <mesh position={[room.x, -0.05, room.z]} receiveShadow>
-      <boxGeometry args={[room.w, 0.1, room.d]} />
-      <meshStandardMaterial ref={mat} color={palette.floor} flatShading roughness={1} />
-    </mesh>
+  const fade = useMemo(() => ({ value: 0 }), [])
+  const geometry = useMemo(
+    () => buildFloorGeometry({ title: room.title, w: room.w, d: room.d, floorStyle: room.floorStyle }, { floor: palette.floor, trim: palette.trim }),
+    [room.title, room.w, room.d, room.floorStyle, palette.floor, palette.trim],
   )
+  const material = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.uFade = fade
+      shader.uniforms.uPale = { value: PALE_FLOOR }
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uFade;\nuniform vec3 uPale;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uPale, uFade);')
+    }
+    m.customProgramCacheKey = () => 'mus3o-floor-fade'
+    return m
+  }, [fade])
+  useLayoutEffect(() => () => geometry.dispose(), [geometry])
+  useLayoutEffect(() => () => material.dispose(), [material])
+  useFrame(() => {
+    fade.value = clamp01((1 - roomStrength(room.id)) / 0.7) * 0.75
+  })
+  return <mesh position={[room.x, 0, room.z]} geometry={geometry} material={material} receiveShadow />
 }
 
 let flakeGeometry: THREE.ShapeGeometry | null = null

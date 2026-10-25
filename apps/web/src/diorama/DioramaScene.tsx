@@ -294,9 +294,11 @@ export type DioramaSceneProps = {
   followSky?: boolean
   /** Plano de corte (ventana): solo se dibuja lo que queda detrás. */
   clip?: THREE.Plane
+  /** La sombra se calcula una vez (maqueta vista por una ventana) en vez de cada frame. */
+  staticShadows?: boolean
 }
 
-export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels = false, focusedPieceId = null, followSky = false, clip }: DioramaSceneProps) {
+export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels = false, focusedPieceId = null, followSky = false, clip, staticShadows = false }: DioramaSceneProps) {
   const model = useMemo(() => getDioramaModel(diorama), [diorama])
   const { atmo } = model
   const time = useMemo<TimeUniform>(() => ({ value: 0 }), [])
@@ -314,6 +316,12 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
   useFrame((_, dt) => {
     if (!still) time.value += Math.min(dt, 0.1)
   })
+  useLayoutEffect(() => {
+    const l = light.current
+    if (!l) return
+    l.shadow.autoUpdate = !staticShadows
+    l.shadow.needsUpdate = true
+  }, [staticShadows])
   // El objetivo de la luz debe vivir en el grafo para que su matriz se actualice.
   useLayoutEffect(() => {
     const l = light.current
