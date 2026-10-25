@@ -140,7 +140,7 @@ cloudflared tunnel --url http://localhost:5173    # terminal 3
 
 ### Con el visor
 
-- **Android (Chrome):** abre la URL, entra al palacio ("Ver en VR" está en el panel de pausa, junto a "Editar apuntes"),
+- **Android (Chrome):** abre la URL, entra al palacio ("Ver en VR" está en el panel de pausa, junto a "Entrar al museo"),
   toca "Ver en VR" y pon el teléfono en el visor. Con WebXR el navegador pide permisos y arranca la sesión.
 - **iPhone (Safari):** igual; al tocar, Safari pide permiso de "movimiento y orientación": acepta. Gira el teléfono a horizontal
   (iOS no puede bloquearlo). No hay pantalla completa en iPhone: oculta la barra de Safari con "Aa" → "Ocultar barra de herramientas".

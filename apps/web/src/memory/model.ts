@@ -5,7 +5,6 @@ export const DAY_MS = 86_400_000
 export const DUE_THRESHOLD = 0.7
 export const MAX_STABILITY = 365
 export const HISTORY_CAP = 20
-export const TIME_STEPS = [0, 1, 3, 7, 14, 30] as const
 
 export type Review = { t: number; ok: boolean }
 
