@@ -22,9 +22,39 @@ El módulo de WebXR (~150 kB) y la escena VR (`vr/VrScene.tsx`) se cargan con `l
 
 - Al tocar "Ver en VR" (dentro del gesto): permiso de sensores (`DeviceOrientationEvent.requestPermission()` en iOS),
   pantalla completa, bloqueo a horizontal (donde se pueda) y `wakeLock` de pantalla.
-- Cámara a 1,7 m fija, sin balanceo. FOV 85°, separación de ojos 6,4 cm, DPR máximo 1,25. No hay corrección de distorsión de lente.
+- Cámara a 1,7 m fija, sin balanceo (en un cuadro sigue la altura del terreno, suavizada). Resolución con DPR 1,0 (un iPhone tiene 3; `?vrdpr=` para probar otro), sin sombras, `far` 120 m.
+- Calibración, corrección de lente, cabeza y comodidad: ver §1b.
 - Si no hay sensores (permiso denegado o escritorio), se mira arrastrando.
 - El HUD y el resto del DOM se ocultan (`vr/vr.css`); queda un botón ✕ abajo al centro para salir.
+
+## 1b. Calibración, cabeza y comodidad (cardboard)
+
+**Cabeza (`vr/head.ts`).** Sin ningún filtro de suavizado (un paso bajo añade retraso y marea). `DeviceOrientation` da la orientación absoluta pero a ~60 Hz y con retraso;
+`devicemotion.rotationRate` (giroscopio) se integra entre eventos (`integrateGyro`) y cada evento de orientación corrige la deriva con un peso pequeño
+(`GYRO_CORRECT` 0,06). Al componer el frame se predice 16 ms con el último giro medido (`PREDICT_S`). La pose se aplica en `useFrame`, no por estado de React.
+Ángulo de pantalla: `screen.orientation.angle` (Safari 16.4+, Chrome) con respaldo `window.orientation` (iOS: -90 ≡ 270); horizontal izquierda (90) y derecha (270) están probados por separado.
+`alpha` en iOS es relativo a un arranque arbitrario: se calibra al entrar y no se usa `webkitCompassHeading` (saltaría). Sin permiso de `devicemotion` (iOS pide ambos) se usa solo la orientación.
+
+**Estéreo y lente (`vr/distort.ts`, `vr/calib.ts`).** Cada ojo se dibuja a una textura y una pasada corrige el barril: radio de origen = r·(1 + k1·r² + k2·r⁴), con r en unidades de media altura y zoom para que el borde vertical quede justo.
+El centro de cada imagen se desplaza hacia el centro de la pantalla hasta caer sobre su lente (`lens`, mm del centro de la pantalla al centro de cada lente; ~32 mm en un VR Box, unos 20 px en un iPhone de 6,1" apaisado).
+Los mm se pasan a píxeles con `mmPerPx` (0,1655 iPhone, 0,159 Android; aproximado, se afina con `?vrmm=`). Sin k1, k2 ni lens se dibuja directo, sin pasada extra. El ancho que se usa es el de `visualViewport`
+(la barra de Safari y el indicador de inicio cambian el alto visible; el lienzo sigue a `--vr-w/--vr-h`). La app instalada (PWA, #83) no tiene barras.
+
+| Preset | FOV | k1 | k2 | Lente |
+|---|---|---|---|---|
+| VR Box (por defecto) | 92° | 0,22 | 0,06 | 32 mm |
+| Google Cardboard | 90° | 0,34 | 0,15 | 30 mm |
+| Sin corrección | 85° | 0 | 0 | — |
+
+Parámetros de URL (mandan sobre lo guardado): `?vrpreset=vrbox|cardboard|none` `?vrfov=` `?vripd=` (m, o mm si >1) `?vrk1=` `?vrk2=` `?vrlens=` (mm) `?vrmm=` `?vrdpr=` `?vrcomfort=0|1` `?vrshadows=1`.
+Antes de entrar (panel de pausa, "Ajustar el visor") hay botones de preset y campos numéricos; se guardan en `localStorage` (`mus3o.vr.calib`). Dentro del visor, el botón ◐ (abajo, junto a ✕) pasa al siguiente preset desde fuera sin quitarse el visor.
+**Los valores de los presets son estimaciones, no están medidos con un visor real**: se afinan en el teléfono.
+
+**Comodidad (`vr/comfort.ts`, `vr/Vignette.tsx`).** "Modo cómodo" (activo por defecto, casilla en el panel de ajustes): marcha ~1,4 m/s en el palacio (~1,6 en el cuadro) en vez de 3,4, y viñeta (bordes negros, dibujada en la escena para que salga bien en cada ojo, en cardboard y en WebXR)
+mientras se empuja el stick o justo tras un giro por pasos. El giro sigue siendo por pasos de 30°. Sombras apagadas y `far` a 120 m mientras dura la VR; `AdaptiveQuality` no actúa en VR.
+
+**WebXR en Android.** Chrome usa el perfil de visor del SDK de Cardboard: si el predeterminado no encaja con el tuyo, al entrar en la sesión toca el engranaje de Cardboard y escanea el código QR del visor (muchos VR Box traen uno; si no, busca el perfil de tu modelo).
+El botón "Ver en VR" muestra un aviso con esto cuando el camino es WebXR. No se descarga ninguna imagen de QR.
 
 ## 2. Interacción por mirada (ambos caminos)
 
@@ -34,9 +64,9 @@ pantalla, Enter/Espacio, botón de un mando Bluetooth o `select` de WebXR) dispa
 | Objetivo | Al sostener la mirada |
 |---|---|
 | Pedestal | Abre un panel 3D con título, explicación, anclaje o dato, fuente y "para saber más" (`vr/VrPanel.tsx`, `vr/panelText.ts`). Botones "Marcar memorizado" y "Cerrar"; se cierra solo si se aparta la mirada >55° durante 1,2 s |
-| Suelo | Marcador verde (rojo si no se puede) y teletransporte con velo negro (`vr/teleport.ts#validateTeleport`: alcance, suelo existente, sin colliders ni muros en el trayecto) |
+| Suelo | Marcador verde (rojo si no se puede) y teletransporte con velo negro (`vr/teleport.ts#validateTeleport`: alcance, suelo existente, sin colliders ni muros en el trayecto). **Dentro de un cuadro** igual, con el terreno como suelo y las colisiones del cuadro (`diorama/walk.ts#validateDioramaTeleport`: límites, obstáculos, agua en el punto y en el trayecto, no sobre el marco de regreso) |
 | Boca de pasillo | Cruza a la sala del otro lado (`teleport.ts#corridorEnds`, `doorDestination`); abre la compuerta si hay llave |
-| Cuadro vivo | Entra al cuadro con el flujo existente (`dioramaRequest.enter`). Dentro, botón "Salir del cuadro" (mirar hacia abajo) |
+| Cuadro vivo | Entra al cuadro con el flujo existente (`dioramaRequest.enter`). Dentro, botón "Salir del cuadro" (mirar hacia abajo); se camina por mirada al suelo, con el stick o con las flechas |
 
 Selección (`vr/gaze.ts#pickGazeTarget`): gana el objetivo más cercano; en empate manda el tipo (botón > pedestal/cuadro > puerta);
 lo que tapa un muro no cuenta; el suelo solo si no hay nada antes.
@@ -79,7 +109,8 @@ del visor "VR Box"; un gamepad normal también sirve.
   `scene/PortalPainting.tsx` y `diorama/DioramaRuntime.tsx` (en VR la ventana viva del cuadro y el marco de regreso no se
   dibujan: se muestrean en coordenadas de pantalla, no por ojo; las transiciones son cortas), `ui/Hud.tsx` (botón) y `App.tsx` (`VrOverlay`).
 - Al entrar a VR el modo examen pasa a exploración (no se puede escribir la respuesta).
-- Tests (`npm test -w @mus3o/web`): `vr/mode.test.ts`, `dwell.test.ts`, `gaze.test.ts`, `teleport.test.ts`, `head.test.ts`, `rig.test.ts`, `pad.test.ts`.
+- Dentro del cuadro: `DioramaRuntime` publica `dioramaWalk.model` (cajas, agua, altura del terreno) y atiende `dioramaWalk.goto` (salto por mirada). En WebXR el movimiento sigue pasando por el *rig*: `diorama/walk.ts#rigForHead` es la relación (rig = cabeza objetivo − R(yaw)·cabeza física) y está probada; el bucle usa el delta equivalente de `VrRuntime`.
+- Tests (`npm test -w @mus3o/web`): `vr/mode.test.ts`, `dwell.test.ts`, `gaze.test.ts`, `teleport.test.ts`, `head.test.ts`, `rig.test.ts`, `pad.test.ts`, `calib.test.ts`, `comfort.test.ts`, `diorama/walk.test.ts`.
 
 ## 4. Probar en el teléfono (HTTPS)
 
@@ -119,9 +150,9 @@ cloudflared tunnel --url http://localhost:5173    # terminal 3
 - Verificado en Chrome de escritorio con `?vr=cardboard` (capturas y simulación de mirada) y con el emulador de WebXR
   (inicio y fin de sesión, render). **No verificado en un teléfono real**: el movimiento por *rig* en WebXR solo está probado
   con una prueba unitaria de la matemática (el emulador ignora el desplazamiento del espacio de referencia).
-- Cardboard sin corrección de distorsión de lente: los bordes se ven algo estirados.
-- Dentro de un cuadro no se camina con la mirada (solo mirar y salir); se camina con el joystick o las flechas del mando (§2b).
+- La corrección de lente y los presets no están medidos con un visor real (ver §1b). `mmPerPx` es aproximado.
+- WebXR dentro de un cuadro: el emulador de escritorio no se pudo arrancar en esta revisión, así que el salto por mirada y la marcha en WebXR solo tienen la prueba unitaria de la matemática; hay que confirmarlos en el teléfono.
 - El mando está probado con un gamepad simulado (`navigator.getGamepads` sustituido en Chrome de escritorio) y con pruebas unitarias; **no con el mando real de un VR Box**: qué ejes y botones expone cada modelo, y si Chrome de Android lo ve al emparejarlo, solo se confirma en el teléfono.
 - Giro por pasos en WebXR: gira alrededor del origen del rig, no de la cabeza; con la cabeza lejos del centro del área el punto de vista se desplaza un poco.
 - La ficha de examen y la entrada por voz no existen en VR.
-- En cardboard, el giro depende de la brújula del teléfono: puede derivar con el tiempo (arrastrar con el dedo recentra).
+- En cardboard, el giroscopio integrado se corrige despacio con la orientación del teléfono: puede derivar un poco con el tiempo (arrastrar con el dedo recentra).

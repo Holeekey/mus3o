@@ -12,15 +12,29 @@ import { PhotoDioramaResponseSchema, type Diorama } from '@mus3o/shared'
 
 export type PhotoRequest = { imageUrl: string; title: string; roomTitle: string; concepts: string[]; roomId?: string }
 
-/** Archivo de Wikimedia detrás de `/api/image/file?u=…`; `null` si la imagen no viene del proxy (subida por el usuario, etc.). */
-export function wikimediaUrlOf(src: string | undefined): string | null {
-  if (!src || !src.startsWith('/api/image/file?')) return null
+/** Mismos hosts que la lista del servidor (`ALLOWED_HOSTS` en `images.ts`): único origen de imágenes que se recrea. */
+const WIKIMEDIA_HOSTS = new Set(['upload.wikimedia.org', 'thumb.wikimedia.org'])
+const PROXY_PREFIX = '/api/image/file?'
+
+const wikimediaHttps = (raw: string | null): string | null => {
+  if (!raw) return null
   try {
-    const u = new URLSearchParams(src.slice('/api/image/file?'.length)).get('u')
-    return u && u.startsWith('https://') ? u : null
+    const url = new URL(raw)
+    return url.protocol === 'https:' && WIKIMEDIA_HOSTS.has(url.hostname) ? raw : null
   } catch {
     return null
   }
+}
+
+/**
+ * Archivo de Wikimedia de una imagen resuelta: el que va detrás de `/api/image/file?u=…` (lo que devuelve el servidor)
+ * o una URL https directa de los hosts de Wikimedia. `null` si la imagen no viene de ahí (subida por el usuario, etc.).
+ * La URL se conserva tal cual (con sus parámetros `utm_*`): el servidor la normaliza igual que su caché y sus semillas.
+ */
+export function wikimediaUrlOf(src: string | undefined): string | null {
+  if (!src) return null
+  if (src.startsWith(PROXY_PREFIX)) return wikimediaHttps(new URLSearchParams(src.slice(PROXY_PREFIX.length)).get('u'))
+  return wikimediaHttps(src)
 }
 
 /** Cuántos dioramas de foto hay listos: World usa esto para cargar el runtime de dioramas aunque ninguna sala traiga uno. */

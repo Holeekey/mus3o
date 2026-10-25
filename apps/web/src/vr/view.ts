@@ -10,7 +10,7 @@ export const gazeView = {
   /** Distancia (m) a la que se dibuja la retícula. */
   dist: 3,
   /** Marcador de teletransporte. */
-  floor: { show: false, valid: false, x: 0, z: 0 },
+  floor: { show: false, valid: false, x: 0, y: 0, z: 0 },
   /** Panel del concepto: posición del centro y giro Y para mirar al usuario. */
   panel: { x: 0, y: 1.6, z: 0, yaw: 0 },
   /** Botón de salida del cuadro (dentro del diorama). */

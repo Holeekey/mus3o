@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasMoreBelow, wheelScrollTarget } from './cardScroll'
+import { hasMoreBelow, wheelPixels, wheelScrollTarget } from './cardScroll'
 
 const box = (scrollHeight: number, scrollTop: number, clientHeight: number) => ({ scrollHeight, scrollTop, clientHeight })
 
@@ -30,5 +30,20 @@ describe('wheelScrollTarget', () => {
 
   it('does nothing without a card', () => {
     expect(wheelScrollTarget(null, {})).toBeNull()
+  })
+})
+
+describe('wheelPixels', () => {
+  it('keeps pixel deltas as they are (Chrome, Safari)', () => {
+    expect(wheelPixels({ deltaY: 100, deltaMode: 0 }, 400)).toBe(100)
+  })
+
+  it('turns line deltas into pixels (Firefox sends about 3 lines per notch)', () => {
+    expect(wheelPixels({ deltaY: 3, deltaMode: 1 }, 400)).toBe(48)
+    expect(wheelPixels({ deltaY: -3, deltaMode: 1 }, 400)).toBe(-48)
+  })
+
+  it('turns page deltas into the visible height of the card', () => {
+    expect(wheelPixels({ deltaY: 1, deltaMode: 2 }, 400)).toBe(400)
   })
 })

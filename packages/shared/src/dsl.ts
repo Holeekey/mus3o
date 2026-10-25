@@ -412,7 +412,7 @@ class DslAccumulator {
           {
             id: "sala-1-p1",
             title: "Inicio",
-            text: "Bienvenido al palacio de la memoria",
+            text: "Bienvenido al museo de la memoria",
             fact: "Visualiza este templo como el inicio del recorrido",
             mnemonicCue: "Un arco triunfal que resplandece en el centro de la sala.",
             model: { type: "glyph", shape: "dodecahedron" },
@@ -430,7 +430,7 @@ class DslAccumulator {
     const graph = buildGraph(rooms, this.options.mode);
 
     const museumPayload = {
-      title: this.options.title || this.docTitle || rooms[0].name || "Palacio de la Memoria",
+      title: this.options.title || this.docTitle || rooms[0].name || "Museo de la Memoria",
       theme: {
         palette: [rooms[0].palette?.primary || "#3b82f6", rooms[0].palette?.fogColor || "#0f172a"],
         ambience: rooms[0].theme || "cathedral",

@@ -580,6 +580,8 @@ export type PaintingAssignment = {
   userImage?: UserImage
   roomId?: string
   diorama?: Diorama
+  /** Solo en el cuadro principal: búsquedas de las piezas de la sala, por si su imagen ya es el cuadro principal de otra sala. */
+  alternatives?: ImageSearch[]
 }
 
 const hasSearch = (s?: ImageSearch): s is ImageSearch => !!s && !!(s.wikiTitle?.trim() || s.commonsQuery?.trim())
@@ -594,7 +596,8 @@ export function assignPaintings(room: RoomLayout, userImages: Record<string, str
   const free = [...room.paintingSlots]
   const main = free.find((s) => s.main)
   if (main && (hasSearch(room.imageSearch) || room.diorama)) {
-    out.push({ slot: main, search: hasSearch(room.imageSearch) ? room.imageSearch : undefined, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama })
+    const alternatives = room.pedestals.map((p) => p.concept.imageSearch).filter(hasSearch)
+    out.push({ slot: main, search: hasSearch(room.imageSearch) ? room.imageSearch : undefined, key: `room:${room.id}`, roomId: room.id, diorama: room.diorama, alternatives })
     free.splice(free.indexOf(main), 1)
   }
   const nearestFree = (p: PedestalLayout) => {
