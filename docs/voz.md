@@ -98,6 +98,52 @@ lib/scribe.ts ═══ websocket + audio del micrófono (con el token) ══�
   servidor tiene dictado remoto y hay micrófono. El estado se consulta al cargar la página (`warmVoice()`).
 - Solo devuelve una transcripción (el del navegador daba hasta 5 alternativas).
 
+## Conversación por voz con Aris
+
+Aris conversa sin botones: al entrar al museo por primera vez saluda con una frase corta y empieza a escuchar. Cada
+turno es **escuchar → responder → volver a escuchar**, así que la respuesta no cierra nada y puedes seguir hablando.
+Código: `palace/arisConversation.ts` (lógica, con dependencias inyectadas y 16 tests), `arisConversationRuntime.ts`
+(conexión con el juego) y `ui/ArisVoicePill.tsx` (indicador).
+
+- **Arranque:** automático la primera vez que se captura el puntero (`ARIS_VOICE_AUTOSTART` en `arisConversation.ts`;
+  ponla en `false` para volver a que solo arranque con **T**). Ese clic es el gesto que permite audio y micrófono.
+- **Controles:** **T** apaga o enciende; **Shift+T** abre la consulta escrita (con su botón 🎤 manual).
+- **Pausa, no parada:** el micrófono se cierra y no se abre mientras el puntero esté suelto (Esc o el aviso de
+  permiso), haya una ficha abierta, esté la consulta escrita o estés dentro de un cuadro. Al volver, retoma solo.
+- **Medio dúplex:** no escucha mientras suena una voz (Aris o el narrador), para no oírse a sí misma. Vuelve a
+  escuchar ~0,35 s después de que termina, o a los 12 s si la respuesta no llega a sonar (1,5 s si está silenciada).
+- **Se queda en silencio** tras 2 turnos seguidos sin nada útil (nada dicho, o fragmentos como "sí" o "eh", que no se
+  envían). **T** la despierta. Un turno útil reinicia la cuenta.
+- **Sin permiso de micrófono:** se apaga, abre la consulta escrita y no vuelve a pedir el permiso sola. Otros errores
+  la apagan con un aviso, sin reintentar.
+- **Acciones sobre el concepto abierto** (reglas en `palace/arisBrain.ts`, nunca el modelo): con una ficha de
+  exploración abierta (o un concepto enfocado) puedes decir **"listo"**, **"ya lo sé"** o **"márcalo"** para marcarlo
+  como memorizado, y **"qué es esto"** para que lo explique. Durante el examen no marca nada. La conversación sigue
+  funcionando con la ficha abierta; solo se pausa con una tarjeta de examen.
+- **Breve:** Aris dice en voz alta como máximo ~180 caracteres (las primeras frases); el globo muestra el texto completo.
+- **Indicador:** mientras el micrófono está abierto se ve una barra con un punto rojo y lo que se va oyendo
+  (`ArisVoicePill`). Es la señal de privacidad: si no se ve, el micrófono está cerrado.
+- **Dictado en este modo** (`ambient`): Scribe filtra ruido de fondo y muletillas (`filterBackgroundAudio`, `noVerbatim`).
+
+**Costo:** cada turno abre una sesión de dictado nueva (token + websocket), así que cuenta contra el límite de 20
+peticiones/min y el tope diario `MAX_DAILY_STT_SESSIONS`. Entre turnos hay unos cientos de ms en los que las primeras
+sílabas podrían perderse. La mejora natural es una sola sesión por conversación, silenciando el micrófono mientras
+Aris habla (`connection.mute()`/`unmute()`); no está hecha.
+
+## Actividad de voz y reacción de Aris
+
+`lib/voice.ts` expone `isListeningNow()` (micrófono abierto), `isSpeakingNow()` (suena la voz de verdad: cuando
+empieza el audio, no cuando se pide) y `onVoiceActivity(cb)`. `ArisCompanion` los lee en cada fotograma:
+
+| Actividad | Cuándo | Qué hace Aris |
+|---|---|---|
+| Escuchando | Micrófono abierto | Te mira de frente, siempre |
+| Pensando | Pregunta enviada y aún sin voz de respuesta (máx. 8 s) | De frente, con tres puntos sobre la cabeza |
+| Hablando | Suena la voz (o el globo está visible si está silenciado) | De perfil (~90°), hacia el centro de la vista |
+
+La pregunta pendiente es `arisPendingSince` en el store: se marca al confirmar la frase dictada o al enviar la
+pregunta, y se limpia cuando empieza la voz, al cerrar el globo, al cancelar o si Aris está silenciado.
+
 ## Verificar que funciona
 
 Con el servidor levantado (`npm run dev`, puerto 3001):

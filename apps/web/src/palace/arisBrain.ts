@@ -7,6 +7,8 @@ export type ArisResponse = {
   targetCoords?: [number, number] // [x, z] en el mundo si aplica para guiar la mirada
   /** Las reglas no entendieron la pregunta: el texto es solo el respaldo guiado y se puede pedir ayuda a Haiku. */
   needsHelp?: boolean
+  /** Acción que la app debe ejecutar tras responder. Las decide reglas, nunca el modelo. */
+  action?: { type: 'memorize'; pieceId: string }
 }
 
 type BrainContext = {
@@ -17,6 +19,8 @@ type BrainContext = {
   unlockedDoors: Record<string, true>
   roomKeys?: Record<string, true>
   mode: 'explore' | 'exam'
+  /** Concepto con la ficha abierta (o enfocado): sobre él se pregunta con "esto", "este" o "lo". */
+  focusId?: string | null
 }
 
 // Distancia de Levenshtein simple para tolerancia a errores tipográficos (0 KB)
@@ -119,6 +123,18 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
     }
   }
 
+  // 2b. AGENTE: marcar el concepto abierto como listo (solo en exploración; el examen lo decide el examen)
+  const focused = ctx.focusId ? allPieces.find((p) => p.id === ctx.focusId) : undefined
+  if (matchesAny(rawTokens, ['listo', 'lista', 'memorizado', 'memorizada', 'aprendido', 'aprendida', 'marcalo', 'márcalo', 'marca', 'marcala', 'marcá', 'sabido']) || q.includes('ya lo sé') || q.includes('ya lo se')) {
+    if (mode === 'exam') return { text: 'Aris: Durante el examen no puedo marcar nada; responde y yo registro el resultado.' }
+    if (!focused) return { text: 'Aris: Abre o acércate a un concepto y dime que ya lo sabes, y lo marco.' }
+    if (memorized[focused.id]) return { text: `Aris: "${focused.title}" ya estaba marcado como memorizado.` }
+    return {
+      text: `Aris: Listo, marqué "${focused.title}" como memorizado.`,
+      action: { type: 'memorize', pieceId: focused.id },
+    }
+  }
+
   // 3. PROGRESO / SCORE ("cómo voy", "progreso", "cuánto llevo", "score", "avance")
   if (matchesAny(rawTokens, ['progreso', 'score', 'cuanto', 'cuánto', 'avance', 'puntos', 'porcentaje', 'estadistica'])) {
     const pct = Math.round((memorizedTotal / Math.max(totalCount, 1)) * 100)
@@ -175,6 +191,15 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
     }
     return {
       text: `Aris: "${namedRoom.name}" es la Sala ${idx + 1} de ${palace.rooms.length}, con ${namedRoom.pieces.length} conceptos (${done} memorizados). ${brief(namedRoom.description || '', 110)}${routeHint}`.trim(),
+    }
+  }
+
+  // 5b2. EL CONCEPTO ABIERTO ("qué es esto", "explícame este", "dime más")
+  if (focused && matchesAny(rawTokens, ['esto', 'este', 'esta', 'ese', 'eso', 'aquello'])) {
+    const room = palace.rooms.find((r) => r.pieces.some((p) => p.id === focused.id))
+    const body = focused.text || focused.fact || ''
+    return {
+      text: `Aris: "${focused.title}" está en "${room?.name ?? currentRoom.name}"${memorized[focused.id] ? ' (ya lo memorizaste)' : ''}. ${brief(body)}`.trim(),
     }
   }
 
@@ -268,12 +293,16 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
 }
 
 /** Lo único que Aris le pasa a Haiku: la sala actual y los títulos de sus conceptos (nunca los apuntes). */
-export function arisHelpContext(ctx: Pick<BrainContext, 'palace' | 'currentRoomId'>) {
+export function arisHelpContext(ctx: Pick<BrainContext, 'palace' | 'currentRoomId' | 'focusId'>) {
   const room = ctx.palace?.rooms.find((r) => r.id === ctx.currentRoomId) ?? ctx.palace?.rooms[0]
+  // El concepto abierto va primero para que Haiku sepa a cuál se refiere "esto".
+  const focus = ctx.focusId ? ctx.palace?.rooms.flatMap((r) => r.pieces).find((p) => p.id === ctx.focusId) : undefined
+  const roomTopics = (room?.pieces ?? []).map((p) => p.title.slice(0, 80))
+  const topics = focus ? [focus.title.slice(0, 80), ...roomTopics.filter((t) => t !== focus.title.slice(0, 80))] : roomTopics
   return {
     palaceTitle: ctx.palace?.title,
     roomName: room?.name,
-    topics: (room?.pieces ?? []).slice(0, 12).map((p) => p.title.slice(0, 80)),
+    topics: topics.slice(0, 12),
   }
 }
 

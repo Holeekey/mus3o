@@ -149,6 +149,8 @@ La clave `ELEVENLABS_API_KEY` solo la lee el servidor (`apps/server/src/tts.ts`)
 
 **Dictado (STT).** `POST /api/stt/token` mintea un token de un solo uso con la clave del servidor y el navegador abre el websocket de Scribe **directo con ElevenLabs**: el audio del micrófono viaja del navegador a ElevenLabs y **no pasa ni se guarda en nuestro servidor**. Protecciones: rate limit de 20 peticiones/min por IP, tope diario de sesiones (`MAX_DAILY_STT_SESSIONS`), timeout de 10 s y nunca se reenvía el cuerpo de error del proveedor. Limitación conocida: un token minteado sirve para transcribir audio arbitrario hasta que expira (unos 15 min), por eso el tope diario cuenta sesiones. Si falla o no está configurado, `lib/voice.ts` usa el dictado del navegador.
 
+**Micrófono abierto al entrar.** La conversación por voz con Aris abre el micrófono sola la primera vez que se entra al museo (`ARIS_VOICE_AUTOSTART`). Mientras está abierto hay un indicador visible (`ArisVoicePill`) y el audio va directo del navegador a ElevenLabs. Nunca queda abierto con el puntero suelto, con una ficha abierta ni dentro de un cuadro. Si se niega el permiso, no se vuelve a pedir solo. Tras 2 turnos sin nada útil se apaga (T la despierta), y los fragmentos sueltos no se envían a Aris, para no gastar llamadas, voz ni sesiones.
+
 ## 11. Modelos 3D externos (Poly Pizza) y revisión
 
 - **Clave:** `POLY_PIZZA_API_KEY` solo la lee el servidor (`polyPizza.ts`); nunca llega al navegador.

@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { canListen, listen } from '../lib/voice'
 import { normalizeTranscript } from './arisTranscript'
 
 export interface UseSpeechRecognitionOptions {
   onFinalResult: (transcript: string) => void
   autoSendDelayMs?: number
+  /** Términos del museo que conviene reconocer bien (solo lo usa el dictado remoto de ElevenLabs). */
+  keyterms?: string[]
+  /** Se llama en cuanto hay frase confirmada, antes del envío automático: sirve para mostrar "procesando". */
+  onProcessing?: () => void
 }
+
+type ErrorStatus = 'not-allowed' | 'no-speech' | 'network' | 'unknown'
 
 /** Detecta dinámicamente el dialecto preferido del usuario con fallback seguro a español */
 export function resolveUserSpeechLanguage(): string {
@@ -16,22 +23,38 @@ export function resolveUserSpeechLanguage(): string {
   return 'es-419'
 }
 
+/** Traduce los códigos de lib/voice (navegador o ElevenLabs) a los estados que muestra la UI. */
+function toErrorStatus(code: string): ErrorStatus {
+  if (code === 'not-allowed' || code === 'service-not-allowed' || code === 'permission-denied') return 'not-allowed'
+  if (code === 'no-speech') return 'no-speech'
+  if (code === 'network') return 'network'
+  return 'unknown'
+}
+
+/**
+ * Dictado para el diálogo de Aris. Usa lib/voice: ElevenLabs Scribe en tiempo real si el servidor lo tiene y, si no
+ * o si falla, el dictado del navegador. `isListening` se mantiene hasta que hay frase, error o se detiene a mano.
+ */
 export function useSpeechRecognition({
   onFinalResult,
   autoSendDelayMs = 400,
+  keyterms,
+  onProcessing,
 }: UseSpeechRecognitionOptions) {
-  const isSupported =
-    typeof window !== 'undefined' &&
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+  const isSupported = canListen()
 
   const [isListening, setIsListening] = useState(false)
   const [interimText, setInterimText] = useState('')
-  const [errorStatus, setErrorStatus] = useState<'not-allowed' | 'no-speech' | 'network' | 'unknown' | null>(null)
+  const [errorStatus, setErrorStatus] = useState<ErrorStatus | null>(null)
 
-  const recognitionRef = useRef<any>(null)
+  const stopRef = useRef<() => void>(() => {})
   const autoSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onFinalResultRef = useRef(onFinalResult)
   onFinalResultRef.current = onFinalResult
+  const keytermsRef = useRef(keyterms)
+  keytermsRef.current = keyterms
+  const onProcessingRef = useRef(onProcessing)
+  onProcessingRef.current = onProcessing
 
   const clearTimer = useCallback(() => {
     if (autoSendTimerRef.current) {
@@ -42,13 +65,8 @@ export function useSpeechRecognition({
 
   const stopListening = useCallback(() => {
     clearTimer()
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop()
-      } catch {
-        // ignore
-      }
-    }
+    stopRef.current()
+    stopRef.current = () => {}
     setIsListening(false)
     setInterimText('')
   }, [clearTimer])
@@ -56,81 +74,39 @@ export function useSpeechRecognition({
   const startListening = useCallback(() => {
     if (!isSupported) return
     clearTimer()
+    stopRef.current()
     setErrorStatus(null)
     setInterimText('')
+    setIsListening(true)
 
-    try {
-      const SpeechClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      const rec = new SpeechClass()
-
-      rec.lang = resolveUserSpeechLanguage()
-      rec.continuous = false
-      rec.interimResults = true
-
-      rec.onstart = () => {
-        setIsListening(true)
-        setErrorStatus(null)
-      }
-
-      rec.onresult = (e: any) => {
-        let interim = ''
-        let final = ''
-
-        for (let i = e.resultIndex; i < e.results.length; ++i) {
-          const item = e.results[i]
-          const transcriptPart = item[0]?.transcript || ''
-          if (item.isFinal) {
-            final += transcriptPart
-          } else {
-            interim += transcriptPart
-          }
-        }
-
-        if (interim) {
-          setInterimText(interim)
-        }
-
-        if (final) {
-          const normalized = normalizeTranscript(final)
-          setInterimText(normalized)
-
-          // Auto-envío tras breve delay perceptivo para que el usuario confirme lo que se transcribió
-          clearTimer()
-          autoSendTimerRef.current = setTimeout(() => {
-            setIsListening(false)
-            setInterimText('')
-            onFinalResultRef.current(normalized)
-          }, autoSendDelayMs)
-        }
-      }
-
-      rec.onerror = (e: any) => {
-        setIsListening(false)
-        const errType = e.error
-        if (errType === 'not-allowed' || errType === 'permission-denied') {
-          setErrorStatus('not-allowed')
-        } else if (errType === 'no-speech') {
-          setErrorStatus('no-speech')
-        } else if (errType === 'network') {
-          setErrorStatus('network')
-        } else {
-          setErrorStatus('unknown')
-        }
-      }
-
-      rec.onend = () => {
-        // Solo marcar apagado si no hay un temporizador activo pendiente de enviar
-        if (!autoSendTimerRef.current) {
+    stopRef.current = listen({
+      lang: resolveUserSpeechLanguage(),
+      keyterms: keytermsRef.current,
+      onInterim: (text) => setInterimText(text),
+      onFinal: (alternatives) => {
+        const normalized = normalizeTranscript(alternatives[0] ?? '')
+        if (!normalized) {
           setIsListening(false)
+          setErrorStatus('no-speech')
+          return
         }
-      }
-
-      recognitionRef.current = rec
-      rec.start()
-    } catch {
-      setIsListening(false)
-      setErrorStatus('unknown')
-    }
+        setInterimText(normalized)
+        onProcessingRef.current?.()
+        // Auto-envío tras breve delay perceptivo para que el usuario confirme lo que se transcribió
+        clearTimer()
+        autoSendTimerRef.current = setTimeout(() => {
+          autoSendTimerRef.current = null
+          setIsListening(false)
+          setInterimText('')
+          onFinalResultRef.current(normalized)
+        }, autoSendDelayMs)
+      },
+      onError: (code) => {
+        setIsListening(false)
+        setInterimText('')
+        setErrorStatus(toErrorStatus(code))
+      },
+    })
   }, [isSupported, clearTimer, autoSendDelayMs])
 
   const toggleListening = useCallback(() => {
@@ -144,13 +120,7 @@ export function useSpeechRecognition({
   useEffect(() => {
     return () => {
       clearTimer()
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort()
-        } catch {
-          // ignore
-        }
-      }
+      stopRef.current()
     }
   }, [clearTimer])
 

@@ -1106,6 +1106,48 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .aris-bubble { animation: none; } }
 
+.aris-voice-pill {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(640px, 90vw);
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--shadow);
+  color: var(--ink);
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 40;
+}
+.aris-voice-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: arisVoicePulse 1.2s ease-in-out infinite;
+}
+.aris-voice-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aris-voice-hint {
+  flex: none;
+  font-size: 12px;
+  opacity: 0.7;
+}
+@keyframes arisVoicePulse {
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+@media (prefers-reduced-motion: reduce) { .aris-voice-dot { animation: none; } }
+
 .aris-modal-overlay {
   position: fixed;
   inset: 0;

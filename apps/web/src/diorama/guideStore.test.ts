@@ -11,7 +11,13 @@ vi.hoisted(() => {
   Object.assign(globalThis, { window: { localStorage } })
 })
 
-const voice = vi.hoisted(() => ({ speak: vi.fn(), stopSpeaking: vi.fn(), canSpeak: vi.fn(() => true) }))
+const voice = vi.hoisted(() => ({
+  speak: vi.fn(),
+  stopSpeaking: vi.fn(),
+  canSpeak: vi.fn(() => true),
+  isSpeakingNow: vi.fn(() => false),
+  onVoiceActivity: vi.fn(() => () => {}),
+}))
 vi.mock('../lib/voice', () => voice)
 vi.mock('./model', () => ({
   getDioramaModel: () => ({

@@ -25,6 +25,8 @@ export function cleanKeyterms(terms: string[] = []): string[] {
 
 export type ScribeListenOptions = {
   keyterms?: string[]
+  /** Micrófono abierto de forma continua (conversación): filtra ruido de fondo y muletillas para no crear turnos falsos. */
+  ambient?: boolean
   onInterim?: (text: string) => void
   onFinal: (alternatives: string[]) => void
   /** Pasó el tiempo máximo sin una frase confirmada. */
@@ -81,6 +83,7 @@ export function listenScribe(o: ScribeListenOptions): () => void {
         commitStrategy: CommitStrategy.VAD,
         vadSilenceThresholdSecs: VAD_SILENCE_SECS,
         ...(keyterms.length ? { keyterms } : {}),
+        ...(o.ambient ? { noVerbatim: true, filterBackgroundAudio: true } : {}),
         microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       })
       conn = connection

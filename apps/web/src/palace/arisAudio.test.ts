@@ -4,6 +4,7 @@ import {
   cleanTextForSpeech,
   selectBestSpanishVoice,
   playArisVoice,
+  shortenForSpeech,
   defaultVoiceEngine,
   type IArisVoiceEngine,
 } from './arisAudio'
@@ -107,5 +108,29 @@ describe('playArisVoice', () => {
     playArisVoice('Aris: Mensaje con motor default', { muted: false })
     expect(spy).toHaveBeenCalledWith('Aris: Mensaje con motor default')
     spy.mockRestore()
+  })
+})
+
+describe('shortenForSpeech', () => {
+  it('deja intacto el texto corto', () => {
+    expect(shortenForSpeech('Estás en la sala del corazón.')).toBe('Estás en la sala del corazón.')
+  })
+  it('conserva las primeras frases que caben y descarta el resto', () => {
+    const text = 'Primera frase corta. Segunda frase un poco más larga que la anterior. ' + 'Tercera frase muy larga '.repeat(10) + 'y fin.'
+    const out = shortenForSpeech(text, 100)
+    expect(out).toBe('Primera frase corta. Segunda frase un poco más larga que la anterior.')
+    expect(out.length).toBeLessThanOrEqual(100)
+  })
+  it('corta en una palabra si la primera frase ya no cabe', () => {
+    const out = shortenForSpeech('palabra '.repeat(60), 50)
+    expect(out.length).toBeLessThanOrEqual(51)
+    expect(out.endsWith('.')).toBe(true)
+    expect(out).not.toMatch(/palab\.$/)
+  })
+  it('el motor por defecto habla solo lo esencial', () => {
+    vi.mocked(speakVoice).mockClear()
+    defaultVoiceEngine.speak('Aris: ' + 'Una frase de relleno bastante larga para superar el límite. '.repeat(8))
+    const spoken = vi.mocked(speakVoice).mock.calls[0]?.[0] as string
+    expect(spoken.length).toBeLessThanOrEqual(180)
   })
 })

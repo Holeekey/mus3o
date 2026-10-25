@@ -30,6 +30,7 @@ const originals = {
 }
 
 let audioPlay: ReturnType<typeof vi.fn>
+let lastAudio: { onended: (() => void) | null } | null = null
 let browserSpeak: ReturnType<typeof vi.fn>
 let browserCancel: ReturnType<typeof vi.fn>
 
@@ -46,7 +47,9 @@ function stubAudio() {
     play = audioPlay
     pause = vi.fn()
     onended: (() => void) | null = null
-    constructor(public src?: string) {}
+    constructor(public src?: string) {
+      lastAudio = this
+    }
   } as unknown as typeof Audio
   URL.createObjectURL = vi.fn(() => 'blob:mock')
   URL.revokeObjectURL = vi.fn()
@@ -93,6 +96,32 @@ describe('speak (ElevenLabs con fallback)', () => {
 
     expect(audioPlay).toHaveBeenCalled()
     expect(browserSpeak).not.toHaveBeenCalled()
+  })
+
+  it('solo cuenta como hablando cuando suena el audio, y deja de hacerlo al terminar o al cancelar', async () => {
+    stubFetch(true, okAudio)
+    const changes = vi.fn()
+    const off = voice.onVoiceActivity(changes)
+
+    voice.speak('Hola, viajero')
+    expect(voice.isSpeakingNow()).toBe(false) // pedir la voz todavía no es hablar
+    await vi.advanceTimersByTimeAsync(0)
+    expect(voice.isSpeakingNow()).toBe(true)
+    expect(changes).toHaveBeenCalledTimes(1)
+
+    lastAudio?.onended?.()
+    expect(voice.isSpeakingNow()).toBe(false)
+
+    voice.speak('Otra frase')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(voice.isSpeakingNow()).toBe(true)
+    voice.stopSpeaking()
+    expect(voice.isSpeakingNow()).toBe(false)
+
+    off()
+    voice.speak('Sin oyente')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(changes).toHaveBeenCalledTimes(4)
   })
 
   it('no pide /api/tts si el servidor dice que ElevenLabs no está configurado', async () => {
@@ -216,9 +245,11 @@ describe('listen (dictado ElevenLabs con respaldo)', () => {
     const args = sdk.connect.mock.calls[0]?.[0]
     expect(args).toMatchObject({ token: 'tok', modelId: 'scribe_v2_realtime', commitStrategy: 'vad', keyterms: ['Mitocondria'] })
 
+    expect(voice.isListeningNow()).toBe(true)
     sdk.handlers.get('partial_transcript')?.({ text: 'mito' })
     expect(o.onInterim).toHaveBeenCalledWith('mito')
     sdk.handlers.get('committed_transcript')?.({ text: ' Mitocondria ' })
+    expect(voice.isListeningNow()).toBe(false)
     expect(o.onFinal).toHaveBeenCalledWith(['Mitocondria'])
     expect(sdk.conn.close).toHaveBeenCalled()
     expect(recognitions).toHaveLength(0)
@@ -267,6 +298,18 @@ describe('listen (dictado ElevenLabs con respaldo)', () => {
 
     expect(sdk.conn.close).toHaveBeenCalled()
     expect(recognitions[0]?.started).toBe(true)
+  })
+
+  it('marca que escucha mientras el micrófono está abierto y lo suelta al detener', async () => {
+    stubSttServer({ enabled: false })
+    await ready()
+
+    const stop = voice.listen(opts())
+    expect(voice.isListeningNow()).toBe(true)
+    stop()
+    expect(voice.isListeningNow()).toBe(false)
+    stop() // detener dos veces no desbalancea el contador
+    expect(voice.isListeningNow()).toBe(false)
   })
 
   it('al detener cierra la conexión e ignora resultados tardíos', async () => {

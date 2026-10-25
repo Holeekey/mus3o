@@ -137,7 +137,9 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `Decay.tsx` | Desmoronamiento de la pieza según la fuerza de memoria (fragmentos de yeso) |
 | `Decay.tsx` (`FadingFloor`) + `floorGeometry.ts` | Suelo de la sala: una malla con color por vértice (derivado de `palette.floor`/`trim`) que se desvanece a yeso pálido con la memoria (shader con `uFade`) |
 | `RoomDecor.tsx` + `decorGeometry.ts` | Columnas, arcos o nichos de la sala fundidos en una sola malla (yeso y moldura); no proyectan sombra para ahorrar draw calls |
-| `ArisCompanion.tsx` | Aris acompaña al jugador en la escena |
+| `ArisCompanion.tsx` | Aris acompaña al jugador en la escena y reacciona a lo que pasa: de frente a ti mientras te escucha o procesa tu pregunta (con tres puntos de "pensando" sobre la cabeza), y de perfil (~90°) mientras habla o explica un concepto |
+| `palace/arisConversation.ts` | Conversación por voz: bucle escuchar → responder → volver a escuchar, con pausas y límites (ver [voz.md](./voz.md)) |
+| `arisPose.ts` | Lógica pura de esa reacción: `arisActivity` (escuchando > hablando > pensando > reposo), `isArisPending` (máx. 8 s sin voz) y `profileFacing` (hacia dónde mira de perfil) |
 | `RoomPeek.tsx` | Lobby de la landing (sala de inicio del ejemplo con muros lisos beige, alfombra roja) y cámara que sigue el scroll |
 | `LobbyPoster.tsx` | Cuadro grande del lobby en el muro oeste (a la derecha de Founders): `public/lobby/platanus-hack-26.jpg` con marco oscuro, lo más grande que permiten el muro y la cornisa |
 | `LogoSculpture.tsx` | Escultura central del lobby: logotipo (`public/brand.svg`, `SVGLoader` + `ExtrudeGeometry`) de pie sobre un pedestal, girando en Y |
@@ -158,7 +160,8 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | Mouse | Mirar (pointer lock) | `Player.tsx` |
 | `E` | Examinar concepto o abrir la ficha; recoger la llave; usar llave en una puerta; entrar al diorama | `scene/actions.ts` |
 | `M` | Marcar o desmarcar memorizado (en modo explorar) | `scene/actions.ts` |
-| `T` | Hablar con Aris (abre el prompt) | `scene/actions.ts` |
+| `T` | Enciende o apaga la conversación por voz con Aris (arranca sola al entrar al museo) | `scene/actions.ts` (`talkToAris`) |
+| `Shift+T` | Escribir a Aris (abre el prompt, con micrófono manual) | `scene/actions.ts` (`openAris`) |
 | `Q` | Salir del diorama | `scene/actions.ts` |
 | `N` | Narrador | `ui/Narrator.tsx` |
 | `G` | Dentro de un diorama: Aris repite lo que se mira (o la introducción) | `diorama/DioramaGuide.tsx` |

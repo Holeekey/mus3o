@@ -25,6 +25,28 @@ function recognitionCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+// --- Actividad de voz ---
+// Para que la UI reaccione (Aris gira hacia ti al escucharte y de perfil al hablar): si el micrófono está abierto y
+// si suena voz de verdad (cuando empieza el audio, no cuando se pide).
+let speakingNow = false
+let micSessions = 0
+const activityListeners = new Set<() => void>()
+function notifyActivity(): void {
+  activityListeners.forEach((f) => f())
+}
+function setSpeaking(v: boolean): void {
+  if (speakingNow === v) return
+  speakingNow = v
+  notifyActivity()
+}
+export const isSpeakingNow = (): boolean => speakingNow
+export const isListeningNow = (): boolean => micSessions > 0
+/** Avisa cuando cambia isSpeakingNow() o isListeningNow(). Devuelve la función que cancela la suscripción. */
+export function onVoiceActivity(cb: () => void): () => void {
+  activityListeners.add(cb)
+  return () => void activityListeners.delete(cb)
+}
+
 // --- Dictado con ElevenLabs (opcional) ---
 // Mismo esquema que la voz: el servidor dice si está configurado y cualquier fallo cae al dictado del navegador.
 // `sttEnabled` solo es true cuando /api/stt/status ya respondió que sí (ver warmVoice).
@@ -59,6 +81,8 @@ export type ListenOptions = {
   lang?: string
   /** Términos que conviene reconocer bien (solo lo usa el dictado remoto; máx. 50 de hasta 20 caracteres). */
   keyterms?: string[]
+  /** Micrófono abierto de forma continua (conversación): el dictado remoto filtra ruido de fondo y muletillas. */
+  ambient?: boolean
   onInterim?: (text: string) => void
   /** Todas las alternativas del resultado final, de más a menos probable. */
   onFinal: (alternatives: string[]) => void
@@ -72,6 +96,33 @@ export type ListenOptions = {
  * frase, sigue con el dictado del navegador. Sin permiso de micrófono no hay respaldo posible: se avisa 'not-allowed'.
  */
 export function listen(o: ListenOptions): () => void {
+  let ended = false
+  const end = () => {
+    if (ended) return
+    ended = true
+    micSessions--
+    notifyActivity()
+  }
+  micSessions++
+  notifyActivity()
+  const stop = startListening({
+    ...o,
+    onFinal: (alts) => {
+      end()
+      o.onFinal(alts)
+    },
+    onError: (code) => {
+      end()
+      o.onError?.(code)
+    },
+  })
+  return () => {
+    end()
+    stop()
+  }
+}
+
+function startListening(o: ListenOptions): () => void {
   if (!remoteListenReady()) return listenBrowser(o)
   let stopped = false
   let stopInner: () => void = () => {}
@@ -82,6 +133,7 @@ export function listen(o: ListenOptions): () => void {
     if (stopped) return
     stopInner = listenScribe({
       keyterms: o.keyterms,
+      ambient: o.ambient,
       onInterim: o.onInterim,
       onFinal: o.onFinal,
       onNoSpeech: () => o.onError?.('no-speech'),
@@ -236,9 +288,11 @@ async function speakRemote(text: string, mine: number): Promise<boolean> {
         URL.revokeObjectURL(audioUrl)
         currentUrl = null
         currentAudio = null
+        setSpeaking(false)
       }
     }
     await currentAudio.play()
+    if (mine === token) setSpeaking(true)
     return true
   } catch {
     return mine !== token // si la cancelaron a propósito no se cae al navegador
@@ -251,7 +305,7 @@ export function canSpeak(): boolean {
   return synth() !== null
 }
 
-function speakBrowser(text: string, lang: string, pitch: number, rate: number): void {
+function speakBrowser(text: string, lang: string, pitch: number, rate: number, mine: number): void {
   const s = synth()
   if (!s) return
   try {
@@ -264,6 +318,13 @@ function speakBrowser(text: string, lang: string, pitch: number, rate: number): 
     if (voice) {
       u.voice = voice
       u.lang = voice.lang
+    }
+    // Solo cuenta si esta frase sigue vigente: al cancelar, el navegador dispara 'end' de la anterior tarde.
+    u.onstart = () => {
+      if (mine === token) setSpeaking(true)
+    }
+    u.onend = u.onerror = () => {
+      if (mine === token) setSpeaking(false)
     }
     s.speak(u)
   } catch {
@@ -278,12 +339,13 @@ export function speak(text: string, { lang = 'es-ES', pitch = 1, rate = 1 }: Spe
   stopSpeaking()
   const mine = token
   void speakRemote(text, mine).then((done) => {
-    if (!done && mine === token) speakBrowser(text, lang, pitch, rate)
+    if (!done && mine === token) speakBrowser(text, lang, pitch, rate, mine)
   })
 }
 
 export function stopSpeaking(): void {
   token++
+  setSpeaking(false)
   releaseAudio()
   try {
     synth()?.cancel()

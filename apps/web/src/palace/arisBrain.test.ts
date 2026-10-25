@@ -46,3 +46,48 @@ describe('arisBrain: menos fallback', () => {
     expect(ask('qué falta memorizar').needsHelp).toBeFalsy()
   })
 })
+
+describe('arisBrain: agente sobre el concepto abierto', () => {
+  const focused = { ...ctx, focusId: 'p1' }
+
+  it('marca el concepto abierto como listo y lo dice', () => {
+    for (const q of ['listo', 'ya lo sé', 'márcalo como memorizado']) {
+      const res = evaluateArisQuery(q, focused)
+      expect(res.action).toEqual({ type: 'memorize', pieceId: 'p1' })
+      expect(res.text).toContain('Senado romano')
+    }
+  })
+
+  it('no marca nada si ya estaba memorizado', () => {
+    const res = evaluateArisQuery('listo', { ...focused, memorized: { p1: true } })
+    expect(res.action).toBeUndefined()
+    expect(res.text).toContain('ya estaba')
+  })
+
+  it('pide abrir un concepto si no hay ninguno enfocado', () => {
+    const res = evaluateArisQuery('listo', ctx)
+    expect(res.action).toBeUndefined()
+    expect(res.text).toContain('Abre')
+  })
+
+  it('no marca durante el examen', () => {
+    const res = evaluateArisQuery('listo', { ...focused, mode: 'exam' })
+    expect(res.action).toBeUndefined()
+    expect(res.text).toContain('examen')
+  })
+
+  it('"ya lo entendí" no marca como listo', () => {
+    expect(evaluateArisQuery('ya lo entendí, gracias', focused).action).toBeUndefined()
+  })
+
+  it('explica el concepto abierto cuando se pregunta por "esto"', () => {
+    const res = evaluateArisQuery('qué es esto', focused)
+    expect(res.text).toContain('Consejo de ancianos')
+    expect(res.action).toBeUndefined()
+  })
+
+  it('sin concepto abierto, "esto" no inventa una respuesta', () => {
+    expect(evaluateArisQuery('qué es esto', ctx).text).not.toContain('Consejo de ancianos')
+  })
+})
+

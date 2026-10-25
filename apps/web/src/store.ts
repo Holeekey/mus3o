@@ -4,6 +4,7 @@ import { earnedRoomKeys } from './palace/keys'
 import { appendRoomToLayout, buildLayout, emptyLayout, finalizeLayout, streamEdges, type PalaceLayout } from './palace/layout'
 import { arisHelpContext, evaluateArisQuery, speakAris } from './palace/arisBrain'
 import { askArisHelp } from './lib/api'
+import { isSpeakingNow, onVoiceActivity } from './lib/voice'
 import { countSources, edgesAtArrival, LIMITS, MuseumSchema, type GraphEdge, type Museum, type Room } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
 import { resetMainImages } from './lib/images'
@@ -72,6 +73,8 @@ type State = {
   arisMessage: string | null
   arisPromptOpen: boolean
   arisMuted: boolean
+  /** Marca de tiempo (ms) de la última pregunta a Aris que aún no tiene voz de respuesta; null si no hay. */
+  arisPendingSince: number | null
   build: BuildInfo
 
   enterPalace: (palace: Museum, sourceText?: string | null, userImages?: Record<string, string>) => void
@@ -99,6 +102,7 @@ type State = {
   setArisPromptOpen: (open: boolean) => void
   closeArisDialog: () => void
   toggleArisMute: () => void
+  setArisPending: (pending: boolean) => void
   set: (patch: Partial<Pick<State, 'currentRoomId' | 'focusedId' | 'focusedDoorId' | 'openId' | 'locked' | 'lastKeyRoomId' | 'arisMessage' | 'arisPromptOpen'>>) => void
 }
 
@@ -160,6 +164,7 @@ export const useStore = create<State>()(
       arisMessage: null,
       arisPromptOpen: false,
       arisMuted: false,
+      arisPendingSince: null,
       build: IDLE_BUILD,
 
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
@@ -393,8 +398,15 @@ export const useStore = create<State>()(
           unlockedDoors: s.unlockedDoors,
           roomKeys: s.roomKeys,
           mode: s.mode,
+          // Lo que se mira: la ficha abierta o, si no hay ficha, el concepto enfocado.
+          focusId: s.openId ?? s.focusedId,
         }
         const res = evaluateArisQuery(query, ctx)
+        if (res.action?.type === 'memorize' && s.build.status !== 'building' && !s.memorized[res.action.pieceId]) {
+          get().toggleMemorized(res.action.pieceId)
+        }
+        // Mientras llega la voz de la respuesta Aris "piensa" (indicador sobre su cabeza); sin voz no hay nada que esperar.
+        set({ arisPendingSince: s.arisMuted ? null : Date.now() })
         if (!res.needsHelp || !s.palace) {
           speakAris(res.text, s.arisMuted)
           set({ arisMessage: res.text, arisPromptOpen: false })
@@ -408,12 +420,13 @@ export const useStore = create<State>()(
           if (get().arisMessage !== waiting) return
           const text = answer ? `Aris: ${answer}` : res.text
           speakAris(text, get().arisMuted)
-          set({ arisMessage: text })
+          set({ arisMessage: text, ...(get().arisMuted ? { arisPendingSince: null } : {}) })
         })
       },
       setArisPromptOpen: (open) => set({ arisPromptOpen: open }),
-      closeArisDialog: () => set({ arisMessage: null }),
+      closeArisDialog: () => set({ arisMessage: null, arisPendingSince: null }),
       toggleArisMute: () => set((s) => ({ arisMuted: !s.arisMuted })),
+      setArisPending: (pending) => set({ arisPendingSince: pending ? Date.now() : null }),
       set: (patch) => set(patch),
     }),
     {
@@ -493,3 +506,8 @@ function learnedMap(palace: Museum): Record<string, true> {
 export function inExamScope(s: Pick<State, 'mode' | 'reviewIds'>, id: string): boolean {
   return s.mode === 'exam' && (!s.reviewIds || s.reviewIds.includes(id))
 }
+
+// Cuando empieza a sonar la voz de la respuesta, Aris deja de "pensar".
+onVoiceActivity(() => {
+  if (isSpeakingNow() && useStore.getState().arisPendingSince !== null) useStore.setState({ arisPendingSince: null })
+})
