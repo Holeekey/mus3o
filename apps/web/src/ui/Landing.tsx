@@ -53,6 +53,7 @@ export function Landing() {
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  const [sourcesFocus, setSourcesFocus] = useState<'page' | 'wall'>('page')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [validationError, setValidationError] = useState<string | null>(null)
   // Si la IA falló antes de la primera sala, el store nos devuelve aquí con el motivo.
@@ -164,7 +165,10 @@ export function Landing() {
         <span className="tab active">Tus apuntes</span>
         <button
           className="tab tab-file"
-          onClick={() => setSourcesOpen((open) => !open)}
+          onClick={(e) => {
+            setSourcesFocus(e.currentTarget.closest('.lobby-wall') ? 'wall' : 'page')
+            setSourcesOpen((open) => !open)
+          }}
           title="Word, Excel, CSV, texto, JSON o imágenes"
           aria-expanded={sourcesOpen}
           aria-controls="sources-panel"
@@ -188,6 +192,7 @@ export function Landing() {
           onAdd={onFiles}
           onRemove={removeAttachment}
           error={fileError}
+          focusIn={sourcesFocus}
         />
       </div>
       <div className="editor-status">
