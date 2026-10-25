@@ -346,13 +346,13 @@ export function Landing() {
             )}
             {canWalk && full && lobbyMode === 'off' && (
               <button type="button" className="walk-cta" onClick={() => walkApi.current.lock()}>
-                Haz click para recorrer el lobby
+                Haz clic para recorrer el lobby
               </button>
             )}
             {walking && <span className="walk-crosshair" aria-hidden />}
             {walking && aimedFounder ? (
               <p className="walk-use" role="status">
-                <kbd>Click</kbd> para ver {aimedFounder.profile.includes('linkedin') ? `el perfil de ${aimedFounder.name}` : aimedFounder.name}
+                <kbd>Clic</kbd> para ver {aimedFounder.profile.includes('linkedin') ? `el perfil de ${aimedFounder.name}` : aimedFounder.name}
               </p>
             ) : (
               walking &&
