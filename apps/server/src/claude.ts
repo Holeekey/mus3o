@@ -42,6 +42,7 @@ import {
 } from "./prompts";
 import { attachImageSearches, retrieveSources } from "./enrich";
 import { hydrateMuseumAssets, polyEnabled } from "./polyPizza";
+import { applyDeterministicModels } from "./fallbackShapes";
 import { fillMissingModels } from "./modelFallback";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
@@ -101,9 +102,10 @@ export function enrichMuseum(museum: Museum, notes?: string): Museum {
 /** Buscar primero: trae assets y, solo para las piezas que quedaron sin modelo, la IA dibuja un respaldo. */
 export async function resolveModels(museum: Museum): Promise<Museum> {
   const hydrated = await hydrateMuseumAssets(museum);
-  if (!process.env.ANTHROPIC_API_KEY) return hydrated;
+  if (!process.env.ANTHROPIC_API_KEY) return applyDeterministicModels(hydrated);
   const modelName = FALLBACK_MODEL();
-  return fillMissingModels(hydrated, async (prompt, maxTokens) => {
+  // Último respaldo, sin IA ni red: lo que ni Poly Pizza ni Haiku resolvieron recibe un modelo procedural fijo.
+  return applyDeterministicModels(await fillMissingModels(hydrated, async (prompt, maxTokens) => {
     const res = await getClient().messages.create({
       model: modelName,
       ...noThinking(modelName),
@@ -114,7 +116,7 @@ export async function resolveModels(museum: Museum): Promise<Museum> {
     const u = res.usage;
     console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
     return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  });
+  }));
 }
 
 export type GenerateInput = { topic: string } | { notes: string };
