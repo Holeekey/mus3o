@@ -10,6 +10,7 @@ import {
   type MuseumStreamEvent,
 } from "@mus3o/shared";
 import { app } from "./app";
+import { applyDeterministicModels } from "./fallbackShapes";
 import { completeMuseum, enrichMuseum, parseFlowDsl, setTextStreamerForTests, type TextStreamer } from "./claude";
 import { streamNewMuseum } from "./stream";
 
@@ -63,12 +64,14 @@ describe("streamNewMuseum", () => {
     const events = await collect(streamNewMuseum({ topic: "Computadores" }, { streamText: fakeStreamer(), ...live() }));
     const done = events[events.length - 1];
     if (done.type !== "done") throw new Error("sin done");
-    const reference = enrichMuseum(repairAndSanitizeMuseum(parseMus3oDSL(DSL, { title: "Computadores" })));
+    // El museo final lleva además los modelos 3D (aquí, solo el respaldo determinista: sin claves no hay búsqueda ni IA).
+    const reference = applyDeterministicModels(enrichMuseum(repairAndSanitizeMuseum(parseMus3oDSL(DSL, { title: "Computadores" }))));
     expect(done.museum).toEqual(reference);
     expect(MuseumSchema.safeParse(done.museum).success).toBe(true);
-    // Las salas emitidas son exactamente las del museo final.
+    // Las salas emitidas son las del museo final salvo por los modelos, que llegan al cerrar.
     const rooms = events.flatMap((e) => (e.type === "room" ? [e.room] : []));
-    expect(done.museum.rooms).toEqual(rooms);
+    const withoutModels = (rs: typeof rooms) => rs.map((r) => ({ ...r, pieces: r.pieces.map(({ model: _model, ...p }) => p) }));
+    expect(withoutModels(done.museum.rooms)).toEqual(withoutModels(rooms));
   });
 
   it("notes mode: title comes with the first room, sources are attached per room, hash on the museum", async () => {
@@ -77,7 +80,7 @@ describe("streamNewMuseum", () => {
     expect(events[0]).toEqual({ type: "meta", title: "Arquitectura Von Neumann" });
     const done = events[events.length - 1];
     if (done.type !== "done") throw new Error("sin done");
-    const reference = enrichMuseum(repairAndSanitizeMuseum(parseMus3oDSL(DSL)), NOTES);
+    const reference = applyDeterministicModels(enrichMuseum(repairAndSanitizeMuseum(parseMus3oDSL(DSL)), NOTES));
     expect(done.museum).toEqual(reference);
     expect(done.museum.sourceTextHash).toBeDefined();
     const first = events[1];
@@ -339,7 +342,11 @@ describe("POST /api/generate-museum/stream", () => {
     const second = await collect(lines(await post({ topic: "Cache replay" })));
     expect(calls.n).toBe(1);
     expect(second.map((e) => e.type)).toEqual(["meta", "room", "room", "room", "done"]);
-    expect(second).toEqual(first);
+    // La repetición sale de la caché: sus salas ya traen los modelos, que en vivo llegan junto con `done`.
+    expect(second[second.length - 1]).toEqual(first[first.length - 1]);
+    expect(second[0]).toEqual(first[0]);
+    const roomIds = (es: typeof first) => es.flatMap((e) => (e.type === "room" ? [e.room.id] : []));
+    expect(roomIds(second)).toEqual(roomIds(first));
   });
 
   it("keeps the rooms built and does not cache when the model fails midway", async () => {

@@ -35,12 +35,33 @@ function useHideOnScrollDown() {
 
 export function SiteHeader() {
   const hidden = useHideOnScrollDown()
+  // En móvil los enlaces van en un menú hamburguesa; en escritorio el botón no se ve y el nav siempre está abierto.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (hidden) setOpen(false)
+  }, [hidden])
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
   return (
-    <header className="site-header" data-hidden={hidden}>
+    <header className="site-header" data-hidden={hidden && !open} data-open={open}>
       <a className="site-logo" href="#top" aria-label="mus3o, volver al inicio" />
-      <nav aria-label="Secciones">
+      <button
+        type="button"
+        className="site-menu-btn"
+        aria-expanded={open}
+        aria-controls="site-nav"
+        aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span aria-hidden />
+      </button>
+      <nav id="site-nav" aria-label="Secciones">
         {LINKS.map((l) => (
-          <a key={l.href} className="site-link" href={l.href}>
+          <a key={l.href} className="site-link" href={l.href} onClick={() => setOpen(false)}>
             {l.label}
           </a>
         ))}
