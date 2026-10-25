@@ -13,6 +13,9 @@ import {
   SearchKeywordSchema,
   MAX_EDGES,
   MuseumSchema,
+  DioramaDirectivesSchema,
+  DioramaDirectivePropSchema,
+  MAX_DIRECTIVE_PROPS,
 } from "./schema";
 
 const VALID_THEMES: Record<string, RoomTheme> = {
@@ -57,7 +60,7 @@ const GLYPH_MAP: Record<string, Glyph> = {
   pointer: "cone",
 };
 
-const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE)\**\s*:\s*\**/i;
+const LINE_TAG = /^[\s>*•\d.)\-\[\]xX]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE|DIO|D_PROP)\**\s*(?::|：|-(?=\s)|\|)\s*\**/i;
 
 const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -148,13 +151,16 @@ function buildGraph(rooms: Array<Room & { requires?: string[]; related?: string[
 /** Sala tal como la lee el parser: `requires` y `related` (ids de otras salas) solo sirven para armar el grafo. */
 export type DslRoom = Room & { requires: string[]; related?: string[] };
 
-export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE";
+export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE" | "DIO" | "D_PROP";
 
-/** Clasifica una línea del DSL (tolerante a viñetas, negritas y mayúsculas); `body` ya lleva las barras normalizadas. */
+/** Clasifica una línea del DSL (tolerante a viñetas, negritas, mayúsculas, dos puntos asiáticos y pipes directos). */
 export function classifyDslLine(trimmed: string): { kind?: DslLineKind; body: string } {
-  const tag = LINE_TAG.exec(trimmed);
+  // ：→: y ｜→| tienen el mismo largo, así que el índice de la etiqueta vale también sobre el texto original.
+  // Solo se normaliza el cuerpo para las barras; los dos puntos de ancho completo del contenido se respetan.
+  const normalized = trimmed.replace(/：/g, ":").replace(/｜/g, "|");
+  const tag = LINE_TAG.exec(normalized);
   if (!tag) return { body: "" };
-  return { kind: tag[1].toUpperCase() as DslLineKind, body: trimmed.slice(tag[0].length).replace(/｜/g, "|") };
+  return { kind: tag[1].toUpperCase() as DslLineKind, body: trimmed.slice(tag[0].length).replace(/｜/g, "|").trim() };
 }
 
 const DEFAULT_PALETTE = { primary: "#3b82f6", fogColor: "#0f172a" };
@@ -223,6 +229,11 @@ class DslAccumulator {
         this.usedImages.add(id);
         this.lastPiece.image = { imageId: id };
       }
+      return;
+    }
+
+    if (kind === "DIO" || kind === "D_PROP") {
+      this.feedDirective(kind, body);
       return;
     }
 
@@ -345,6 +356,49 @@ class DslAccumulator {
     }
   }
 
+  /**
+   * Micro-DSL del diorama, bajo su sala:
+   *   DIO: <arquetipo> | <hora> [| <terreno>]
+   *   D_PROP: <zona> | <kind> | <pose> | <cantidad> | <pieza> | <rótulo> [| <color> [| <secundario> [| <patrón>]]]
+   * Las coordenadas las pone el cliente. Una línea inválida se descarta sin afectar a la sala. Solo las
+   * 2 primeras salas con directivas cuentan (igual que el tope de salas con "diorama").
+   */
+  private feedDirective(kind: "DIO" | "D_PROP", body: string): void {
+    const room = this.current;
+    if (!room || this.skippingRoom) return;
+    const current = room.dioramaDirectives ?? { props: [] };
+    // El cupo (2 salas) lo gastan solo las salas con props válidos: una DIO vacía o inválida no quita su turno a otra.
+    if (current.props.length === 0 && this.rooms.filter((r) => r.dioramaDirectives?.props.length).length >= 2) return;
+    const f = body.split("|").map((x) => x.trim());
+    const value = (v: string | undefined) => (v && v !== "-" ? v.toLowerCase() : undefined);
+    if (kind === "DIO") {
+      // Un segundo DIO completa o corrige, pero un campo vacío ("-") no borra lo ya pedido.
+      room.dioramaDirectives = DioramaDirectivesSchema.parse({
+        ...current,
+        archetype: value(f[0]) ?? current.archetype,
+        time: value(f[1]) ?? current.time,
+        terrain: value(f[2]) ?? current.terrain,
+      });
+      return;
+    }
+    if (current.props.length >= MAX_DIRECTIVE_PROPS) return;
+    const piece = /^(?:[\w-]*p|pieza\s*)?(\d+)$/i.exec(f[4] ?? "");
+    const count = Number(f[3]);
+    const prop = DioramaDirectivePropSchema.safeParse({
+      zone: value(f[0]),
+      kind: value(f[1]),
+      pose: value(f[2]),
+      count: Number.isFinite(count) && f[3] !== "" ? count : 1,
+      piece: piece ? Number(piece[1]) : undefined,
+      label: f[5] ? f[5].slice(0, 40) : undefined,
+      color: value(f[6]),
+      secondary: value(f[7]),
+      pattern: value(f[8]),
+    });
+    if (!prop.success) return;
+    room.dioramaDirectives = DioramaDirectivesSchema.parse({ ...current, props: [...current.props, prop.data] });
+  }
+
   /** Rellenos, grafo y validación final. */
   finish(): Museum {
     const rooms = this.rooms;
@@ -361,7 +415,7 @@ class DslAccumulator {
           {
             id: "sala-1-p1",
             title: "Inicio",
-            text: "Bienvenido al palacio de la memoria",
+            text: "Bienvenido al museo de la memoria",
             fact: "Visualiza este templo como el inicio del recorrido",
             mnemonicCue: "Un arco triunfal que resplandece en el centro de la sala.",
             model: { type: "glyph", shape: "dodecahedron" },
@@ -379,7 +433,7 @@ class DslAccumulator {
     const graph = buildGraph(rooms, this.options.mode);
 
     const museumPayload = {
-      title: this.options.title || this.docTitle || rooms[0].name || "Palacio de la Memoria",
+      title: this.options.title || this.docTitle || rooms[0].name || "Museo de la Memoria",
       theme: {
         palette: [rooms[0].palette?.primary || "#3b82f6", rooms[0].palette?.fogColor || "#0f172a"],
         ambience: rooms[0].theme || "cathedral",

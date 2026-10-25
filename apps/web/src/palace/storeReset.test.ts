@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Museum, Piece } from '@mus3o/shared'
 import { dioramaRequest, useDioramaStore } from '../diorama/dioramaStore'
 import { useMemory } from '../memory/store'
-import { useStore } from '../store'
+import { hydrateUserImages, useStore } from '../store'
+import { saveUserImages } from '../lib/imageStorage'
 
 vi.hoisted(() => {
   const data = new Map<string, string>()
@@ -87,5 +88,30 @@ describe('palace transitions', () => {
     expect(s.memorized.a1).toBe(true)
     expect(s.palace).not.toBeNull()
     expect(useDioramaStore.getState().phase).toBe('room')
+  })
+
+  it('hydrateUserImages restores images from storage for pieces with imageId', async () => {
+    const palaceWithImages: Museum = {
+      title: 'Img Palace',
+      rooms: [
+        {
+          id: 'r1',
+          name: 'R1',
+          description: '',
+          pieces: [
+            { id: 'p1', title: 'P1', text: '', fact: '', image: { imageId: 'img-saved-1' } },
+          ],
+        },
+      ],
+    }
+    useStore.getState().enterPalace(palaceWithImages)
+    await saveUserImages({ 'img-saved-1': 'data:image/jpeg;base64,stored' })
+
+    // Simular estado tras F5 donde userImages inicia vacío
+    useStore.setState({ userImages: {} })
+    expect(useStore.getState().userImages['img-saved-1']).toBeUndefined()
+
+    await hydrateUserImages()
+    expect(useStore.getState().userImages['img-saved-1']).toBe('data:image/jpeg;base64,stored')
   })
 })

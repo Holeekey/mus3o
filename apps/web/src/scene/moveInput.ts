@@ -1,3 +1,4 @@
+import { vrRuntime } from '../vr/runtime'
 import { consumeTouchLook, touchInput } from './touchInput'
 
 /**
@@ -5,6 +6,9 @@ import { consumeTouchLook, touchInput } from './touchInput'
  * La usan el palacio (Player) y el interior del cuadro (DioramaRuntime), así ambos se mueven igual.
  */
 export function moveAxes(k: Record<string, boolean | undefined>): { ax: number; az: number; running: boolean } {
+  // En VR manda el mando (o las flechas/WASD de un mando en modo teclado), que ya llegan en `vrRuntime.move`
+  // (vr/VrRuntime.tsx). Se ignoran las teclas aquí para no aplicar el movimiento dos veces.
+  if (vrRuntime.active) return { ax: vrRuntime.move.ax, az: vrRuntime.move.az, running: false }
   const keyAx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
   const keyAz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
   return {

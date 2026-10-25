@@ -106,7 +106,8 @@ export const DynamicAssetSchema = z.object({
   url: z.string().regex(/^\/api\/assets\/[A-Za-z0-9_-]{1,64}\.glb$/),
   title: z.string().max(120),
   author: z.string().max(120),
-  license: z.enum(["CC0", "CC-BY"]),
+  /** "own" = de la biblioteca propia del proyecto. */
+  license: z.enum(["CC0", "CC-BY", "own"]),
   sourceUrl: z
     .string()
     .url()
@@ -231,8 +232,16 @@ export const DioramaPropSchema = z.object({
   flow: FlowSchema.optional().catch(undefined),
 });
 
+/**
+ * Foto de fondo de un diorama hecho a partir de una imagen real: solo la ruta del proxy de imágenes del propio
+ * servidor hacia un archivo de Wikimedia (nunca una URL arbitraria que el navegador deba pedir).
+ */
+export const BACKDROP_RE = /^\/api\/image\/file\?u=https%3A%2F%2F(upload|thumb)\.wikimedia\.org%2F[A-Za-z0-9%._~!*'()\-]{1,2000}$/;
+
 export const DioramaSchema = z.object({
   title: z.string().min(1).max(80).catch("Diorama"),
+  /** Diorama recreado desde una foto/cuadro real: la imagen original se muestra al fondo para reconocer la escena. */
+  backdrop: z.string().regex(BACKDROP_RE).optional().catch(undefined),
   terrain: z.enum(TERRAINS).catch("plain"),
   time: z.enum(TIMES).catch("day"),
   palette: z
@@ -261,6 +270,63 @@ export function parseDiorama(input: unknown): z.infer<typeof DioramaSchema> {
   return DioramaSchema.parse(input ?? {});
 }
 
+/** Arquetipos del compositor de dioramas (el cliente decide cómo se arma cada uno). */
+export const DIORAMA_ARCHETYPES = ["battle", "assembly", "naval", "sacred", "nature", "city", "cell", "organ", "neural", "abstract"] as const;
+/** Zonas relativas del diorama que la IA puede pedir; el compositor las traduce a coordenadas. */
+export const DIORAMA_ZONES = ["center", "front", "left", "right", "flanks", "background", "path"] as const;
+/** Tope de props que la IA puede pedir con directivas (el resto lo pone el compositor). */
+export const MAX_DIRECTIVE_PROPS = 8;
+
+/** Un prop pedido por la IA en el micro-DSL: zona y tipo, sin coordenadas. Uno inválido se descarta. */
+export const DioramaDirectivePropSchema = z.object({
+  zone: z.enum(DIORAMA_ZONES).catch("center"),
+  kind: z.enum(KINDS),
+  pose: z.enum(POSES).optional().catch(undefined),
+  count: z.number().finite().catch(1).transform((v) => Math.min(30, Math.max(1, Math.round(v)))).default(1),
+  /** Número de pieza (1 a N) de la sala a la que enlaza el prop. */
+  piece: z.number().int().min(1).max(LIMITS.maxPiecesPerRoom).optional().catch(undefined),
+  label: z.string().max(40).optional().catch(undefined),
+  color: dHex.optional().catch(undefined),
+  secondary: dHex.optional().catch(undefined),
+  pattern: z.enum(FLAG_PATTERNS).optional().catch(undefined),
+});
+
+/** Directiva semántica de diorama de una sala (líneas `DIO` y `D_PROP`): el cliente la convierte en `Diorama`. */
+export const DioramaDirectivesSchema = z.object({
+  archetype: z.enum(DIORAMA_ARCHETYPES).optional().catch(undefined),
+  time: z.enum(TIMES).optional().catch(undefined),
+  terrain: z.enum(TERRAINS).optional().catch(undefined),
+  props: z
+    .array(z.unknown())
+    .catch([])
+    .transform((arr) =>
+      arr
+        .map((p) => DioramaDirectivePropSchema.safeParse(p))
+        .filter((r): r is { success: true; data: z.infer<typeof DioramaDirectivePropSchema> } => r.success)
+        .map((r) => r.data)
+        .slice(0, MAX_DIRECTIVE_PROPS),
+    ),
+});
+
+/** POST /api/diorama-from-image: recrear en 3D la escena que muestra una imagen de Wikimedia (si es recreable). */
+export const PhotoDioramaRequestSchema = z
+  .object({
+    imageUrl: z.string().min(1).max(2048),
+    title: z.string().trim().max(120).default(""),
+    roomTitle: z.string().trim().max(120).default(""),
+    concepts: z.array(z.string().trim().max(80)).max(12).default([]),
+  })
+  .strict();
+export type PhotoDioramaRequest = z.infer<typeof PhotoDioramaRequestSchema>;
+
+/** `recreatable: false` = la imagen no es una escena (retrato, diagrama, mapa, texto...): el cuadro queda normal, sin portal. */
+export const PhotoDioramaResponseSchema = z.object({
+  recreatable: z.boolean(),
+  reason: z.string().max(160).optional(),
+  diorama: DioramaSchema.optional(),
+});
+export type PhotoDioramaResponse = z.infer<typeof PhotoDioramaResponseSchema>;
+
 export const RoomSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(LIMITS.maxTitle),
@@ -278,6 +344,8 @@ export const RoomSchema = z.object({
   monument: MonumentTypeSchema.optional(),
   /** Diorama al que se entra desde el cuadro principal. Si es inválido se descarta (no rompe el museo). */
   diorama: DioramaSchema.optional().catch(undefined),
+  /** Diorama pedido por la IA como directivas compactas; el cliente lo hidrata a `diorama`. */
+  dioramaDirectives: DioramaDirectivesSchema.optional().catch(undefined),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -490,7 +558,7 @@ export function findImageAssignmentIssues(museum: Museum, requestImageIds: strin
   );
 }
 
-export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json"]);
+export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json", "pdf"]);
 
 export const SourceSchema = z.object({
   name: z.string().min(1).max(120),
@@ -583,6 +651,8 @@ export type PieceSource = z.infer<typeof PieceSourceSchema>;
 export type Piece = z.infer<typeof PieceSchema>;
 export type Room = z.infer<typeof RoomSchema>;
 export type Diorama = z.infer<typeof DioramaSchema>;
+export type DioramaDirectives = z.infer<typeof DioramaDirectivesSchema>;
+export type DioramaDirectiveProp = z.infer<typeof DioramaDirectivePropSchema>;
 export type DioramaProp = z.infer<typeof DioramaPropSchema>;
 export type DioramaKind = (typeof KINDS)[number];
 export type DioramaPose = (typeof POSES)[number];

@@ -50,6 +50,7 @@ Room = {
   period?: string (≤40)          // obligatorio en biography
   imageSearch?: ImageSearch      // cuadro principal de la sala
   diorama?: Diorama              // si es inválido se descarta (.catch), no falla el museo
+  dioramaDirectives?: DioramaDirectives  // pedido compacto de la IA (líneas DIO/D_PROP); el cliente lo hidrata a `diorama`
 }
 
 Piece = {
@@ -135,12 +136,14 @@ DioramaProp = {
 ```
 
 Cada campo tiene `.catch(valor por defecto)`: una salida rara se degrada y no tira la escena.
+`backdrop?` (opcional, solo dioramas de foto) debe ser la ruta del proxy `/api/image/file?u=` hacia Wikimedia (`BACKDROP_RE`); cualquier otro valor se descarta. `PhotoDioramaRequestSchema` y `PhotoDioramaResponseSchema` son el cuerpo y la respuesta de `POST /api/diorama-from-image`.
+
 Detalle en [diorama.md](./diorama.md).
 
 ## 5. Fuentes (`SourceSchema`) y request de generación
 
 ```ts
-Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json, text (≤20 000) }   // texto ya extraído en el navegador
+Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json|pdf, text (≤20 000) }   // texto ya extraído en el navegador
 
 GenerateMuseumRequest = {
   mode: MuseumMode (default "exploration"),

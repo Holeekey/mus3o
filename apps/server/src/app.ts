@@ -25,7 +25,9 @@ import { infoRouter } from "./info";
 import { ttsRouter } from "./tts";
 import { assetRouter } from "./assetRoutes";
 import { arisRouter } from "./arisHelp";
+import { photoRouter } from "./photoDiorama";
 import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
+import { takeBudget } from "./budgetStore";
 
 export const app = express();
 // Detrás del proxy de Render: la IP real viene en X-Forwarded-For. Sin esto todos los usuarios
@@ -64,7 +66,8 @@ app.use("/api", infoRouter);
 app.use("/api", ttsRouter);
 app.use("/api", assetRouter);
 app.use("/api", arisRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets") || req.originalUrl.startsWith("/api/aris-help") || req.originalUrl.startsWith("/api/health"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", photoRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets") || req.originalUrl.startsWith("/api/library") || req.originalUrl.startsWith("/api/aris-help") || req.originalUrl.startsWith("/api/health") || req.originalUrl.startsWith("/api/diorama-from-image"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),
@@ -73,13 +76,9 @@ const RequestSchema = z.union([
 
 // Tope diario de llamadas a Claude (solo fallos de caché) para cuidar el presupuesto de créditos.
 const MAX_DAILY = Number(process.env.MAX_DAILY_GENERATIONS) || 200;
-let budget = { day: "", used: 0 };
-function takeDailySlot(): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (budget.day !== day) budget = { day, used: 0 };
-  if (budget.used >= MAX_DAILY) return false;
-  budget.used++;
-  return true;
+class DailyLimitError extends Error {}
+async function takeDailySlot(): Promise<boolean> {
+  return takeBudget("generations", 1, MAX_DAILY);
 }
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -100,11 +99,13 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
     }
     let pending = inFlight.get(key);
     if (!pending) {
-      if (!takeDailySlot()) {
-        res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
-        return;
-      }
-      pending = generate()
+      // El cupo se toma dentro de la promesa compartida: `inFlight` se registra antes de cualquier `await`,
+      // así las peticiones simultáneas iguales comparten una sola generación y un solo cupo.
+      pending = takeDailySlot()
+        .then((ok) => {
+          if (!ok) throw new DailyLimitError();
+          return generate();
+        })
         .then(async (m) => {
           await setCached(key, m);
           return m;
@@ -114,6 +115,10 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
     }
     res.json(await pending);
   } catch (err) {
+    if (err instanceof DailyLimitError) {
+      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+      return;
+    }
     if (err instanceof AiUnavailableError) {
       res.status(503).json({ error: "IA no configurada" });
       return;
@@ -186,7 +191,7 @@ app.post("/api/digest-sources", async (req, res) => {
       res.json({ digest: cached });
       return;
     }
-    if (!takeDailySlot()) {
+    if (!(await takeDailySlot())) {
       res.status(429).json({ error: "Se alcanzó el tope diario de generaciones" });
       return;
     }
@@ -236,7 +241,7 @@ app.post("/api/generate-museum/stream", async (req, res) => {
     // Con apuntes o archivos un mock no sirve: el cliente cae a su parser local.
     res.status(503).json({ error: "IA no configurada" });
     return;
-  } else if (!takeDailySlot()) {
+  } else if (!(await takeDailySlot())) {
     res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
     return;
   } else if (!hasKey) {
@@ -291,7 +296,7 @@ app.post("/api/improve-prompt", async (req, res) => {
     return;
   }
   try {
-    if (!takeDailySlot()) {
+    if (!(await takeDailySlot())) {
       res.status(429).json({ error: "Se alcanzó el tope diario de generaciones" });
       return;
     }

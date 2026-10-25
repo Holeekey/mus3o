@@ -5,18 +5,16 @@ import { Vector3 } from 'three'
 
 import { handleDioramaKey, isDioramaActive, useDioramaStore } from '../diorama/dioramaStore'
 import { allowedKeys } from '../palace/inputKeys'
-import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
+import { roomAt, type PalaceLayout } from '../palace/layout'
 import { isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
 import { examine, openAris, toggleMemorize } from './actions'
-import { applyTouchLook, moveAxes } from './moveInput'
+import { applyTouchLook } from './moveInput'
 import { touchInput } from './touchInput'
+import { EYE, stepWalk } from './walk'
 
-const EYE = 1.7
-const WALK = 4.5
-const RUN = 8
-const REACH = 3.2
+const REACH = 4.2
 
 const onLock = () => useStore.getState().set({ locked: true })
 const onUnlock = () => useStore.getState().set({ locked: false })
@@ -103,38 +101,19 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     f.normalize()
 
     if (s.locked) {
-      const { ax, az, running: isRunning } = moveAxes(k)
-
-      if (ax !== 0 || az !== 0) {
-        const speed = (isRunning ? RUN : WALK) * dt
-        // derecha = forward × up = (-f.z, 0, f.x)
-        let dx = f.x * az - f.z * ax
-        let dz = f.z * az + f.x * ax
-        const len = Math.hypot(dx, dz)
-        if (len > 0.001) {
-          const mag = Math.min(1, len)
-          dx = (dx / len) * speed * mag
-          dz = (dz / len) * speed * mag
-
-          // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
-          // La lista solo se rehace cuando cambian las puertas abiertas (no en cada frame que se camina).
-          const cache = colliderCache.current
-          if (cache.unlocked !== s.unlockedDoors || cache.free !== s.freeExplore || cache.layout !== layout) {
-            const doorColliders = (layout.doors ?? [])
-              .filter((d) => !isDoorOpen(s, d.id))
-              .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
-            cache.list = [...layout.colliders, ...doorColliders]
-            cache.unlocked = s.unlockedDoors
-            cache.free = s.freeExplore
-            cache.layout = layout
-          }
-          const totalColliders = cache.list
-
-          const next = moveWithCollisions(totalColliders, camera.position.x, camera.position.z, dx, dz)
-          camera.position.x = next.x
-          camera.position.z = next.z
-        }
+      // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
+      // La lista solo se rehace cuando cambian las puertas abiertas (no en cada frame).
+      const cache = colliderCache.current
+      if (cache.unlocked !== s.unlockedDoors || cache.free !== s.freeExplore || cache.layout !== layout) {
+        const doorColliders = (layout.doors ?? [])
+          .filter((d) => !isDoorOpen(s, d.id))
+          .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
+        cache.list = [...layout.colliders, ...doorColliders]
+        cache.unlocked = s.unlockedDoors
+        cache.free = s.freeExplore
+        cache.layout = layout
       }
+      stepWalk(camera, f, k, dt, cache.list)
     }
 
     playerPose.x = camera.position.x
@@ -146,13 +125,13 @@ export function Player({ layout }: { layout: PalaceLayout }) {
 
     // Puerta a la que se está mirando y que está al alcance
     let bestDoor: string | null = null
-    let bestDoorDist = 3.8
+    let bestDoorDist = 4.5
     for (const d of layout.doors ?? []) {
       const vx = d.x - camera.position.x
       const vz = d.z - camera.position.z
       const dist = Math.hypot(vx, vz)
       if (dist > bestDoorDist) continue
-      if ((vx * f.x + vz * f.z) / dist < 0.5) continue
+      if ((vx * f.x + vz * f.z) / dist < 0.45) continue
       bestDoor = d.id
       bestDoorDist = dist
     }
@@ -168,7 +147,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       const vz = p.z - camera.position.z
       const dist = Math.hypot(vx, vz)
       if (dist > bestDist || dist < 0.01) continue
-      if ((vx * f.x + vz * f.z) / dist < 0.8) continue
+      if ((vx * f.x + vz * f.z) / dist < 0.65) continue
       best = p.concept.id
       bestDist = dist
     }

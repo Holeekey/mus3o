@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import { enterDiorama, leaveDiorama } from '../scene/actions'
 import { useStore } from '../store'
 import { KeyHint } from '../ui/KeyHint'
+import { DioramaGuide } from './DioramaGuide'
 import { dioramaFx, useDioramaStore } from './dioramaStore'
+import { repeatGuide } from './guideStore'
 
 /**
  * Capa DOM del cuadro: velo de transición, invitación "E · Entrar al cuadro" y recordatorio de
@@ -37,6 +39,7 @@ export function DioramaOverlay() {
 
   return (
     <>
+      <DioramaGuide />
       <div ref={veil} aria-hidden style={{ position: 'absolute', inset: 0, opacity: 0, visibility: 'hidden', pointerEvents: 'none', zIndex: 40 }} />
       <div className="hud" style={{ zIndex: 30 }}>
         {locked && phase === 'room' && hintId && (
@@ -54,9 +57,11 @@ export function DioramaOverlay() {
               <p className="plaque-title">{title}</p>
             </div>
             {locked && !openId && (
-              <p className="hint" style={{ bottom: nearReturn ? '30%' : '12%', whiteSpace: 'nowrap' }}>
+              <p className="hint" style={{ bottom: nearReturn ? '30%' : '12%', left: '38%', whiteSpace: 'nowrap' }}>
                 <KeyHint k="Q" onTap={leaveDiorama}>Volver a la sala</KeyHint>
                 {nearReturn && <span style={{ fontWeight: 400, opacity: 0.75 }}> · o cruza el marco</span>}
+                <span style={{ fontWeight: 400, opacity: 0.75 }}> · </span>
+                <KeyHint k="G" onTap={repeatGuide}>Que Aris te cuente</KeyHint>
               </p>
             )}
           </>

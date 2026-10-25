@@ -33,7 +33,7 @@ Diseñado bajo el principio de que **la IA razona y el código ensambla**, mus3o
 3. **Búsqueda e Hidratación 3D Externa:** Integración con Poly Pizza para descargar modelos `.glb` reales low-poly (0 tokens LLM). Solo los faltantes usan fallback económico con Claude 3.5 Haiku.
 4. **Caché Multi-Nivel:** LRU en memoria y persistencia atómica en disco (`.cache/museums`) respaldada con validación Zod. Repeticiones y consultas concurrentes cuestan **$0.00 USD**.
 
-> 📊 Consulta el desglose técnico completo en el [Catálogo de Optimizaciones](./docs/catalogo-optimizaciones.md) y el [Reporte de Costos y Ahorro](./docs/reporte-costos-y-ahorros.md).
+> 📊 Al construir mus3o con un agente de código, la caché de prompts ahorró **~USD 246 en 7 días** (99 % de aciertos; gasto real USD 29 frente a ~USD 275). Consulta el desglose completo en el [Catálogo de Optimizaciones](./docs/catalogo-optimizaciones.md) y el [Reporte de Costos y Ahorro](./docs/reporte-costos-y-ahorros.md).
 
 ---
 

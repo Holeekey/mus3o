@@ -1,10 +1,10 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
-import { addDioramas, buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
-import { FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
+import { buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
+import { FLOW_DSL_SYSTEM_PROMPT, FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -199,7 +199,7 @@ describe("generación liviana", () => {
     expect(lean).not.toContain('agrega a CADA sala "imageSearch"');
     expect(lean).not.toContain("Dioramas");
     expect(FLOW_STATIC_RULES).toContain('agrega a CADA sala "imageSearch"');
-    expect(FLOW_STATIC_RULES).toContain("Dioramas");
+    expect(FLOW_STATIC_RULES).not.toContain("Dioramas");
     expect(lean.length).toBeLessThan(withRules.length);
   });
 });
@@ -212,13 +212,12 @@ IMAGE: img-1
 ROOM: b | República | ancient | #112233 | #000000 | torus | a |
 PIECE: Senado | box | cue | column | Órgano de gobierno`;
 
-  it("parseFlowDsl arma el museo según el modo y reporta las salas con diorama", () => {
-    let marked: string[] = [];
-    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }), (ids) => (marked = ids));
+  it("parseFlowDsl arma el museo según el modo (un campo diorama heredado se ignora)", () => {
+    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
     expect(m.mode).toBe("exploration");
     expect(m.graph?.edges).toEqual([{ from: "a", to: "b", kind: "related" }]);
     expect(m.rooms[0].pieces[0].image).toEqual({ imageId: "img-1" });
-    expect(marked).toEqual(["a"]);
+    expect(m.rooms.every((r) => r.diorama === undefined)).toBe(true);
   });
 
   it("ignora una imagen que no llegó en el request", () => {
@@ -232,10 +231,31 @@ PIECE: Senado | box | cue | column | Órgano de gobierno`;
     expect(text).toContain("<user_notes>");
     expect(text).not.toContain("terrain");
   });
+});
 
-  it("sin salas marcadas no se hace llamada de dioramas", async () => {
-    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
-    expect(await addDioramas(m, [])).toBe(m);
+describe("micro-DSL de dioramas en el flujo", () => {
+  const dsl = `TITLE: Venezuela
+ROOM: a | Carabobo | ancient | #112233 | #000000 | torus | | diorama |
+PIECE: Bolívar | box | cue | horse | Libertador
+DIO: battle | sunset
+D_PROP: center | figure | pointing | 1 | p1 | Bolívar
+D_PROP: front | rider | charging | 6 | - | Carga
+ROOM: b | La célula | organic | #112233 | #000000 | torus | a | diorama |
+PIECE: Núcleo | sphere | cue | nucleus | Guarda el ADN`;
+
+  it("el prompt del sistema pide DIO / D_PROP sin coordenadas y no los pide para ciencia", () => {
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("DIO:");
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("D_PROP:");
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("NO escribas coordenadas");
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("no escribas DIO ni D_PROP");
+    expect(FLOW_DSL_SYSTEM_PROMPT).not.toContain('"pos"');
+  });
+
+  it("parseFlowDsl conserva las directivas de la sala y no inventa un diorama JSON", () => {
+    const m = parseFlowDsl(dsl, request({ mode: "exploration" }));
+    expect(m.rooms[0].dioramaDirectives?.props.map((p) => p.kind)).toEqual(["figure", "rider"]);
+    expect(m.rooms[1].dioramaDirectives).toBeUndefined();
+    expect(m.rooms.every((r) => r.diorama === undefined)).toBe(true);
   });
 });
 

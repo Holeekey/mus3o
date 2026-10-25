@@ -11,7 +11,9 @@ export type Inst = { x: number; y: number; z: number; rotY: number; scale: numbe
 export type Placed = { index: number; prop: DioramaProp; variants: number; instances: Inst[] }
 export type Circle = { x: number; z: number; r: number }
 export type Linked = { pieceId: string; label: string; x: number; y: number; z: number; labelY: number; propIndex: number }
-export type DioramaLayout = { placed: Placed[]; colliders: Circle[]; linked: Linked[] }
+/** Prop con rótulo pero sin pieza enlazada (dioramas de foto): Aris dice qué es al acercarse. */
+export type Labelled = { propIndex: number; label: string; x: number; y: number; z: number; labelY: number }
+export type DioramaLayout = { placed: Placed[]; colliders: Circle[]; linked: Linked[]; labelled: Labelled[] }
 
 const COLLIDER: Partial<Record<DioramaKind, number>> = {
   tree: 0.4, rock: 0.75, cannon: 1.0, tent: 1.8, house: 3.3, church: 5, ship: 2.4, column: 0.6, campfire: 0.75, custom: 0.6, flag: 0.15,
@@ -29,6 +31,7 @@ export function layoutDiorama(d: Diorama, field: HeightField): DioramaLayout {
   const placed: Placed[] = []
   const colliders: Circle[] = []
   const linked: Linked[] = []
+  const labelled: Labelled[] = []
 
   d.props.forEach((prop, index) => {
     const rnd = mulberry32(hashStr(`${d.title}|${index}|${prop.kind}`))
@@ -99,7 +102,11 @@ export function layoutDiorama(d: Diorama, field: HeightField): DioramaLayout {
       const i = instances[0]
       const h = (prop.pose === 'fallen' ? 0.6 : HEIGHT[prop.kind]) * i.scale
       linked.push({ pieceId: prop.pieceId, label: prop.label ?? '', x: i.x, y: i.y, z: i.z, labelY: i.y + h + 0.45, propIndex: index })
+    } else if (prop.label?.trim() && instances[0]) {
+      const i = instances[0]
+      const h = (prop.pose === 'fallen' ? 0.6 : HEIGHT[prop.kind]) * i.scale
+      labelled.push({ propIndex: index, label: prop.label.trim(), x: i.x, y: i.y, z: i.z, labelY: i.y + h + 0.45 })
     }
   })
-  return { placed, colliders, linked }
+  return { placed, colliders, linked, labelled }
 }

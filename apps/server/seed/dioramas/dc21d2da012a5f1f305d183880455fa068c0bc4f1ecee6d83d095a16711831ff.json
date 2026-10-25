@@ -1,0 +1,142 @@
+{
+ "result": {
+  "recreatable": true,
+  "reason": "Sesión de un congreso en una sala con dosel rojo: un orador de pie con uniforme, delegados sentados a ambos lados y otros de pie junto a la puerta.",
+  "diorama": {
+   "title": "Sesión del Congreso bajo el dosel rojo",
+   "backdrop": "/api/image/file?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fb%2Fb3%2FSimon-bolivar-congreso-discurso-angostura-bicentenario-independencia.jpg%2F960px-Simon-bolivar-congreso-discurso-angostura-bicentenario-independencia.jpg%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dimageinfo%26utm_content%3Dthumbnail",
+   "terrain": "interior",
+   "time": "day",
+   "palette": {
+    "ground": "#8a3a32",
+    "sky": "#b9c4b8",
+    "accent": "#7a1f2e"
+   },
+   "props": [
+    {
+     "kind": "figure",
+     "pose": "standing",
+     "color": "#c9a24a",
+     "secondary": "#2a3a6a",
+     "pos": [
+      0,
+      -2
+     ],
+     "rotY": 0,
+     "scale": 1.2,
+     "count": 1,
+     "spread": 0,
+     "label": "orador de pie con uniforme y papel",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "seated",
+     "color": "#1c1c22",
+     "pos": [
+      -3,
+      -4
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 1,
+     "spread": 0,
+     "label": "presidente sentado bajo el dosel",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "seated",
+     "color": "#26262e",
+     "secondary": "#d9d2c0",
+     "pos": [
+      -9,
+      -1
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 7,
+     "spread": 4,
+     "label": "delegados de negro a la izquierda",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "standing",
+     "color": "#2a2a32",
+     "pos": [
+      -8,
+      -5
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 4,
+     "spread": 3,
+     "label": "delegados de pie al fondo izquierdo",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "seated",
+     "color": "#2f3550",
+     "secondary": "#a85a3a",
+     "pos": [
+      6,
+      -1
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 6,
+     "spread": 4,
+     "label": "delegados sentados a la derecha",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "standing",
+     "color": "#b83a32",
+     "secondary": "#1e1e24",
+     "pos": [
+      9,
+      -5
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 4,
+     "spread": 3,
+     "label": "asistentes de pie junto a la puerta",
+     "y": 0
+    },
+    {
+     "kind": "figure",
+     "pose": "seated",
+     "color": "#2a3a6a",
+     "secondary": "#c4442e",
+     "pos": [
+      3.5,
+      -1
+     ],
+     "rotY": 0,
+     "scale": 1,
+     "count": 1,
+     "spread": 0,
+     "label": "delegado militar sentado con casaca azul",
+     "y": 0
+    },
+    {
+     "kind": "arch",
+     "pos": [
+      11,
+      -8
+     ],
+     "rotY": 0,
+     "scale": 1.2,
+     "count": 1,
+     "spread": 0,
+     "label": "puerta abierta al exterior",
+     "y": 0
+    }
+   ]
+  }
+ }
+}

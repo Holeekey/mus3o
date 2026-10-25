@@ -57,6 +57,15 @@ export const dioramaFx = { fade: 0, color: '#d6cfc4' }
 /** Solicitudes de transición: las atiende DioramaRuntime dentro del bucle de render. */
 export const dioramaRequest: { enter: string | null; leave: boolean } = { enter: null, leave: false }
 
+/**
+ * Puente con el movimiento dentro del cuadro: DioramaRuntime publica `model` (cajas, agua y alturas del terreno, en
+ * coordenadas locales) mientras se está dentro, y atiende `goto` (salto por mirada en VR) en su siguiente frame.
+ */
+export const dioramaWalk: { model: { boxes: import('../palace/layout').Box[]; field: import('./walk').DioramaField } | null; goto: { x: number; z: number } | null } = {
+  model: null,
+  goto: null,
+}
+
 export const isDioramaActive = () => useDioramaStore.getState().phase !== 'room'
 
 /** Vuelve al palacio y olvida el cuadro activo, pistas y solicitudes pendientes (cambio de palacio, aunque el runtime no llegara a montarse). */
@@ -64,6 +73,8 @@ export function resetDioramaState() {
   useDioramaStore.setState({ phase: 'room', activeId: null, hintId: null, nearReturn: false })
   dioramaRequest.enter = null
   dioramaRequest.leave = false
+  dioramaWalk.model = null
+  dioramaWalk.goto = null
   dioramaFx.fade = 0
 }
 

@@ -61,3 +61,123 @@ html.vr-on body {
   text-shadow: 0 1px 3px #000;
   pointer-events: none;
 }
+
+/* El lienzo ocupa el área visual real (iOS: la barra de Safari y el indicador de inicio cambian el alto). */
+html.vr-on .palace {
+  inset: 0 auto auto 0;
+  width: var(--vr-w, 100vw);
+  height: var(--vr-h, 100dvh);
+}
+.vr-preset {
+  left: calc(50% + 28px);
+  transform: translateX(-50%);
+  opacity: 0.55;
+}
+.vr-tip {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.vr-cal {
+  flex-basis: 100%;
+}
+.vr-cal-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+.vr-cal-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vr-cal-presets .is-on {
+  outline: 2px solid currentColor;
+}
+.vr-cal-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vr-cal-field {
+  display: grid;
+  gap: 2px;
+  width: 5.5rem;
+}
+.vr-cal-field input {
+  width: 100%;
+  padding: 4px 6px;
+}
+.vr-cal-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.vr-cal-hint {
+  margin: 0;
+  opacity: 0.7;
+}
+
+/* Ajuste del visor sobre la vista dividida: botones grandes para tocar antes de meter el teléfono al visor. */
+.vr-adjust {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  display: grid;
+  gap: 8px;
+  width: min(92vw, 520px);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 0.9rem;
+}
+.vr-adjust-title {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+.vr-adjust-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.vr-adjust-btn {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.vr-adjust-btn.is-on {
+  background: #fff;
+  color: #000;
+}
+.vr-adjust-step {
+  width: 52px;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.vr-adjust-label {
+  display: grid;
+  flex: 1;
+  max-width: 220px;
+  text-align: center;
+}
+.vr-adjust-label small {
+  opacity: 0.7;
+}
+.vr-adjust-done {
+  justify-self: center;
+  font-weight: 600;
+}

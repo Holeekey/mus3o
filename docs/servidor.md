@@ -13,6 +13,7 @@ Archivos:
 | `src/prompts.ts` | Todos los prompts y reglas (sistema, apuntes, flujo, diorama, imágenes, mejora) |
 | `src/cache.ts` | Caché en memoria, máx. 100 museos y LRU aparte de 100 temarios (`getCachedDigest`) |
 | `src/images.ts` | Proxy de Wikipedia/Commons: resolución, descarga, LRU de archivos |
+| `src/photoDiorama.ts` | `POST /api/diorama-from-image`: recrea en 3D la escena de una imagen real (visión), caché y semillas |
 
 ---
 
@@ -27,6 +28,7 @@ Archivos:
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
 | `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
+| `POST /api/diorama-from-image` | `{ imageUrl, title, roomTitle, concepts[] }` (estricto) | `{ recreatable, reason?, diorama? }` | Ver sección «Dioramas desde la foto». 400 URL no permitida; 429 límite o tope diario; 502/503 (el cliente deja el cuadro normal) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 | `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |
 | `GET /api/assets-review?status=` | `pending` \| `approved` \| `rejected` (opcional) | `{ assets: [{ assetId, keywords, title, author, license, score, sourceUrl, status, uses }] }` | **Solo curaduría**: 404 salvo `ENABLE_DEBUG_ROUTES=true` |
@@ -53,7 +55,7 @@ el tipo de error y la latencia (`generate-museum falló tras N ms: <Nombre>`).
 5. **Rate limit general** en `/api/*` (excepto imágenes): **10 peticiones por minuto por IP**.
 6. **Validación del cuerpo:** primero el formato legacy (`{ topic }` o `{ notes }`), luego `GenerateMuseumRequestSchema`.
 7. **Caché** (antes de tocar el presupuesto).
-8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Vive en memoria: se reinicia al reiniciar el proceso.
+8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Los topes diarios (generaciones, TTS, Aris, dioramas) los lleva `budgetStore.ts`: memoria más archivo en `.cache/budget/<namespace>.json` (`BUDGET_CACHE_DIR`), con escritura atómica, así sobreviven a un reinicio del proceso mientras el disco persista.
 
 Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de créditos en una demo pública.
 
@@ -101,7 +103,6 @@ Detalles:
 | `flowPrompt(req)` | Modo flujo: añade `mode`, `graph`, imágenes disponibles y reglas de fuente |
 | `MODE_GUIDES` | Forma del grafo y campos obligatorios por modo |
 | `IMAGE_SEARCH_RULES` | Pistas `imageSearch` (Wikipedia + Commons) |
-| `DIORAMA_RULES` | Dioramas: solo en 1–2 salas representables, `props` de la biblioteca |
 | `sourceRules(where)` | Cada pieza cita un fragmento literal de 240 caracteres como máximo |
 | `IMPROVE_SYSTEM_PROMPT` | Sugerencias de mejora del pedido |
 
@@ -125,7 +126,9 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 | `PORT` | `3001` | Puerto HTTP |
 | `WEB_ORIGIN` | `http://localhost:5173` | Origen permitido por CORS |
 | `MAX_DAILY_GENERATIONS` | `200` | Tope diario de llamadas a Claude |
-| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt` |
+| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt`, `/api/assets-review` y `/api/library` |
+| `LIBRARY_DIR` | `apps/server/seed/library` | Biblioteca propia de modelos (`index.json` + `.glb`); ver «Biblioteca propia» |
+| `LIBRARY_SOURCE_URL` | URL del repo | Enlace que lleva el crédito de los `.glb` propios |
 | `ELEVENLABS_API_KEY` | (vacía) | Activa la voz natural; sin ella el cliente usa la voz del navegador |
 | `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voz por defecto / `eleven_multilingual_v2` | Voz y modelo (el id se valida alfanumérico) |
 | `MAX_DAILY_TTS_CHARS` | `30000` | Tope diario de caracteres enviados a ElevenLabs |
@@ -133,7 +136,10 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 ## 7. Proxy de imágenes (`images.ts`)
 
 - **Resolución:** `resolveImage({ wiki, commons, lang })` busca primero el artículo de Wikipedia (`wikiTitle`) y, si no da imagen, en Commons (`commonsQuery`). `lang` default `es`. Clasifica el resultado como `painting`, `diagram` o `photo` según metadatos.
-- **Caché de resoluciones:** 500 entradas, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda.
+- **Filtro de relevancia** (`relevance.ts`, solo en las búsquedas de reserva, nunca en un acierto exacto de título): un resultado de la búsqueda de Wikipedia debe compartir una palabra con el título pedido o al menos dos con el contexto, y **no puede nombrar un país o gentilicio que ni la consulta ni el contexto mencionan** («Armada en el Caribe» no trae «Armada Argentina»; «Elecciones de 2024» de un palacio EE. UU.-Venezuela no trae las de Uruguay). Se descarta y se prueba el siguiente resultado (hasta 5); si ninguno sirve, 404 y el cuadro queda como lienzo de yeso. La búsqueda automática en Commons (sin `commonsQuery` de la IA) exige además que el nombre del archivo comparta una palabra con el título y no contradiga el país. Determinista, sin llamadas de IA.
+- **Contexto de las piezas:** `attachImageSearches` pone como contexto de una pieza `«sala · título del palacio»` (antes solo la sala), para que el tema del palacio desambigüe.
+- **Caché de resoluciones:** 500 entradas en memoria, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda. En disco cada resultado lleva `v: RESOLVER_VERSION`: la caché ignora lo escrito por versiones anteriores (podía contener la imagen de otro tema); la semilla del repo no se versiona.
+- **`src` de `ResolvedImage`:** siempre la ruta del proxy `/api/image/file?u=<url de Wikimedia codificada>`; la URL que da Commons trae `?utm_source=…` y se conserva dentro de `u` (es la clave de la semilla/caché de dioramas). El cliente (`wikimediaUrlOf`) acepta también una URL https directa de los hosts de Wikimedia.
 - **Concurrencia:** máximo **3** llamadas simultáneas a Wikimedia (un museo puede pedir decenas de imágenes a la vez).
 - **Peticiones idénticas simultáneas:** `resolveImage` y la descarga de `/image/file` comparten la consulta en curso por clave (`resolving` y `loading`) y la limpian al terminar, así un error transitorio no se cachea.
 - **Errores transitorios** (`UpstreamError`: límite de tasa, 5xx, timeout) **no** se cachean como "sin imagen".
@@ -169,12 +175,24 @@ el modelo que mejor **coincide**:
    Sin coincidencia (0) se descarta: mejor el glifo procedural que un objeto equivocado. A igual coincidencia, CC0 antes que CC-BY
    (se excluyen NC/ND/SA).
 3. **Reparto**: piezas con la misma palabra reciben modelos distintos si hay alternativas.
-4. **Descarga** en paralelo a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`; prueba hasta 3 candidatos)
-   y rellena `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`).
+4. **Asignación diferida** (`deferFirst`): el museo recibe de inmediato `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`) **sin
+   descargar nada**; la URL de descarga queda registrada en `review.json`. La generación solo espera a la búsqueda (rápida) y nunca a
+   decenas de descargas bajo un tope compartido de 2,5 s, que en una red real fallaba o dejaba el museo esperando.
+5. **Descarga bajo demanda** (`GET /api/assets/:id.glb`, `assetRoutes.ts`): la primera petición baja el `.glb` (solo HTTPS a `*.poly.pizza`,
+   tope 4 MB, firma `glTF`, timeout de 20 s), lo guarda y las siguientes lo sirven del disco. Peticiones simultáneas del mismo modelo comparten
+   una descarga y se limitan a 6 a la vez. Además, tras generar, se **calienta en segundo plano** (4 a la vez) para que casi todo esté listo
+   cuando el cliente lo pide.
+6. **Respaldo siempre presente:** toda pieza lleva su modelo procedural de respaldo (Haiku refinado o receta determinista) aunque tenga un
+   asset asignado: si el `.glb` no llega (bloqueo, red, 404) el cliente muestra ese modelo en vez del glifo plano.
 
-Timeout de 2500 ms por fase (`AbortController`); ante cualquier fallo la pieza conserva su glifo. Sin `POLY_PIZZA_API_KEY`
-la etapa no hace nada. El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra
-el crédito en la ficha (`Hud.tsx`) si la licencia es CC-BY.
+Cortacircuito: un 403/429/HTML al descargar, o un 401/403 en la búsqueda (clave inválida), pausa búsqueda y descargas 10 min; mientras tanto
+las peticiones de `.glb` responden 404 al instante y el cliente usa el respaldo. Sin `POLY_PIZZA_API_KEY` la etapa no hace nada. El cliente
+lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra el crédito en la ficha (`Hud.tsx`) si la licencia
+es CC-BY.
+
+**Variables de entorno en desarrollo:** `loadEnv.ts` lee el `.env` de la **raíz** del repo (y el de `apps/server` si existe). Antes se usaba
+`dotenv/config`, que solo miraba el directorio de trabajo: `npm run dev -w @mus3o/server` arranca en `apps/server`, así que las claves del
+`.env` de la raíz (Poly Pizza, voz…) no se cargaban y Poly Pizza quedaba desactivado sin avisar.
 
 ### Revisión de modelos
 
@@ -183,6 +201,29 @@ defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra pe
 asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
 Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
 
+## Biblioteca propia de modelos (`library.ts`)
+
+Para que cada museo salga mejor que el anterior: lo que tú creas, y lo que la IA o el respaldo dibujaron y tú aprobaste, se guarda por palabra clave y **se usa antes que cualquier otra fuente**.
+
+**Orden de resolución por pieza** (`resolveModels`): 1) biblioteca propia aprobada → 2) Poly Pizza → 3) Haiku dibuja un respaldo → 4) receta determinista (`fallbackShapes.ts`). Lo resuelto en 1 no se vuelve a buscar en Poly Pizza (`hydrateMuseumAssets(..., skip)`).
+
+**Entradas** (`index.json`, un `<id>.glb` por cada `.glb`): `kind` `recipe` (partes procedurales, como `Part`) o `glb`; `keywords` (normalizadas: minúsculas, sin signos); `origin` `manual | ai | deterministic`; `status` `pending | approved | rejected`; `uses`.
+- Coincidencia: palabra clave exacta o, si no, su última palabra («ancient sword» → «sword»). Desempate: exacta > `.glb` > recetas, lo tuyo (`manual`) > lo generado, más usos.
+- Los `.glb` se sirven por `/api/assets/lib-….glb` (misma ruta que los de Poly Pizza) y llegan a la pieza como `dynamicAsset` con `license: "own"`; las recetas, como `model` procedural.
+
+**Cómo mejora**
+1. Cada generación registra como `pending` lo que dibujaron Haiku o el respaldo determinista (una entrada por palabra clave y origen; máx. 400 pendientes, las más viejas se descartan; lo rechazado no se vuelve a proponer).
+2. Tú revisas: aprobar (gana prioridad), corregir las partes o palabras clave (queda `manual` y aprobada) o rechazar.
+3. Lo que subes tú (`.glb` o receta) entra ya aprobado.
+
+**Semilla:** `seed/library/index.json` trae 80 objetos dibujados con Sonnet (lista en `keywords.txt`). Sembrar más: `npm run library:draw -w @mus3o/server -- --keywords "a,b" --out dibujos.json` (Sonnet, ~$0,0034 por objeto, avisa el costo) y `library import dibujos.json`. Haiku cuesta ~$0,00014 por pieza pero dibuja peor; Sonnet es ~25× más caro por pieza, así que solo se usa para sembrar, no por museo. Plan y mediciones: [plan-biblioteca-modelos.md](./plan-biblioteca-modelos.md).
+
+**Curaduría**
+- Terminal, sin servidor: `npm run library -w @mus3o/server -- list [pending|approved|rejected] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b | approve|reject|reset|remove <id>`.
+- API (solo con `ENABLE_DEBUG_ROUTES=true`, si no 404): `GET /api/library?status=`, `POST /api/library/recipe` (`{keywords, title, parts}`), `POST /api/library/glb?keywords=a,b&title=T` (cuerpo `model/gltf-binary`, ≤ 4 MB, firma `glTF`), `PATCH /api/library/:id`, `POST /api/library/:id/(approve|reject|reset)`, `DELETE /api/library/:id`.
+- Los `.glb` van por **Git LFS** (`.gitattributes`); las recetas son JSON pequeño. Lo aprobado en local se versiona con git. En producción el disco es efímero: cura en local y sube el cambio.
+- Privacidad: solo viajan palabras clave de objeto generadas por la IA, nunca el texto de los apuntes.
+
 ## Costo de generación (flujo `/api/generate-museum`)
 
 Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el servidor **arma** (modelos 3D, imágenes, citas).
@@ -190,7 +231,7 @@ Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el s
 - **Salida liviana con Poly Pizza** (`POLY_PIZZA_API_KEY` definida): se usa `SYSTEM_PROMPT_LIGHT`; la IA ya no dibuja 2 a 8 partes procedurales
   por pieza (lo más caro de la salida) sino un glifo de respaldo + `searchKeyword`. `max_tokens` baja de 16 000 a 9 000. Sin clave se
   mantiene el prompt completo con partes procedurales, porque no habría modelo que lo reemplace.
-- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes y dioramas) van al final del system prompt con `cache_control`,
+- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes) van al final del system prompt con `cache_control`,
   no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
 - **Sin parámetro `thinking`**: Sonnet 5.5 no razona antes de responder y rechaza `thinking: {type:"disabled"}` (400); por eso `askForJson` no lo envía. Solo se desactiva en llamadas a Haiku (digest y respaldo).
 - **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
@@ -204,11 +245,18 @@ conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre t
 
 ### Buscar primero, crear solo lo que falta
 
-Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
-(`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
-(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
-por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
-`POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
+Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo, por pieza: 1) **biblioteca propia** aprobada; 2) `hydrateMuseumAssets` asigna el asset de Poly Pizza
+(sin descargarlo, ver arriba); 3) `fillMissingModels` (`modelFallback.ts`) pide a un modelo barato (`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento,
+20 s) el modelo procedural de **toda pieza que aún no tenga uno** (incluidas las de Poly Pizza, porque es su respaldo si el `.glb` no llega), en llamadas en paralelo
+por lotes de 6 (máx. 24); 4) **respaldo determinista** (`fallbackShapes.ts`, sin IA ni red) para lo que siga sin modelo.
+
+- **Prompt refinado** (`FALLBACK_MODEL_SYSTEM_PROMPT`): 4 a 8 partes, dibujar el objeto de «objeto» y no el concepto, ~2 m centrado con base en y = 0, grosor mínimo
+  0,08 m, colores medios y vivos (nunca negro ni gris oscuro) y un ejemplo de calidad. Medido con los mismos objetos: Haiku pasó de bloques pequeños y oscuros a
+  objetos coloridos y reconocibles (placa base, servidor, teclado, router, monitor…), casi al nivel de Sonnet, por ~$0,00017 por pieza (Sonnet: ~$0,0034–0,0045).
+- Tope de 350 tokens de salida por pieza; una salida cortada se recupera hasta la última pieza completa; las partes se validan con `PartSchema`.
+- El determinista elige una receta de 2 a 7 partes por la palabra clave (espada, escudo, llave, libro, corona, torre, lámpara, botella, árbol, barco, cañón, reloj,
+  campana, persona, animal, célula, chip, memoria RAM) o, sin coincidencia, por la forma del glifo; el color sale del id de la pieza.
+- Lo dibujado en 3 y 4 se registra como pendiente en la biblioteca (salvo las piezas con asset de Poly Pizza).
 
 ### Formato DSL actual y tolerancia del parser
 
@@ -229,7 +277,7 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | Llamada aparte **solo** para las salas que la IA marcó con `diorama` (8.º campo de `ROOM`, máx. 2); sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal) |
+| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de mundos sale de la biblioteca hecha a mano o de `POST /api/diorama-from-image`. Ver [diorama.md](./diorama.md) §4 |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
@@ -243,7 +291,7 @@ en quiz) se reintenta una vez con el error, como antes. Cada llamada registra su
 | DSL (por defecto) | 1 847 + 1 518 del diorama = **3 365** (entrada 191 + 155) | 27 s | 5 salas, 18 piezas, 1 diorama |
 
 ≈ 3,2× menos salida y 2,6× menos tiempo, con más contenido. Un solo pedido por formato: es una muestra, no un promedio.
-Hallazgo de la medición: sin la instrucción explícita de marcar salas con `diorama`, el modelo no marcó ninguna y se perdía el diorama; el prompt ahora lo pide para temas de historia, geografía y naturaleza.
+Nota histórica: las mediciones de arriba incluían una llamada de dioramas; ya no existe (los mundos concepto→props se descartaron a favor de la foto real).
 
 ### Más ahorros y mediciones (2026-10-24)
 
@@ -277,3 +325,15 @@ Medición real (Sonnet 5.5): "Fotosíntesis" → 5 salas, 22 piezas, 5 prerrequi
 - **Modelo:** Haiku (`ANTHROPIC_ARIS_MODEL`, luego `ANTHROPIC_FALLBACK_MODEL`, por defecto `claude-haiku-5-5`), sin razonamiento, `max_tokens` 80, timeout 8 s, sin reintentos. Respuesta de 1-2 frases, recortada a 280 caracteres.
 - **Límites:** 8 solicitudes/min por IP (límite propio, fuera del general), caché en memoria de 200 respuestas (palacio + sala + pregunta; un acierto no gasta cupo) y tope diario `MAX_DAILY_ARIS_HELP` (150 por defecto).
 - **Salida:** `{ answer }`. Errores: 400 entrada inválida, 429 tope diario, 502 fallo del modelo, 503 sin `ANTHROPIC_API_KEY`. El cliente trata cualquier error como "usa el respaldo".
+
+## Dioramas desde la foto (`POST /api/diorama-from-image`)
+
+`apps/server/src/photoDiorama.ts`. El mundo de un cuadro vivo ya no se arma con los conceptos de la sala: se **recrea la foto o el cuadro real** del tema.
+
+- **Entrada** (estricta, `PhotoDioramaRequestSchema`): `imageUrl` (≤ 2048), `title`, `roomTitle` (≤ 120), `concepts[]` (≤ 12 de ≤ 80; opcional, solo contexto, nunca se dibujan por sí solos; el cliente web **no los envía**: los apuntes del usuario no salen del navegador, solo el título de la sala y el de la imagen pública).
+- **Seguridad (SSRF):** `imageUrl` pasa por `parseAllowedUrl` de `images.ts` (https y solo `upload.wikimedia.org` / `thumb.wikimedia.org`); cualquier otra cosa es 400 sin tocar la red ni la IA. La imagen se descarga con el cliente cortés de `images.ts` (`loadImageFile`: tope 8 MB, timeout, semilla y caché) y se envía a Claude solo si es JPEG/PNG/WebP/GIF de ≤ 3,7 MB (las miniaturas de Wikimedia son de 960 px; no hay reducción adicional ni dependencias nuevas). Un SVG se clasifica como diagrama sin gastar llamada.
+- **Modelo:** `ANTHROPIC_DIORAMA_MODEL` → `ANTHROPIC_MODEL` → `claude-sonnet-5-5`, visión, herramienta `recreate_scene` con `tool_choice: auto` (Sonnet 5.5 rechaza el `tool_choice` forzado: «type tool and any are not supported for this model») y `thinking: { type: "between_tools" }` (sin razonamiento previo; en este modelo `disabled` no se admite). `max_tokens` 3000, timeout 60 s, 1 reintento. Esquema de la herramienta: `imageKind` (battle, landscape, place, event, interior, microscopic = recreables; portrait, diagram, map, text, logo, chart, object, other = no), `recreatable`, `reason`, `title`, `terrain`, `time`, `palette` muestreada de la imagen y `props[]` (kinds de la biblioteca sin `custom`; `pos [x,z]` que refleja la composición: x izquierda a derecha, z fondo a primer plano; `label` en español por prop).
+- **Saneado** (`buildPhotoDiorama`, puro y probado): `recreatable` solo vale con un `imageKind` recreable; kinds fuera de la biblioteca, `custom`, `pieceId`, `parts` y `flow` se descartan; `parseDiorama` recorta cuentas, posiciones y escala; tope de 160 instancias en total; sin rótulo se usa uno por tipo; los rótulos pasan por `sanitizeUntrustedText` y sin `<>`; con menos de 3 props queda «no recreable». `diorama.backdrop` es la ruta del proxy de imágenes de esa misma imagen (`BACKDROP_RE` en shared).
+- **Caché y semillas:** clave `v1|<url canónica>` (la versión del prompt invalida lo anterior). Orden: semilla del repo `apps/server/seed/dioramas/` (`DIORAMA_SEED_DIR`, sirve sin clave de API) → memoria (300) → disco en la carpeta de imágenes (`IMAGE_CACHE_DIR`, mismo tope). También se guarda «no recreable»; los fallos de la IA nunca. Peticiones iguales simultáneas comparten una sola llamada. Las semillas de la demo `historia` (Boyacá, Angostura, Maracaibo) se generaron con la API real; la demo `medicina` no pide nada porque sus tres salas usan dioramas de la biblioteca.
+- **Límites:** 20/min por IP (`PHOTO_DIORAMA_RATE_LIMIT`, fuera del límite general de 10/min), 2 llamadas de IA a la vez por proceso (hasta 8 esperando; si no, 503), tope diario `MAX_DAILY_PHOTO_DIORAMAS` (150, solo fallos de caché). Sin `ANTHROPIC_API_KEY` y sin caché ni semilla: 503.
+- **Costo medido** (Sonnet 5.5, imagen de 960 px): ≈ 1 000 tokens de entrada, ≈ 1 000 de salida y 12-16 s por escena nueva; con caché o semilla, 0.

@@ -104,13 +104,14 @@ describe('building store actions', () => {
     expect(state().palace?.rooms.length).toBe(LIMITS.maxRooms)
   })
 
-  it('gives every arriving room a living painting (library or composed), like entering the finished palace', () => {
+  it('arriving rooms only get hand-made library dioramas: never a world composed from their concepts', () => {
     state().beginBuildingPalace({ title: 'T' })
     for (const r of ids.map((id) => room(id))) {
       state().addBuiltRoom(r)
       const arrived = state().palace!.rooms[state().palace!.rooms.length - 1]
-      expect(arrived.diorama).toBeDefined()
-      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBe(arrived.diorama)
+      // Las salas de prueba no encajan con la biblioteca: su cuadro pide recrear su foto real al resolverse (usePhotoDiorama).
+      expect(arrived.diorama).toBeUndefined()
+      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBeUndefined()
     }
   })
 
@@ -194,7 +195,7 @@ describe('building store actions', () => {
     state().failBuildingPalace('x')
     expect(state().screen).toBe('palace')
     expect(state().build.status).toBe('cut')
-    expect(state().build.notice).toBe('La IA se cortó; tu palacio tiene 2 salas')
+    expect(state().build.notice).toBe('Aris se interrumpió; tu museo quedó con 2 salas')
     expect(state().palace?.rooms).toHaveLength(2)
     expect(state().layout?.colliders.filter((c) => c.h === 3)).toHaveLength(0)
     expect(introState.buildDone).toBe(true)
@@ -206,10 +207,10 @@ describe('building store actions', () => {
     const before = state().palace
     state().exitToLanding()
     state().beginBuildingPalace({ title: 'T' })
-    state().failBuildingPalace('No pudimos generar el palacio con IA.')
+    state().failBuildingPalace('Aris no pudo generar el museo.')
     expect(state().screen).toBe('landing')
     expect(state().palace).toEqual(before)
-    expect(state().build.error).toBe('No pudimos generar el palacio con IA.')
+    expect(state().build.error).toBe('Aris no pudo generar el museo.')
     expect(state().build.status).toBe('idle')
     expect(introState.mode).toBe('fixed')
     state().clearBuildError()

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LIMITS, type Source } from '@mus3o/shared'
 import type { ImageAttachment } from '../lib/files'
 
-export const ACCEPT = '.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.png,.jpg,.jpeg,.webp'
+export const ACCEPT = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.png,.jpg,.jpeg,.webp'
 
 export type Attachment = { id: string; kind: 'text'; source: Source } | { id: string; kind: 'image'; image: ImageAttachment }
 
@@ -26,17 +26,23 @@ type Props = {
   onAdd: (files: File[]) => void
   onRemove: (id: string) => void
   error: string | null
+  /** Copia que recibe el foco al abrir: el panel existe abajo y en la pared del lobby a la vez. */
+  focusIn?: 'page' | 'wall'
 }
 
 /** Columna de fuentes dentro del recuadro del editor: adjuntar, arrastrar y quitar archivos. */
-export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, error }: Props) {
+export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, error, focusIn = 'page' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
-    if (open) closeRef.current?.focus()
-  }, [open])
+    const el = closeRef.current
+    if (!open || !el) return
+    // Solo la copia donde se hizo clic toma el foco, y sin desplazar la página (si no, salta al lobby).
+    const inWall = el.closest('.lobby-wall') !== null
+    if (inWall === (focusIn === 'wall')) el.focus({ preventScroll: true })
+  }, [open, focusIn])
 
   if (!open) return null
   const { label, willDigest } = sourcesSummary(attachments)
@@ -55,7 +61,7 @@ export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, erro
         </button>
       </header>
       <p className="sources-lead">
-        Word, Excel, CSV, texto, JSON o imágenes. Se leen en tu navegador.
+        PDF, Word, Excel, CSV, texto, JSON o imágenes. Se leen en tu navegador.
       </p>
 
       <button className="btn sources-add" onClick={() => inputRef.current?.click()}>
@@ -113,7 +119,7 @@ export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, erro
           </ul>
           <p className="sources-summary">
             {label}
-            {willDigest && <span className="warn"> · se resumirán con IA antes de generar</span>}
+            {willDigest && <span className="warn"> · Aris los resumirá antes de generar</span>}
           </p>
         </>
       ) : (

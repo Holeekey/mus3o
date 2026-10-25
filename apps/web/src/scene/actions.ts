@@ -21,16 +21,34 @@ function focusedPiece(layout: PalaceLayout, id: string) {
   return null
 }
 
-/** E sin el atajo del cuadro: abre la compuerta, recoge la llave o abre y cierra la ficha. */
+/**
+ * Cierra la ficha. Si el puntero se había soltado para leerla (Esc), vuelve al palacio en vez de dejar
+ * el menú de pausa: cerrar con E o ✕ es un gesto del usuario, así que el navegador permite bloquearlo.
+ */
+export function closeCard() {
+  const s = useStore.getState()
+  s.set({ openId: null })
+  if (!s.locked) pointerLock.lock()
+}
+
+/**
+ * E sin el atajo del cuadro: abre la compuerta, recoge la llave o abre y cierra la ficha.
+ * Con el alcance y el cono de puertas ampliados, una compuerta cercana que no se puede abrir no debe
+ * robar la E cuando se mira un pedestal: en ese caso la E sigue a la ficha.
+ */
 export function examine(layout: PalaceLayout) {
   const s = useStore.getState()
   if (s.focusedDoorId && !isDoorOpen(s, s.focusedDoorId)) {
     const door = findDoor(layout, s.focusedDoorId)
-    if (door && canOpenDoor(door, s.hasKey, s.roomKeys)) s.unlockDoor(door.id)
-    return
+    const canOpen = door ? canOpenDoor(door, s.hasKey, s.roomKeys) : false
+    if (canOpen && door) {
+      s.unlockDoor(door.id)
+      return
+    }
+    if (!s.focusedId) return
   }
   if (s.openId) {
-    s.set({ openId: null })
+    closeCard()
     return
   }
   if (!s.focusedId) return

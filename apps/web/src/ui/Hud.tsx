@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
-import { interact, toggleMemorize } from '../scene/actions'
+import { closeCard, interact, toggleMemorize } from '../scene/actions'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
-import { TIME_STEPS } from '../memory/model'
-import { useMemory } from '../memory/store'
 import { conceptIdList } from '../palace/conceptIds'
 import { inExamScope, isDoorOpen, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
@@ -21,11 +19,13 @@ import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
-import { SourceBlock } from './SourceBlock'
 import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
 import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
+import { useResumeKeys } from './resume'
+import { useLegendShown } from './legend'
+import { nextStop, routeHintText } from '../palace/route'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -33,26 +33,29 @@ function wallVars(p: RoomPalette) {
 
 function findConcept(layout: PalaceLayout, id: string | null) {
   for (const r of layout.rooms) {
-    const p = r.pedestals.find((x) => x.concept.id === id)
-    if (p) return { concept: p.concept, room: r }
+    const k = r.pedestals.findIndex((x) => x.concept.id === id)
+    if (k !== -1) return { concept: r.pedestals[k].concept, room: r, order: k + 1 }
   }
   return null
 }
+
+// Tiempo que se ve el aviso del recorrido al entrar a una sala o al cerrar una ficha.
+const ROUTE_HINT_MS = 5_000
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
   const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
   const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
   const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
-  const close = () => useStore.getState().set({ openId: null })
   const touch = useIsTouch()
   const inner = useRef<HTMLDivElement>(null)
   const more = useCardScroll(inner)
+  const locked = useStore((s) => s.locked)
   return (
     <aside className="card" style={wallVars(palette)}>
       <div className="card-header-bar">
         <p className="card-tag">{roomName}</p>
-        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+        <button type="button" className="card-close" onClick={closeCard} aria-label="Cerrar ficha">
           ✕
         </button>
       </div>
@@ -67,7 +70,6 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         ) : concept.fact ? (
           <p className="card-meta">{concept.fact}</p>
         ) : null}
-        <SourceBlock concept={concept} />
         {concept.dynamicAsset?.license === 'CC-BY' && (
           <p className="card-meta">
             Modelo 3D «{concept.dynamicAsset.title}» por {concept.dynamicAsset.author || 'autor desconocido'} ·{' '}
@@ -107,6 +109,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
             ) : (
               <>
                 <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+                {locked ? <> · <kbd>Esc</kbd> usar el mouse</> : <> · clic fuera o <kbd>Enter</kbd> para seguir</>}
               </>
             )}
           </span>
@@ -162,8 +165,33 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const roomIds = useMemo(() => room.pedestals.map((p) => p.concept.id), [room])
   const roomMem = useRoomMemory(roomIds)
   const due = useDueCount()
-  const offsetDays = useMemory((s) => s.timeOffsetDays)
-  const setOffset = useMemory((s) => s.setOffset)
+  const roomDone = roomIds.filter((id) => memorized[id]).length
+  const legendShown = useLegendShown(locked && !open && !touch)
+
+  // Recorrido de estudio: al entrar a una sala o al cerrar una ficha, un aviso breve señala el siguiente tótem.
+  const nextIdx = nextStop(roomIds, memorized)
+  const [routeHint, setRouteHint] = useState(false)
+  const lastOpen = useRef(openId)
+  useEffect(() => {
+    const closed = lastOpen.current !== null && openId === null
+    lastOpen.current = openId
+    if (!closed) return
+    setRouteHint(true)
+  }, [openId])
+  // También al entrar (o volver de la pausa): si no, el aviso de la primera sala se perdería tras la pausa inicial.
+  useEffect(() => {
+    if (locked) setRouteHint(true)
+  }, [currentRoomId, locked])
+  useEffect(() => {
+    if (!routeHint) return
+    const timer = setTimeout(() => setRouteHint(false), ROUTE_HINT_MS)
+    return () => clearTimeout(timer)
+  }, [routeHint, currentRoomId, openId, locked])
+  const routeText =
+    routeHint && locked && mode === 'explore' && !open && !focusedId && !focusedDoorId && !lastKeyRoomId && nextIdx !== null
+      ? routeHintText(nextIdx, roomDone, room.pedestals[nextIdx].concept.title)
+      : null
+  const [moreOptions, setMoreOptions] = useState(false)
 
   // Aviso de llave ganada: se muestra unos segundos.
   useEffect(() => {
@@ -171,6 +199,10 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
     const timer = setTimeout(() => setState({ lastKeyRoomId: null }), 4000)
     return () => clearTimeout(timer)
   }, [lastKeyRoomId, setState])
+
+  const reading = !!open && !inExamScope({ mode, reviewIds }, open.concept.id)
+  // Pausa o ficha leída con el mouse: Enter, Espacio o un clic fuera retoman el palacio.
+  useResumeKeys(!locked && (!open || reading))
 
   const focusedDoor = layout.doors.find((d) => d.id === focusedDoorId)
   const doorLocked = !!focusedDoor && !doorOpen(focusedDoor.id)
@@ -190,6 +222,21 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         <p className="plaque-memory">
           {roomMem.learned ? `Memoria de la sala: ${Math.round(roomMem.strength * 100)}%` : 'Sala sin estudiar todavía'}
         </p>
+        {/* El progreso vive en el cartel de la sala: una caja menos sobre la escena. */}
+        <p className="plaque-progress">
+          {mode === 'explore' ? (
+            <>
+              {roomDone} de {roomIds.length} memorizadas
+              {/* El total se oculta en teléfonos angostos: el cartel no debe comerse la escena. */}
+              <span className="plaque-total"> · {memorizedCount} de {conceptCount} en total</span>
+            </>
+          ) : (
+            `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`
+          )}
+        </p>
+        <div className="plaque-bar" aria-hidden>
+          <i style={{ width: `${mode === 'explore' ? (roomIds.length ? (roomDone / roomIds.length) * 100 : 0) : total ? (answered.length / total) * 100 : 0}%` }} />
+        </div>
       </div>
 
       <div className="hud-right">
@@ -200,17 +247,11 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
           </div>
         )}
         {!hasKey && currentRoomKey && <div className="key-badge">🗝️ Llave de {room.title}</div>}
-        <p className="hud-progress">
-          {mode === 'explore' ? (
-            <>{memorizedCount} de {conceptCount} memorizados</>
-          ) : (
-            <>Examen: {score} de {answered.length} correctas, faltan {total - answered.length}</>
-          )}
-        </p>
-        <p className={due > 0 ? 'hud-due hud-due-on' : 'hud-due'}>Repasos pendientes: {due}</p>
+        {due > 0 && <p className="hud-due hud-due-on">Repasos pendientes: {due}</p>}
       </div>
 
       {locked && <div className="crosshair" />}
+      {routeText && <p className="hint hint-route">→ {routeText}</p>}
       {lastKeyRoomId && (
         <p className="hint hint-gold">🗝️ ¡Memorizaste toda la sala! Obtuviste la llave de {keyRoomName(lastKeyRoomId)}</p>
       )}
@@ -242,19 +283,23 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         </p>
       )}
 
-      {open && (!inExamScope({ mode, reviewIds }, open.concept.id) ? (
-        <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={open.room.title} />
+      {reading && !locked && !touch && <div className="card-backdrop" onClick={() => pointerLock.lock()} aria-hidden />}
+      {open && (reading ? (
+        <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={`${open.room.title} · ${open.order} de ${open.room.pedestals.length}`} />
       ) : (
         <ExamCard key={open.concept.id} concept={open.concept} palette={palettes[open.room.index]} />
       ))}
 
       <Narrator layout={layout} />
 
-      <p className="hud-legend">
-        <kbd>W A S D</kbd> moverse · <kbd>Shift</kbd> correr · {arisAvailable && <><kbd>T</kbd> hablar con Aris · </>}<kbd>Mouse</kbd> mirar · <kbd>Esc</kbd> pausa
-      </p>
+      {/* Lo mínimo para arrancar; la lista completa está en la pausa. */}
+      {legendShown && (
+        <p className="hud-legend">
+          <kbd>W A S D</kbd> moverte · <kbd>Mouse</kbd> mirar · <kbd>E</kbd> examinar · <kbd>Esc</kbd> pausa
+        </p>
+      )}
 
-      {locked && arisAvailable && (
+      {locked && arisAvailable && !open && (
         <button
           type="button"
           className="aris-trigger-btn"
@@ -274,90 +319,85 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <TouchControls layout={layout} />
 
-      {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
-        <div className="pause">
+      {/* Con una ficha abierta no hay pausa: el puntero suelto sirve para leerla, desplazarla y abrir sus enlaces. */}
+      {!locked && !open && (
+        <div className="pause" onClick={(e) => e.target === e.currentTarget && pointerLock.lock()}>
           <div className="pause-panel">
-            <p className="pause-sub">{palace?.title}</p>
-            {buildSummary && <p className="pause-sub">{buildSummary}</p>}
-            <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu palacio está levantado'}</h1>
-            <p className="muted">
-              {mode === 'exam'
-                ? reviewIds
-                  ? 'Solo se preguntan los conceptos que se están olvidando. Acércate a cada pedestal roto y di qué había.'
-                  : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
-                : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
-            </p>
-            {touch ? (
-              <p className="pause-keys">
-                Arrastra a la izquierda para moverte y desliza a la derecha para mirar · 👁️ examinar · ✓ memorizar · 🤖 Aris
-                {mode === 'exam' && (
-                  <>
-                    <br />
-                    Responde en voz alta o toca «Escribir»
-                  </>
-                )}
+            {/* En pantallas bajas y anchas (teléfono horizontal) van en dos columnas: texto y controles. */}
+            <div className="pause-info">
+              <p className="pause-sub">{palace?.title}</p>
+              {buildSummary && <p className="pause-sub">{buildSummary}</p>}
+              <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu museo está levantado'}</h1>
+              <p className="muted">
+                {mode === 'exam'
+                  ? reviewIds
+                    ? 'Solo se preguntan los conceptos que se están olvidando. Acércate a cada pedestal roto y di qué había.'
+                    : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
+                  : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
               </p>
-            ) : (
-              <p className="pause-keys">
-                <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
-                {mode === 'exam' && (
-                  <>
-                    <br />
-                    Responde en voz alta · <kbd>Y</kbd> para escribir
-                  </>
-                )}
-              </p>
-            )}
-            <div className="pause-actions">
-              <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
-                {mode === 'exam' ? 'Empezar examen' : 'Entrar al palacio'}
-              </button>
-              <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
-                {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
-              </button>
-              <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
-              <VrButton />
+              {touch ? (
+                <p className="pause-keys">
+                  Arrastra a la izquierda para moverte y desliza a la derecha para mirar · 👁️ examinar · ✓ memorizar · 🤖 Aris
+                  {mode === 'exam' && (
+                    <>
+                      <br />
+                      Responde en voz alta o toca «Escribir»
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="pause-keys">
+                  <kbd>Enter</kbd> o clic fuera del panel para volver
+                  <br />
+                  <kbd>W A S D</kbd> moverte · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar
+                  <br />
+                  <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> Aris · <kbd>N</kbd> narrador
+                  {mode === 'exam' && (
+                    <>
+                      <br />
+                      Responde en voz alta · <kbd>Y</kbd> para escribir
+                    </>
+                  )}
+                </p>
+              )}
             </div>
-            <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
-
-
-            <div className="memory-panel">
-              <button
-                className="btn btn-primary"
-                disabled={due === 0}
-                onClick={() => {
-                  if (startReview()) pointerLock.lock()
-                }}
-              >
-                Repasar lo pendiente{due > 0 ? ` (${due})` : ''}
+            <div className="pause-controls">
+              <div className="pause-actions">
+                <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
+                  {mode === 'exam' ? 'Empezar examen' : 'Entrar al museo'}
+                </button>
+                <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
+                  {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
+                </button>
+                {due > 0 && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      if (startReview()) pointerLock.lock()
+                    }}
+                  >
+                    Repasar lo pendiente ({due})
+                  </button>
+                )}
+                <VrButton />
+              </div>
+              {/* Lo secundario queda plegado: la pausa se lee de un vistazo. */}
+              <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
+                {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
               </button>
-              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el palacio los recuerde.</p>}
-              <fieldset className="time-machine">
-                <legend>Simular el paso del tiempo</legend>
-                <div className="time-steps" role="group" aria-label="Días simulados">
-                  {TIME_STEPS.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className={offsetDays === d ? 'btn btn-step is-on' : 'btn btn-step'}
-                      aria-pressed={offsetDays === d}
-                      onClick={() => setOffset(d)}
-                    >
-                      {d === 0 ? 'Hoy' : `${d} ${d === 1 ? 'día' : 'días'}`}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={30}
-                  step={1}
-                  value={Math.min(offsetDays, 30)}
-                  onChange={(e) => setOffset(Number(e.target.value))}
-                  aria-label="Días que han pasado"
-                />
-                <p className="muted memory-note">{offsetDays === 0 ? 'Es hoy.' : `Han pasado ${offsetDays} ${offsetDays === 1 ? 'día' : 'días'}.`}</p>
-              </fieldset>
+              {!moreOptions && <p className="muted pause-more-hint">Salir del museo · exploración libre</p>}
+              {moreOptions && (
+                <>
+                  <div className="pause-actions pause-more-actions">
+                    <button className="btn btn-ghost" onClick={exitToLanding}>Salir del museo</button>
+                  </div>
+                  <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
+
+                  <div className="memory-panel">
+                    {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

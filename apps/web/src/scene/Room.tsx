@@ -1,7 +1,7 @@
 import { Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
-import type { Mesh, Object3D } from 'three'
+import type { Group, Mesh, Object3D } from 'three'
 import { assignPaintings, type Box, type PedestalLayout, RoomLayout, Side } from '../palace/layout'
 import { useConceptLevel } from '../memory/hooks'
 import { spinOf } from '../memory/shown'
@@ -18,6 +18,7 @@ import ProceduralModel from './ProceduralModel'
 import { ShapeGeometry } from './Shapes'
 import { StaticMerge } from './StaticMerge'
 import { useIntro } from '../intro/store'
+import { nextStop } from '../palace/route'
 import { Reveal } from '../intro/Reveal' // INTRO: aparición al entrar al palacio
 import { floorKey, monumentKey, objectKey, paintingsKey, pedestalKey, wallsKey } from '../intro/timeline'
 
@@ -27,8 +28,15 @@ export const FONT_DISPLAY = '/fonts/Gloock.ttf'
 const CORNICE_H = 0.28
 const PLINTH_H = 0.35
 
-export function Wall({ box, color }: { box: Box; color: string }) {
-  return <AssetWall box={box} color={color} />
+// `plain`: muro de yeso liso del color de la paleta (el muro de piedra del pack ignora el color).
+export function Wall({ box, color, plain = false }: { box: Box; color: string; plain?: boolean }) {
+  if (!plain) return <AssetWall box={box} color={color} />
+  return (
+    <mesh position={[box.x, (box.y ?? 0) + box.h / 2, box.z]} castShadow receiveShadow>
+      <boxGeometry args={[box.w, box.h, box.d]} />
+      <meshStandardMaterial color={color} roughness={0.95} flatShading />
+    </mesh>
+  )
 }
 
 // Cornisa (arriba) y zócalo (abajo): dos molduras del color de "trim" que enmarcan el muro.
@@ -100,7 +108,7 @@ const DYNAMIC_SCALE = 1.3
 // La etiqueta se apaga a medida que el recuerdo se debilita.
 const LABEL_OPACITY = { new: 0.85, intact: 0.85, cracked: 0.65, broken: 0.5, forgotten: 0.4 } as const
 
-function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalette; theme: Theme }) {
+function Pedestal({ p, order, palette, theme }: { p: PedestalLayout; order: number; palette: RoomPalette; theme: Theme }) {
   const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const ref = useRef<Object3D>(null)
   const model = p.concept.model?.type === 'procedural' ? p.concept.model : null
@@ -132,7 +140,8 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
   )
 
   const hidden = asked && !result
-  const label = hidden ? '???' : p.concept.title
+  // El número marca el recorrido de estudio de la sala (palace/route.ts).
+  const label = `${order} · ${hidden ? '???' : p.concept.title}`
   const tokens = theme.ui.tokens
   const band = asked && result ? (result === 'ok' ? tokens.ok : tokens.danger) : memorized ? palette.trim : null
 
@@ -201,10 +210,58 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
   )
 }
 
-export function Room({ room, palette, theme }: { room: RoomLayout; palette: RoomPalette; theme: Theme }) {
+/**
+ * Marca sobre el próximo tótem del recorrido (el primero sin memorizar) de la sala donde está el jugador:
+ * guía el orden de estudio sin bloquear nada.
+ */
+function NextMarker({ room, theme }: { room: RoomLayout; theme: Theme }) {
+  const here = useStore((s) => s.currentRoomId === room.id && s.mode === 'explore')
+  const memorized = useStore((s) => s.memorized)
+  const isIntroPlaying = useIntro((s) => s.phase === 'playing')
+  const ref = useRef<Group>(null)
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.position.y = 3 + Math.sin(clock.elapsedTime * 2.4) * 0.08
+  })
+  const k = useMemo(() => nextStop(room.pedestals.map((p) => p.concept.id), memorized), [room, memorized])
+  if (!here || isIntroPlaying || k === null) return null
+  const p = room.pedestals[k]
+  const accent = theme.ui.tokens.accent
+  return (
+    <group position={[p.x, 0, p.z]}>
+      <group ref={ref}>
+        <mesh rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.16, 0.32, 4]} />
+          <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.6} flatShading />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+export function Room({
+  room,
+  palette,
+  theme,
+  plainWalls = false,
+  bareWall,
+  shellOnly = false,
+}: {
+  room: RoomLayout
+  palette: RoomPalette
+  theme: Theme
+  /** Muros lisos pintados con `palette.wall` en vez del muro de piedra (p. ej. el lobby de la landing). */
+  plainWalls?: boolean
+  /** Pared sin cuadros de la sala: queda libre para otra obra (el muro de Founders del lobby). */
+  bareWall?: Side
+  /** Solo el cascarón (piso, muros, molduras): sin título, cuadros, monumento ni pedestales del tema (el lobby). */
+  shellOnly?: boolean
+}) {
   const { cornice, plinth } = theme.scene.architecture
   const userImages = useStore((s) => s.userImages)
-  const paintings = useMemo(() => assignPaintings(room, userImages), [room, userImages])
+  const paintings = useMemo(
+    () => (shellOnly ? [] : assignPaintings(room, userImages).filter((a) => a.slot.side !== bareWall)),
+    [room, userImages, bareWall, shellOnly],
+  )
   return (
     <group>
       <Reveal id={floorKey(room.id)} mode="pop" origin={[room.x, 0, room.z]}>
@@ -217,12 +274,12 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
         <StaticMerge>
           {room.walls.map((w, i) => (
             <group key={i}>
-              <Wall box={w} color={palette.wall} />
+              <Wall box={w} color={palette.wall} plain={plainWalls} />
               <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
             </group>
           ))}
         </StaticMerge>
-        <Inscription room={room} palette={palette} />
+        {!shellOnly && <Inscription room={room} palette={palette} />}
       </Reveal>
       {paintings.map((a) => (
         <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
@@ -235,20 +292,27 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
             diorama={a.diorama}
             roomId={a.roomId}
             title={room.title}
+            alternatives={a.alternatives}
           />
         </Reveal>
       ))}
-      <Reveal id={monumentKey(room.id)} mode="sink">
-        <Centerpiece room={room} theme={theme} />
-      </Reveal>
+      {!shellOnly && (
+        <Reveal id={monumentKey(room.id)} mode="sink">
+          <Centerpiece room={room} theme={theme} />
+        </Reveal>
+      )}
       {/* Las bases de los pedestales son estáticas (el objeto que gira va en DecayWrap, que no se une). */}
-      <StaticMerge>
-        {room.pedestals.map((p) => (
-          <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
-            <Pedestal p={p} palette={palette} theme={theme} />
-          </Reveal>
-        ))}
-      </StaticMerge>
+      {!shellOnly && (
+        <StaticMerge>
+          {room.pedestals.map((p, k) => (
+            <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
+              <Pedestal p={p} order={k + 1} palette={palette} theme={theme} />
+            </Reveal>
+          ))}
+        </StaticMerge>
+      )}
+      {/* Fuera de StaticMerge: se anima. */}
+      {!shellOnly && <NextMarker room={room} theme={theme} />}
     </group>
   )
 }

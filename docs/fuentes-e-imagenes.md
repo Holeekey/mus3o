@@ -52,8 +52,8 @@ IA → quote (copiada, NO parafraseada)
 ### Qué ve el usuario
 
 - En la landing: "17 de 17 conceptos verificados en tus apuntes", o "15 de 17 · 2 sin fuente".
-- En el HUD: `SourceBlock` muestra el fragmento y su línea, con contexto (`palace/sources.ts#sourceView`).
-- Los conceptos `unverified` muestran un aviso en `SourceBlock` ("la IA lo agregó"), y el contador de la landing cuenta cuántos hay.
+- En la ficha, la línea "Fuentes:" dice de qué línea de los apuntes sale (`ConceptInfo.tsx`), junto al crédito de Wikipedia y "Abrir artículo". La cita completa ya no se repite: la definición de la ficha es ese mismo texto.
+- Los conceptos `unverified` dicen "No está en tus apuntes" en rojo en esa línea, y el contador de la landing cuenta cuántos hay.
 
 ### Modo sin IA
 
@@ -81,6 +81,7 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 
 - Concurrencia máxima de **3** llamadas a Wikimedia.
 - Clasificación `kind`: `painting`, `diagram` o `photo`.
+- **Relevancia** (`images.ts`): un resultado de la búsqueda de Wikipedia se acepta solo si nombra todas las palabras de la pieza ("Páez" → "José Antonio Páez") o si más de la mitad de su título es del tema; una palabra suelta no basta ("Liberación de Venezuela" ya no da "Operación Liberación del Pueblo"). En la búsqueda libre de Commons (título + contexto) el nombre del archivo debe compartir una palabra con la pieza. Solo se usan JPEG, PNG, WebP, GIF y SVG: DjVu y TIFF suelen ser escaneos de libros. Preferimos un cuadro sin foto a una foto ajena.
 - Caché de resoluciones (500, incluye "sin imagen") y de archivos (LRU 60 entradas / 40 MB).
 - Errores transitorios (límite de tasa, 5xx, timeout) no se cachean como "sin imagen". Responden 502.
 
@@ -89,6 +90,8 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 - `fetchResolvedImage`: comparte una sola petición entre llamadas iguales, también las simultáneas.
 - **Reintentos** ante límite de Wikimedia: esperas de 2 s y 5 s; después da error transitorio.
 - `useResolvedImage(search)` devuelve `undefined` mientras carga, `null` si no hay imagen, o la imagen.
+- **El cuadro principal de cada sala es único en el palacio** (`decideMainImage` / `useRoomMainImage` en `lib/images.ts`): las salas deciden **en orden de sala** (cadena de promesas, determinista aunque las respuestas lleguen desordenadas). Si la imagen de su búsqueda (archivo de Wikimedia o título) ya es el cuadro principal de otra sala, usa la primera imagen de sus piezas que no esté tomada; si ninguna sirve, queda el lienzo de yeso. Si su propia búsqueda no tiene imagen, no toma prestada una pieza. `resetMainImages()` lo reinicia al entrar o empezar a construir un palacio.
+- **Filtro de relevancia del servidor:** ver `servidor.md` §7 (un resultado de búsqueda que nombra otro país se descarta).
 - `peekResolvedImage` lee lo ya resuelto sin esperar (no hay "cargando" en un instante).
 - `prefetchPalaceImages(palace)` descarga y decodifica en segundo plano al entrar.
 - `creditLine(image)` arma la placa: título · autor · licencia. "public domain" se muestra como "Dominio público".

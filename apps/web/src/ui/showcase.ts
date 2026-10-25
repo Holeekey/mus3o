@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 // Tramo del scroll (0..1) que tarda la maqueta en abrirse y en cerrarse.
 const RAMP = 0.35
@@ -15,15 +15,18 @@ export function openAmount(progress: number): number {
 
 /**
  * Escribe --open en la sección mientras se hace scroll, sin re-renderizar React.
- * Devuelve el mismo valor en un ref para que la cámara 3D lo lea en cada frame.
+ * Devuelve el mismo valor en un ref para que la cámara 3D lo lea en cada frame, y `full`
+ * (la sala ocupa toda la pantalla), que solo re-renderiza al cruzar ese umbral.
  */
-export function useShowcaseScroll(ref: RefObject<HTMLElement | null>): RefObject<number> {
+export function useShowcaseScroll(ref: RefObject<HTMLElement | null>): { open: RefObject<number>; full: boolean } {
   const open = useRef(0)
+  const [full, setFull] = useState(false)
   useEffect(() => {
     const el = ref.current
     if (!el) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       open.current = 1
+      setFull(true)
       return
     }
     let raf = 0
@@ -34,6 +37,7 @@ export function useShowcaseScroll(ref: RefObject<HTMLElement | null>): RefObject
       const progress = distance > 0 ? -rect.top / distance : 0
       open.current = openAmount(progress)
       el.style.setProperty('--open', open.current.toFixed(4))
+      setFull(open.current >= 0.999)
     }
     const schedule = () => { if (!raf) raf = requestAnimationFrame(update) }
     update()
@@ -45,5 +49,5 @@ export function useShowcaseScroll(ref: RefObject<HTMLElement | null>): RefObject
       window.removeEventListener('resize', schedule)
     }
   }, [ref])
-  return open
+  return { open, full }
 }

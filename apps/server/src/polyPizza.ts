@@ -91,6 +91,12 @@ export async function searchPoly(keyword: string, signal: AbortSignal): Promise<
     headers: { "x-auth-token": process.env.POLY_PIZZA_API_KEY as string, accept: "application/json" },
     signal,
   });
+  if (res.status === 401 || res.status === 403) {
+    // Clave inválida o ausente: no tiene sentido repetirlo en cada pieza; se pausa y se avisa una sola vez.
+    if (!polyBlocked()) console.error(`poly.pizza rechazó la clave (HTTP ${res.status}): revisa POLY_PIZZA_API_KEY; se pausa ${BLOCK_COOLDOWN_MS / 60_000} min`);
+    markPolyBlocked();
+    return [];
+  }
   if (!res.ok) {
     console.error(`poly.pizza búsqueda falló: HTTP ${res.status}`);
     return [];
@@ -112,6 +118,10 @@ export function keywordVariants(keyword: string): string[] {
 const BLOCK_COOLDOWN_MS = 10 * 60_000;
 let blockedUntil = 0;
 export const polyBlocked = () => Date.now() < blockedUntil;
+/** El host de descargas bloqueó una petición (desafío anti-bots, límite de uso): se pausa la búsqueda y las descargas. */
+export const markPolyBlocked = () => {
+  blockedUntil = Date.now() + BLOCK_COOLDOWN_MS;
+};
 export const resetPolyBreaker = () => {
   blockedUntil = 0;
 };
@@ -195,6 +205,33 @@ export async function downloadFirst(candidates: PolyCandidate[], timeoutMs = POL
   }
 }
 
+/**
+ * Asignación diferida: el museo recibe de inmediato el modelo de la mejor coincidencia SIN descargarlo. El .glb se baja
+ * la primera vez que alguien lo pide (`GET /api/assets/:id.glb`) y, mientras tanto, se calienta en segundo plano. Así la
+ * generación nunca espera a Poly Pizza y no hay un tope de 2,5 s compartido entre decenas de descargas.
+ */
+export async function deferFirst(candidates: PolyCandidate[]): Promise<DynamicAsset | null> {
+  return candidates[0] ? toAsset(candidates[0]) : null;
+}
+
+const PREFETCH_CONCURRENCY = 4;
+const PREFETCH_TIMEOUT_MS = 20_000;
+
+/** Descarga en segundo plano (pocas a la vez) los modelos recién asignados. Nunca lanza: un fallo se resuelve al pedirlos. */
+export function prefetchAssets(items: { id: string; downloadUrl: string }[]): void {
+  const queue = [...items];
+  const worker = async () => {
+    for (let item = queue.shift(); item && !polyBlocked(); item = queue.shift()) {
+      try {
+        await ensureAsset(item.id, item.downloadUrl, AbortSignal.timeout(PREFETCH_TIMEOUT_MS));
+      } catch (err) {
+        if (err instanceof DownloadBlockedError) markPolyBlocked();
+      }
+    }
+  };
+  for (let i = 0; i < Math.min(PREFETCH_CONCURRENCY, queue.length); i++) void worker();
+}
+
 type Finder = (keyword: string) => Promise<PolyCandidate[]>;
 type Downloader = (candidates: PolyCandidate[]) => Promise<DynamicAsset | null>;
 
@@ -206,14 +243,16 @@ type Downloader = (candidates: PolyCandidate[]) => Promise<DynamicAsset | null>;
 export async function hydrateMuseumAssets(
   museum: Museum,
   find: Finder = findCandidates,
-  download: Downloader = downloadFirst,
+  download: Downloader = deferFirst,
+  /** Piezas que ya resolvió la biblioteca propia: tiene prioridad sobre Poly Pizza. */
+  skip: ReadonlySet<string> = new Set(),
 ): Promise<Museum> {
   if (!polyEnabled() && find === findCandidates) return museum;
   if (polyBlocked()) return museum;
   const targets: Piece[] = [];
   for (const room of museum.rooms) {
     for (const piece of room.pieces) {
-      if (piece.searchKeyword && targets.length < MAX_HYDRATED) targets.push(piece);
+      if (piece.searchKeyword && !skip.has(piece.id) && targets.length < MAX_HYDRATED) targets.push(piece);
     }
   }
   if (targets.length === 0) return museum;
@@ -244,10 +283,17 @@ export async function hydrateMuseumAssets(
     targets.flatMap((t, i) => {
       const asset = byId.get(t.id);
       const cand = asset && plan[i].find((c) => c.id === asset.assetId);
-      return asset && cand ? [recordAssignment({ keyword: (t.searchKeyword as string).trim().toLowerCase(), assetId: asset.assetId, title: asset.title, author: asset.author, license: asset.license, score: cand.score, sourceUrl: asset.sourceUrl })] : [];
+      return asset && cand ? [recordAssignment({ keyword: (t.searchKeyword as string).trim().toLowerCase(), assetId: asset.assetId, title: asset.title, author: asset.author, license: asset.license, score: cand.score, sourceUrl: asset.sourceUrl, downloadUrl: cand.downloadUrl })] : [];
     }),
   );
   if (byId.size === 0) return museum;
+  // Con el asignador por defecto nada se ha descargado todavía: se calienta en segundo plano sin bloquear el museo.
+  if (download === deferFirst) {
+    prefetchAssets([...byId.values()].flatMap((asset) => {
+      const cand = plan.flat().find((c) => c.id === asset.assetId);
+      return cand ? [{ id: cand.id, downloadUrl: cand.downloadUrl }] : [];
+    }));
+  }
   return {
     ...museum,
     rooms: museum.rooms.map((room) => ({

@@ -33,7 +33,7 @@ async function postJson(url: string, body: unknown, signal?: AbortSignal): Promi
 function toMuseum(data: unknown): Museum {
   // La respuesta se valida igual que cualquier entrada externa.
   const parsed = MuseumSchema.safeParse(data);
-  if (!parsed.success) throw new ApiError("La IA devolvió un palacio inválido", 502);
+  if (!parsed.success) throw new ApiError("Aris devolvió un museo inválido", 502);
   return parsed.data;
 }
 
@@ -45,10 +45,10 @@ export async function generateMuseum(text: string, signal?: AbortSignal): Promis
 /** Mensaje para el usuario según el estado HTTP de un fallo de la IA (el mismo con y sin streaming). */
 export function describeAiError(status?: number): string {
   return status === 503
-    ? "La IA no está configurada en el servidor. Puedes construir el palacio sin IA."
+    ? "Aris no está disponible ahora. Puedes usar «Construir offline»."
     : status === 429
       ? "Demasiadas solicitudes. Intenta en un minuto."
-      : "No pudimos generar el palacio con IA. Intenta de nuevo o constrúyelo sin IA.";
+      : "Aris no pudo generar el museo. Intenta de nuevo o usa «Construir offline».";
 }
 
 /** Parte un flujo de texto en líneas completas; lo que queda sin salto de línea espera al siguiente trozo. */
@@ -74,11 +74,11 @@ function parseStreamLine(line: string): MuseumStreamEvent {
   try {
     json = JSON.parse(line);
   } catch {
-    throw new ApiError("Respuesta de la IA inválida", 502);
+    throw new ApiError("Respuesta de Aris inválida", 502);
   }
   // Cada evento se valida igual que cualquier entrada externa.
   const parsed = MuseumStreamEventSchema.safeParse(json);
-  if (!parsed.success) throw new ApiError("La IA devolvió un palacio inválido", 502);
+  if (!parsed.success) throw new ApiError("Aris devolvió un museo inválido", 502);
   return parsed.data;
 }
 
@@ -120,7 +120,7 @@ async function* streamMuseum(body: unknown, signal?: AbortSignal): AsyncGenerato
     // Si el consumidor deja de leer (o aborta), se cierra la conexión.
     void reader.cancel().catch(() => undefined);
   }
-  if (!ended) throw new ApiError("Se cortó la conexión con la IA", 502);
+  if (!ended) throw new ApiError("Se cortó la conexión con Aris", 502);
 }
 
 /** Tema o apuntes en streaming: el mismo pedido que `generateMuseum`. */

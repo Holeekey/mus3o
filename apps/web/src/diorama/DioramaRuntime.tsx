@@ -7,23 +7,24 @@ import { conceptIdSet } from '../palace/conceptIds'
 import { playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
-import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
+import { dioramaFx, dioramaRequest, dioramaWalk, useDioramaStore } from './dioramaStore'
+import { DIORAMA_SPAWN } from './guide'
+import { propGuideId, useGuideStore } from './guideStore'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
 import { applyTouchLook, moveAxes } from '../scene/moveInput'
 import { vrRuntime } from '../vr/runtime'
+import { dioramaBoxes, DIORAMA_ORIGIN_XZ } from './walk'
 
 // El mundo del diorama vive muy lejos del palacio, en el mismo Canvas: así el cambio de
 // mundo es solo mover la cámara y no hay segundo renderer ni recarga.
-export const DIORAMA_ORIGIN = new THREE.Vector3(1500, 0, 1500)
+export const DIORAMA_ORIGIN = new THREE.Vector3(DIORAMA_ORIGIN_XZ.x, 0, DIORAMA_ORIGIN_XZ.z)
 
 const EYE = 1.7
 const WALK = 5
 const RUN = 9
 const REACH = 7
-const BOUND = 13.4
-const PLAYER_R = 0.4
-const SPAWN_Z = 10.6
+const SPAWN_Z: number = DIORAMA_SPAWN.z
 const GATE_Z = 13.2
 const ENTER_SECS = 1.05
 const LEAVE_SECS = 0.8
@@ -111,6 +112,8 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
   const saved = useRef<{ bg: THREE.Scene['background']; fog: THREE.Scene['fog']; lights: THREE.Object3D[] } | null>(null)
   const model = useMemo(() => (portal ? getDioramaModel(portal.diorama) : null), [portal])
   const focusedPiece = useRef<string | null>(null)
+  const walkBoxes = useRef<ReturnType<typeof dioramaBoxes>>([])
+  walkBoxes.current = useMemo(() => (model ? dioramaBoxes(model.layout.colliders) : []), [model])
   const locals = useMemo(() => ({ fwd: new THREE.Vector3(), tmp: new THREE.Vector3() }), [])
 
   // --- Teclado propio para caminar dentro (Player no corre mientras hay un cuadro activo) ---
@@ -273,7 +276,16 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
     }
 
     // --- Dentro del diorama: caminar, colisiones, foco ---
-    if (ds.phase !== 'inside' || !model || (t && t.kind !== 'reveal')) return
+    if (ds.phase !== 'inside' || !model || (t && t.kind !== 'reveal')) {
+      dioramaWalk.model = null
+      return
+    }
+    dioramaWalk.model = { boxes: walkBoxes.current, field: model.field }
+    // Salto por mirada (VR): ya validado contra estos mismos límites y obstáculos.
+    if (dioramaWalk.goto) {
+      if (!t) loc.current = { x: dioramaWalk.goto.x, z: dioramaWalk.goto.z }
+      dioramaWalk.goto = null
+    }
     const k = keys.current
     const f = locals.fwd
     camera.getWorldDirection(f)
@@ -293,13 +305,7 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
         dx = (dx / len) * speed
         dz = (dz / len) * speed
         // Límites invisibles + obstáculos circulares (árboles, cañones...) + el agua.
-        const boxes = [
-          { x: 0, z: -BOUND - 5, w: 80, d: 10, h: 9 },
-          { x: 0, z: BOUND + 5 + 0.9, w: 80, d: 10, h: 9 },
-          { x: -BOUND - 5, z: 0, w: 10, d: 80, h: 9 },
-          { x: BOUND + 5, z: 0, w: 10, d: 80, h: 9 },
-          ...model.layout.colliders.map((c) => ({ x: c.x, z: c.z, w: c.r * 2 - PLAYER_R * 1.2, d: c.r * 2 - PLAYER_R * 1.2, h: 2 })),
-        ]
+        const boxes = walkBoxes.current
         const p = loc.current
         const next = moveWithCollisions(boxes, p.x, p.z, dx, dz)
         if (!model.field.isWater(next.x, next.z)) loc.current = next
@@ -340,6 +346,20 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
       st.set(closeCard ? { focusedId: best, openId: null } : { focusedId: best })
     }
     focusedPiece.current = best
+    // Props rotulados sin pieza (dioramas de foto): mismo alcance y de frente, para que Aris diga qué son.
+    let prop: string | null = null
+    if (!best) {
+      let propD = REACH
+      for (const l of model.layout.labelled ?? []) {
+        const vx = l.x - p.x
+        const vz = l.z - p.z
+        const d = Math.hypot(vx, vz)
+        if (d > propD || d < 0.01 || (vx * f.x + vz * f.z) / d < 0.9) continue
+        prop = propGuideId(l.propIndex)
+        propD = d
+      }
+    }
+    if (prop !== useGuideStore.getState().focusedProp) useGuideStore.setState({ focusedProp: prop })
   })
 
   // La luz de enfoque y las etiquetas siguen al modo (en examen los títulos se ocultan).

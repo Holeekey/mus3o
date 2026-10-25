@@ -98,7 +98,7 @@ Cada registro guarda: `stability`, `lastReview`, `reviews`, `lapses` y `history`
 `memory/store.ts` guarda `timeOffsetDays` (0 a 3650 días). `nowMs()` suma ese desfase.
 
 - Sirve para **ver cómo envejece el palacio** sin esperar: al subir el desfase, las piezas se rompen según su estabilidad.
-- Se controla con el parámetro `?dias=N` al entrar, o con `setOffset`.
+- Se controla con el parámetro `?dias=N` al entrar, o con `setOffset`. No tiene control en la interfaz (se quitó de la pausa): es solo para demos y pruebas.
 - Animación: al cambiar el desfase, la fuerza mostrada persigue a la real en ~1.5 s (decaer) o ~1.1 s (restaurar). Con movimiento reducido, 250 ms (`anim.ts`).
 - En la demo, `applyDemoSeed` da estabilidades distintas por concepto para que el envejecimiento sea desigual. `?salto=0@3000` salta el reloj a los 3 s. Solo para capturas.
 
