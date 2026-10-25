@@ -18,12 +18,13 @@ export type Calib = {
 export type PresetId = 'vrbox' | 'cardboard' | 'none'
 
 export const PRESETS: Record<PresetId, { label: string; calib: Omit<Calib, 'mmPerPx'> }> = {
-  vrbox: { label: 'VR Box (por defecto)', calib: { fov: 92, ipd: 0.064, k1: 0.22, k2: 0.06, lens: 32 } },
-  cardboard: { label: 'Google Cardboard', calib: { fov: 90, ipd: 0.064, k1: 0.34, k2: 0.15, lens: 30 } },
+  // Por defecto, sin corrección: los valores de VR Box y Cardboard son estimados y en un iPhone real marearon más.
   none: { label: 'Sin corrección', calib: { fov: 85, ipd: 0.064, k1: 0, k2: 0, lens: 0 } },
+  vrbox: { label: 'VR Box', calib: { fov: 92, ipd: 0.064, k1: 0.22, k2: 0.06, lens: 32 } },
+  cardboard: { label: 'Google Cardboard', calib: { fov: 90, ipd: 0.064, k1: 0.34, k2: 0.15, lens: 30 } },
 }
-export const PRESET_ORDER: PresetId[] = ['vrbox', 'cardboard', 'none']
-export const DEFAULT_PRESET: PresetId = 'vrbox'
+export const PRESET_ORDER: PresetId[] = ['none', 'vrbox', 'cardboard']
+export const DEFAULT_PRESET: PresetId = 'none'
 export const STORAGE_KEY = 'mus3o.vr.calib'
 
 /** Milímetros por píxel CSS: ~0,1655 en un iPhone de 6,1", ~0,159 en Android (1 dp = 1/160"). Se corrige con ?vrmm=. */
