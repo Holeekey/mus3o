@@ -56,3 +56,16 @@ describe('DioramaSchema', () => {
     expect(RoomSchema.parse({ ...base, diorama: { terrain: 'volcano', props: 7 } }).diorama).toMatchObject({ terrain: 'plain', props: [] })
   })
 })
+
+describe('DioramaSchema.backdrop (dioramas desde la foto)', () => {
+  const ok = '/api/image/file?u=' + encodeURIComponent('https://upload.wikimedia.org/wikipedia/commons/a/ab/Batalla_(1821).jpg?utm_source=x&y=1')
+  it('acepta solo la ruta del proxy de imágenes hacia Wikimedia', () => {
+    expect(parseDiorama({ backdrop: ok }).backdrop).toBe(ok)
+    for (const bad of ['https://evil.example/a.png', '/api/image/file?u=https%3A%2F%2Fevil.example%2Fa.png', 'javascript:alert(1)', '/api/image/file?u=http%3A%2F%2Fupload.wikimedia.org%2Fa.jpg', '//evil.example/x']) {
+      expect(parseDiorama({ backdrop: bad }).backdrop).toBeUndefined()
+    }
+  })
+  it('es opcional: un diorama sin backdrop sigue valiendo', () => {
+    expect(parseDiorama({ title: 'X' }).backdrop).toBeUndefined()
+  })
+})
