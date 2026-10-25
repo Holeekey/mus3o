@@ -161,6 +161,7 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `G` | Dentro de un diorama: Aris repite lo que se mira (o la introducción) | `diorama/DioramaGuide.tsx` |
 | `R` / `Y` | En el examen: reintentar el dictado / escribir la respuesta | `ui/ExamCard.tsx` |
 | `Esc` | Pausa | Ayuda del HUD |
+| `Enter` / `Espacio` / clic fuera | Volver de la pausa, o de una ficha leída con el mouse suelto (Esc no puede: el navegador no deja bloquear el puntero con Esc). `ui/resume.ts` | Panel de pausa y pie de la ficha |
 
 En el examen, responder exige escribir, así que se libera el puntero.
 
@@ -194,7 +195,7 @@ HUD responsive (sección "HUD responsive" al final de `index.css`):
 | Componente | Función |
 |---|---|
 | `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
-| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa |
+| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa. Con el mouse suelto (Esc o alt+tab), un clic fuera de la ficha o Enter vuelven a caminar con la ficha abierta. La rueda desplaza la ficha también en Firefox, que la mide en líneas (`wheelPixels` en `ui/cardScroll.ts`) |
 | `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |

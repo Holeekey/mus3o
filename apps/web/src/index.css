@@ -830,6 +830,14 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   .listen[data-active='true'] .listen-bars i { animation: none; transform: scaleY(0.7); }
 }
 
+/* Ficha leída con el mouse suelto: un clic fuera de ella retoma el palacio. */
+.card-backdrop {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+.pause-panel { cursor: default; }
+
 .card {
   position: absolute;
   right: 20px;
@@ -961,6 +969,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .pause {
   position: absolute;
   inset: 0;
+  cursor: pointer;
   display: grid;
   place-items: center start;
   background: rgb(31 20 17 / 0.42);
