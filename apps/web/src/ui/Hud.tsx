@@ -224,9 +224,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         </p>
         {/* El progreso vive en el cartel de la sala: una caja menos sobre la escena. */}
         <p className="plaque-progress">
-          {mode === 'explore'
-            ? `${roomDone} de ${roomIds.length} memorizadas · ${memorizedCount} de ${conceptCount} en total`
-            : `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`}
+          {mode === 'explore' ? (
+            <>
+              {roomDone} de {roomIds.length} memorizadas
+              {/* El total se oculta en teléfonos angostos: el cartel no debe comerse la escena. */}
+              <span className="plaque-total"> · {memorizedCount} de {conceptCount} en total</span>
+            </>
+          ) : (
+            `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`
+          )}
         </p>
         <div className="plaque-bar" aria-hidden>
           <i style={{ width: `${mode === 'explore' ? (roomIds.length ? (roomDone / roomIds.length) * 100 : 0) : total ? (answered.length / total) * 100 : 0}%` }} />
