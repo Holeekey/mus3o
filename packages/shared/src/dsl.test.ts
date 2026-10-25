@@ -446,4 +446,56 @@ describe("micro-DSL de dioramas (DIO / D_PROP)", () => {
     const streamed = s.finish();
     expect(streamed.rooms.map((r) => r.dioramaDirectives)).toEqual(whole.rooms.map((r) => r.dioramaDirectives));
   });
+
+  describe("resiliencia ante variaciones de sintaxis de LLMs", () => {
+    it("soporta dos puntos asiáticos (full-width) y barras full-width", () => {
+      const raw = `
+ROOM：sala-asia ｜ Sala Asia ｜ ancient ｜ #ffaa00 ｜ #111111 ｜ crystal
+PIECE：Concepto Asia ｜ sphere ｜ Anclaje de memoria asiático
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("Sala Asia");
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto Asia");
+    });
+
+    it("soporta viñetas Markdown complejas, numeradas y con negrita", () => {
+      const raw = `
+- **ROOM**: r-markdown | Sala Markdown | cyberpunk | #00ff00 | #001100 | torus
+1.1. **PIECE**: Token A | box | Mnemotecnia uno
+* [x] PIECE: Token B | tetrahedron | Mnemotecnia dos
+> PIECE: Token C | cone | Mnemotecnia tres
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].pieces).toHaveLength(3);
+      expect(museum.rooms[0].pieces[0].title).toBe("Token A");
+      expect(museum.rooms[0].pieces[1].title).toBe("Token B");
+      expect(museum.rooms[0].pieces[2].title).toBe("Token C");
+    });
+
+    it("soporta separadores alternativos con guion o pipe directo", () => {
+      const raw = `
+ROOM | r-pipe | Sala Pipe | cathedral | #333333 | #000000 | dodecahedron
+PIECE - Concepto Guion | octahedron | Anclaje de prueba
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("Sala Pipe");
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto Guion");
+    });
+
+    it("asigna valores seguros ante líneas con campos mínimos", () => {
+      const raw = `
+ROOM: r-min | SoloNombre
+PIECE: SoloConcepto
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("SoloNombre");
+      expect(museum.rooms[0].theme).toBe("cathedral");
+      expect(museum.rooms[0].pieces[0].title).toBe("SoloConcepto");
+      expect(museum.rooms[0].pieces[0].model.shape).toBe("box");
+    });
+  });
 });
