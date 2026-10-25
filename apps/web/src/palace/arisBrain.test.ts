@@ -26,6 +26,7 @@ describe('arisBrain: menos fallback', () => {
 
   it('responde por sala, listas, conteos y controles', () => {
     expect(ask('cuéntame del coliseo').text).toContain('Sala 2 de 2')
+    expect(ask('cuéntame del coliseo').text).toContain('sala contigua')
     expect(ask('qué conceptos hay aquí').text).toContain('Senado romano')
     expect(ask('cuántas salas tiene').text).toContain('2 salas')
     expect(ask('cuáles son los controles').text).toContain('WASD')

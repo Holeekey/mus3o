@@ -494,8 +494,12 @@ PIECE: SoloConcepto
       expect(museum.rooms).toHaveLength(1);
       expect(museum.rooms[0].name).toBe("SoloNombre");
       expect(museum.rooms[0].theme).toBe("cathedral");
-      expect(museum.rooms[0].pieces[0].title).toBe("SoloConcepto");
-      expect(museum.rooms[0].pieces[0].model.shape).toBe("box");
+      const piece = museum.rooms[0]?.pieces[0];
+      expect(piece?.title).toBe("SoloConcepto");
+      expect(piece?.model?.type).toBe("glyph");
+      if (piece?.model && piece.model.type === "glyph") {
+        expect(piece.model.shape).toBe("box");
+      }
     });
   });
 });
