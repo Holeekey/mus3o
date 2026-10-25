@@ -1,6 +1,6 @@
 # mus3o · team-5
 
-![Track](https://img.shields.io/badge/Track-Three--Dimensional-orange?style=for-the-badge) ![Hackathon](https://img.shields.io/badge/Platanus%20Hack%2026-Caracas%2046h-blueviolet?style=for-the-badge) ![React](https://img.shields.io/badge/React%20Three%20Fiber-3D-blue?style=for-the-badge) ![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Sonnet%205.5-black?style=for-the-badge)
+[![Demo en vivo](https://img.shields.io/badge/Demo%20en%20vivo-mus3o.onrender.com-success?style=for-the-badge)](https://mus3o.onrender.com/) ![Track](https://img.shields.io/badge/Track-Three--Dimensional-orange?style=for-the-badge) ![Hackathon](https://img.shields.io/badge/Platanus%20Hack%2026-Caracas%2036h-blueviolet?style=for-the-badge) ![React](https://img.shields.io/badge/React%20Three%20Fiber-3D-blue?style=for-the-badge) ![Anthropic](https://img.shields.io/badge/Anthropic-Claude%205.5-black?style=for-the-badge)
 
 <p align="center">
   <img src="./project-logo.png" alt="Logo de mus3o" width="220" />
@@ -8,7 +8,8 @@
 
 <p align="center">
   <strong>Transforma apuntes de estudio y temas complejos en palacios de la memoria 3D explorables en primera persona.</strong><br/>
-  Basado en el método de Loci, modelos 3D dinámicos, dioramas inmersivos y repaso espaciado con validación criptográfica y estricta disciplina de costos.
+  Basado en el método de Loci, modelos 3D dinámicos, dioramas inmersivos y repaso espaciado con validación criptográfica y estricta disciplina de costos.<br/>
+  🌐 <strong>Deploy en producción:</strong> <a href="https://mus3o.onrender.com/">https://mus3o.onrender.com/</a>
 </p>
 
 ---
@@ -45,7 +46,7 @@ Diseñado bajo el principio de que **la IA razona y el código ensambla**, mus3o
 
 1. **Pipeline Low-Token DSL:** En lugar de generar JSON procedural masivo (~10.900 tokens), la IA produce un DSL compacto (~1.800 tokens) que el servidor traduce a geometría 3D y grafos sin fallas.
 2. **Prompt Caching Ephemeral:** Instrucciones y contratos fijados en caché de Anthropic, reduciendo el 90% del costo en tokens de entrada recurrentes.
-3. **Búsqueda e Hidratación 3D Externa:** Integración con Poly Pizza para descargar modelos `.glb` reales low-poly (0 tokens LLM). Solo los faltantes usan fallback económico con Claude 3.5 Haiku.
+3. **Búsqueda e Hidratación 3D Externa:** Integración con Poly Pizza para descargar modelos `.glb` reales low-poly (0 tokens LLM). Solo los faltantes usan fallback económico con Claude Haiku 5.5.
 4. **Caché Multi-Nivel:** LRU en memoria y persistencia atómica en disco (`.cache/museums`) respaldada con validación Zod. Repeticiones y consultas concurrentes cuestan **$0.00 USD**.
 
 > 📊 Al construir mus3o con un agente de código, la caché de prompts ahorró **~USD 246 en 7 días** (99 % de aciertos; gasto real USD 29 frente a ~USD 275). Consulta el desglose completo en el [Catálogo de Optimizaciones](./docs/catalogo-optimizaciones.md) y el [Reporte de Costos y Ahorro](./docs/reporte-costos-y-ahorros.md).
@@ -76,6 +77,8 @@ pnpm run dev
 ```
 
 La aplicación web estará disponible en `http://localhost:5173` y el servidor en `http://localhost:3001`.
+
+También puedes acceder a la versión desplegada en vivo en [https://mus3o.onrender.com/](https://mus3o.onrender.com/).
 
 ### 🎮 Demos Rápidas (Parámetros de URL)
 
@@ -130,7 +133,7 @@ Toda la especificación técnica vive en el directorio [`docs/`](./docs/README.m
 ## 📍 Evento
 
 - **Hackathon:** Platanus Hack 26: Caracas ft. Yummy Project
-- **Duración:** 46 horas ininterrumpidas (23 al 25 de Octubre de 2026).
+- **Duración:** 36 horas ininterrumpidas (23 al 25 de Octubre de 2026).
 - **Lugar:** Edificio Centro Banaven (Cubo Negro), Torre A, piso 7, Caracas, Venezuela.
 
 ---

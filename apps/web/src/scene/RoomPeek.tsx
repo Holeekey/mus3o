@@ -199,7 +199,19 @@ export function RoomPeek({
   )
   return (
     // isolation: los z-index de drei Html quedan dentro del canvas y no tapan los overlays de la landing.
-    <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat gl={{ alpha: true }} style={{ isolation: 'isolate' }}>
+    <Canvas
+      camera={{ fov: 70, near: 0.1, far: 300 }}
+      dpr={[1, 2]}
+      shadows={scene.shadows}
+      flat
+      gl={{ alpha: true }}
+      style={{ isolation: 'isolate', cursor: mode === 'off' ? 'pointer' : undefined }}
+      onPointerDown={() => {
+        if (mode === 'off') {
+          walkApi.current.lock()
+        }
+      }}
+    >
       <color attach="background" args={[scene.background]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />
       <directionalLight
@@ -221,10 +233,10 @@ export function RoomPeek({
       <Room room={room} palette={LOBBY} theme={theme} plainWalls bareWall={FOUNDERS_WALL} shellOnly />
       <LogoSculpture x={room.x} z={room.z} color={LOBBY.ink} pedestalColor={LOBBY.trim} />
       <LobbyCarpet room={room} />
-      {/* Con el puntero normal los retratos se clican; caminando se usa la mira (LobbyWalker). */}
-      <Founders room={room} side={FOUNDERS_WALL} interactive={mode === 'off'} />
-      {/* A la derecha de Founders (mirándolos): el muro oeste. */}
-      <LobbyPoster room={room} src="/lobby/platanus-hack-26.jpg" />
+      {/* Retratos y diorama: desactivados en scroll para entrar al lobby en vez de abrir enlaces externos */}
+      <Founders room={room} side={FOUNDERS_WALL} interactive={false} />
+      {/* A la derecha de Founders (mirándolos): el muro oeste con el diorama interactivo de la guacamaya. */}
+      <LobbyPoster room={room} interactive={false} />
       {/* El lobby no tiene pasillos: sus puertas se tapian con muro liso. */}
       {fillers.map((b, i) => (
         <Wall key={i} box={b} color={LOBBY.wall} plain />
