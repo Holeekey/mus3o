@@ -1,6 +1,6 @@
 import { chooseCenterpiece, type Centerpiece } from './centerpiece'
 import { buildDecor, decorBox, hash, pickIdentity, type FloorStyle, type RoomDecor, type RoomIdentity } from './roomIdentity'
-import { angleOfSide, ringAngles } from './route'
+import { angleOfSide, ringAngles, routeStarts } from './route'
 import { emptyGrid, extraGridLinks, placeRoom, planRoomGrid, type Diorama, type Glyph, type GraphEdge, type ImageSearch, type IncrementalGrid, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
@@ -29,6 +29,8 @@ export type PedestalLayout = { concept: Piece; x: number; z: number; shape: Shap
 export type RoomLayout = {
   id: string
   index: number
+  /** Número de su primer tótem en el recorrido de todo el museo: la sala 2 sigue donde terminó la 1 (palace/route.ts). */
+  firstOrder: number
   title: string
   color: string
   x: number
@@ -240,7 +242,7 @@ const entryCorner = (r: Pick<RoomLayout, 'x' | 'z' | 'w' | 'd'>) => ({ x: r.x - 
  * `prev` es la identidad de la sala anterior (para no repetir estilo) y `spawn` el punto de entrada si el jugador
  * aparece en esta sala. Todo lo demás sale de la propia sala: no cambia cuando llegan salas nuevas.
  */
-function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[], entry: Side | null, prev: RoomIdentity | null, spawn: { x: number; z: number } | null): RoomLayout {
+function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[], entry: Side | null, firstOrder: number, prev: RoomIdentity | null, spawn: { x: number; z: number } | null): RoomLayout {
   const { w, d, radius, aspect } = size
   const height = 4.5 + (hash(room.name) % 3) * 1.2
   const count = room.pieces.length
@@ -275,6 +277,7 @@ function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: 
   return {
     id: room.id,
     index: i,
+    firstOrder,
     title: room.name,
     color: room.palette?.primary || ROOM_COLORS[i % ROOM_COLORS.length],
     x,
@@ -397,13 +400,14 @@ export function buildLayout(palace: Museum): PalaceLayout {
   }
 
   const startIndex = indexOf.get(plan.start) ?? 0
+  const starts = routeStarts(palace.rooms)
   const rooms: RoomLayout[] = []
   palace.rooms.forEach((room, i) => {
     const x = cells[i].col * cell
     const z = cells[i].row * cell
     const prev = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
     const spawn = i === startIndex ? entryCorner({ x, z, w: sizes[i].w, d: sizes[i].d }) : null
-    rooms.push(makeRoomLayout(room, i, x, z, sizes[i], doorsOf[i], entryOf[i], prev, spawn))
+    rooms.push(makeRoomLayout(room, i, x, z, sizes[i], doorsOf[i], entryOf[i], starts[i], prev, spawn))
   })
 
   const corridors: CorridorLayout[] = []
@@ -450,6 +454,7 @@ const sameSides = (a: Side[], b: Side[]) => a.length === b.length && [...a].sort
 function assembleStream(prev: PalaceLayout, inputs: RoomInput[], grid: IncrementalGrid, edges: GraphEdge[], links: Array<[number, number]>): PalaceLayout {
   const doorsOf: Side[][] = inputs.map(() => [])
   const entryOf: (Side | null)[] = inputs.map(() => null)
+  const starts = routeStarts(inputs)
   const sides = links.map(([a, b]) => sideToward(grid.cells[a], grid.cells[b]))
   links.forEach(([a, b], k) => {
     doorsOf[a].push(sides[k])
@@ -460,14 +465,14 @@ function assembleStream(prev: PalaceLayout, inputs: RoomInput[], grid: Increment
   inputs.forEach((input, i) => {
     const old = prev.rooms[i]
     // Misma sala, mismo contenido y mismas puertas: se conserva el objeto.
-    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i])) {
+    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i]) && old.firstOrder === starts[i]) {
       rooms.push(old)
       return
     }
     const before = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
     // La primera sala es donde aparece el jugador (STREAM_SPAWN).
     rooms.push(
-      makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i], entryOf[i], before, i === 0 ? STREAM_SPAWN : null),
+      makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i], entryOf[i], starts[i], before, i === 0 ? STREAM_SPAWN : null),
     )
   })
   const corridors: CorridorLayout[] = []
