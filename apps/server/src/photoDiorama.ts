@@ -259,7 +259,7 @@ async function withSlot<T>(run: () => Promise<T>): Promise<T | null> {
 
 const memory = new Map<string, PhotoDioramaResponse>();
 const MAX_MEMORY = 300;
-const inFlight = new Map<string, Promise<PhotoDioramaResponse | "busy" | 502 | 413>>();
+const inFlight = new Map<string, Promise<PhotoDioramaResponse | "busy" | "quota" | 502 | 413>>();
 
 export const resetPhotoDioramaState = () => {
   memory.clear();
@@ -326,12 +326,11 @@ photoRouter.post("/diorama-from-image", async (req, res) => {
     }
     let pending = inFlight.get(key);
     if (!pending) {
-      if (!(await takeSlot())) {
-        res.status(429).json({ error: "Se alcanzó el tope diario de dioramas" });
-        return;
-      }
       const context = { title: parsed.data.title, roomTitle: parsed.data.roomTitle, concepts: parsed.data.concepts };
+      // El cupo se toma dentro de la promesa compartida: así `inFlight` queda registrado antes de cualquier `await`
+      // y las peticiones simultáneas iguales siguen compartiendo una sola llamada (y un solo cupo).
       pending = (async () => {
+        if (!(await takeSlot())) return "quota" as const;
         const done = await withSlot(async () => {
           const file = await loadImageFile(url.toString());
           if (typeof file === "number") return file;
@@ -346,6 +345,10 @@ photoRouter.post("/diorama-from-image", async (req, res) => {
       inFlight.set(key, pending);
     }
     const out = await pending;
+    if (out === "quota") {
+      res.status(429).json({ error: "Se alcanzó el tope diario de dioramas" });
+      return;
+    }
     if (out === "busy") {
       res.status(503).json({ error: "Demasiados dioramas en cola" });
       return;

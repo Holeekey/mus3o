@@ -76,6 +76,7 @@ const RequestSchema = z.union([
 
 // Tope diario de llamadas a Claude (solo fallos de caché) para cuidar el presupuesto de créditos.
 const MAX_DAILY = Number(process.env.MAX_DAILY_GENERATIONS) || 200;
+class DailyLimitError extends Error {}
 async function takeDailySlot(): Promise<boolean> {
   return takeBudget("generations", 1, MAX_DAILY);
 }
@@ -98,11 +99,13 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
     }
     let pending = inFlight.get(key);
     if (!pending) {
-      if (!(await takeDailySlot())) {
-        res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
-        return;
-      }
-      pending = generate()
+      // El cupo se toma dentro de la promesa compartida: `inFlight` se registra antes de cualquier `await`,
+      // así las peticiones simultáneas iguales comparten una sola generación y un solo cupo.
+      pending = takeDailySlot()
+        .then((ok) => {
+          if (!ok) throw new DailyLimitError();
+          return generate();
+        })
         .then(async (m) => {
           await setCached(key, m);
           return m;
@@ -112,6 +115,10 @@ async function respondWithMuseum(res: express.Response, key: string, generate: (
     }
     res.json(await pending);
   } catch (err) {
+    if (err instanceof DailyLimitError) {
+      res.status(429).json({ error: "Se alcanzó el tope diario de generaciones", fallback: "placeholder" });
+      return;
+    }
     if (err instanceof AiUnavailableError) {
       res.status(503).json({ error: "IA no configurada" });
       return;

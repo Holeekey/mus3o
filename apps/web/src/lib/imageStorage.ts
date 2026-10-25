@@ -31,15 +31,21 @@ function openDatabase(): Promise<IDBDatabase | null> {
       }
 
       request.onsuccess = () => resolve(request.result)
+      // Un fallo no se cachea: el siguiente guardado o lectura vuelve a intentar abrir la base.
+      const fail = () => {
+        dbPromise = null
+        resolve(null)
+      }
       request.onerror = () => {
         console.warn('No se pudo abrir IndexedDB para imágenes de usuario. Usando memoria.')
-        resolve(null)
+        fail()
       }
       request.onblocked = () => {
         console.warn('Apertura de IndexedDB bloqueada.')
-        resolve(null)
+        fail()
       }
     } catch {
+      dbPromise = null
       resolve(null)
     }
   })
@@ -164,4 +170,13 @@ export async function clearUserImages(): Promise<void> {
       resolve()
     }
   })
+}
+
+/**
+ * Reemplaza las imágenes guardadas por las de un palacio nuevo: solo se conserva el palacio actual,
+ * así IndexedDB no acumula imágenes de palacios que ya no existen.
+ */
+export async function replaceUserImages(images: Record<string, string>): Promise<void> {
+  await clearUserImages()
+  await saveUserImages(images)
 }

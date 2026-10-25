@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { saveUserImages, loadUserImages, clearUserImages } from './imageStorage'
+import { saveUserImages, loadUserImages, clearUserImages, replaceUserImages } from './imageStorage'
 
 describe('imageStorage', () => {
   beforeEach(async () => {
@@ -42,5 +42,14 @@ describe('imageStorage', () => {
     await clearUserImages()
     const loaded = await loadUserImages(['img-to-clear'])
     expect(loaded['img-to-clear']).toBeUndefined()
+  })
+
+  it('reemplaza las imágenes del palacio anterior por las del nuevo', async () => {
+    await saveUserImages({ 'img-old': 'data:image/jpeg;base64,old' })
+    await replaceUserImages({ 'img-new': 'data:image/jpeg;base64,new' })
+
+    const loaded = await loadUserImages()
+    expect(loaded['img-old']).toBeUndefined()
+    expect(loaded['img-new']).toBe('data:image/jpeg;base64,new')
   })
 })

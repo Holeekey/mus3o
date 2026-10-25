@@ -14,6 +14,7 @@ export interface BudgetRecord {
 }
 
 const memoryBudgets = new Map<string, BudgetRecord>();
+const loading = new Map<string, Promise<BudgetRecord>>();
 const writeQueues = new Map<string, Promise<void>>();
 
 const budgetDir = () => {
@@ -46,7 +47,9 @@ async function writeToDisk(namespace: string, record: BudgetRecord): Promise<voi
     await mkdir(dir, { recursive: true });
     await writeFile(tmp, JSON.stringify(record, null, 2), "utf8");
     await rename(tmp, target);
-  } catch {
+  } catch (err) {
+    // La cuota sigue vigente en memoria; solo se pierde la persistencia, y se avisa.
+    console.error(`budgetStore: no se pudo persistir "${namespace}": ${(err as Error).name}`);
     await unlink(tmp).catch(() => {});
   }
 }
@@ -65,21 +68,29 @@ function queueDiskWrite(namespace: string, record: BudgetRecord) {
 }
 
 /**
- * Carga o inicializa el registro para el día actual.
+ * Carga o inicializa el registro para el día actual. La carga inicial desde disco se comparte por namespace:
+ * así llamadas concurrentes en frío usan el mismo objeto y no se pierden incrementos.
  */
 async function getOrCreateBudget(namespace: string): Promise<BudgetRecord> {
   const today = todayUtc();
   let record = memoryBudgets.get(namespace);
 
   if (!record) {
-    const onDisk = await readFromDisk(namespace);
-    if (onDisk && onDisk.day === today) {
-      record = onDisk;
-    } else {
-      record = { day: today, used: 0 };
+    let pending = loading.get(namespace);
+    if (!pending) {
+      pending = readFromDisk(namespace)
+        .then((onDisk) => {
+          const loaded = onDisk && onDisk.day === today ? onDisk : { day: today, used: 0 };
+          memoryBudgets.set(namespace, loaded);
+          return loaded;
+        })
+        .finally(() => loading.delete(namespace));
+      loading.set(namespace, pending);
     }
-    memoryBudgets.set(namespace, record);
-  } else if (record.day !== today) {
+    record = await pending;
+  }
+
+  if (record.day !== today) {
     record.day = today;
     record.used = 0;
   }
@@ -119,9 +130,14 @@ export async function getBudgetStatus(namespace: string, maxLimit: number): Prom
  */
 export async function resetBudgetForTesting(namespace?: string): Promise<void> {
   if (namespace) {
+    // La memoria se limpia de inmediato (los tests reinician de forma síncrona); luego se espera la cola de escritura.
     memoryBudgets.delete(namespace);
+    loading.delete(namespace);
+    await writeQueues.get(namespace);
     await unlink(fileFor(namespace)).catch(() => {});
   } else {
     memoryBudgets.clear();
+    loading.clear();
+    await Promise.all([...writeQueues.values()]);
   }
 }

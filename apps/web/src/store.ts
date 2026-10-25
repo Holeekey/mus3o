@@ -13,7 +13,7 @@ import { resetDioramaState } from './diorama/dioramaStore'
 import { abortIntro, beginBuildIntro, introBuildDone, introRoomArrived } from './intro/store'
 import { dueIds, palaceKey, strengthOf } from './memory/model'
 import { nowMs, useMemory } from './memory/store'
-import { loadUserImages, saveUserImages } from './lib/imageStorage'
+import { loadUserImages, replaceUserImages } from './lib/imageStorage'
 
 export type Screen = 'landing' | 'palace'
 export type Mode = 'explore' | 'exam'
@@ -163,7 +163,7 @@ export const useStore = create<State>()(
 
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
         if (Object.keys(userImages).length > 0) {
-          void saveUserImages(userImages)
+          void replaceUserImages(userImages)
         }
         // Los museos generados por IA solo traen las directivas DIO / D_PROP de sus salas históricas; se componen primero.
         // Luego la biblioteca (hechos a mano) y, a las salas que sigan sin diorama, uno compuesto sin IA con el pigmento de su fresco.
@@ -197,7 +197,7 @@ export const useStore = create<State>()(
       },
       beginBuildingPalace: ({ title, sourceText, userImages, reducedMotion }) => {
         if (userImages && Object.keys(userImages).length > 0) {
-          void saveUserImages(userImages)
+          void replaceUserImages(userImages)
         }
         const before = get()
         // Si ya había una construcción abierta, se corta; el palacio "anterior" es el de antes de ella.

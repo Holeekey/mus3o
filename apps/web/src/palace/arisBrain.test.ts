@@ -27,6 +27,10 @@ describe('arisBrain: menos fallback', () => {
   it('responde por sala, listas, conteos y controles', () => {
     expect(ask('cuéntame del coliseo').text).toContain('Sala 2 de 2')
     expect(ask('cuéntame del coliseo').text).toContain('sala contigua')
+    // La ruta se suma a la descripción de la sala, no la reemplaza
+    const fromColiseo = evaluateArisQuery('cuéntame del foro', { ...ctx, currentRoomId: 'r2' }).text
+    expect(fromColiseo).toContain('Centro político.')
+    expect(fromColiseo).toContain('sala contigua')
     expect(ask('qué conceptos hay aquí').text).toContain('Senado romano')
     expect(ask('cuántas salas tiene').text).toContain('2 salas')
     expect(ask('cuáles son los controles').text).toContain('WASD')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Mus3oDslStream, parseMus3oDSL } from "./dsl";
+import { Mus3oDslStream, classifyDslLine, parseMus3oDSL } from "./dsl";
 import { LIMITS } from "./schema";
 
 describe("parseMus3oDSL", () => {
@@ -500,6 +500,31 @@ PIECE: SoloConcepto
       if (piece?.model && piece.model.type === "glyph") {
         expect(piece.model.shape).toBe("box");
       }
+    });
+
+    it("respeta los dos puntos de ancho completo del contenido (solo normaliza la etiqueta)", () => {
+      const raw = `
+ROOM：r-fw | Sala Ancha | cathedral
+PIECE：Hora | box | Abre a las 10：30 en punto
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms[0].name).toBe("Sala Ancha");
+      expect(JSON.stringify(museum.rooms[0].pieces[0])).toContain("10：30");
+    });
+
+    it("no toma como etiqueta la prosa con guion pegado a la palabra", () => {
+      expect(classifyDslLine("Room-based learning es útil").kind).toBeUndefined();
+      expect(classifyDslLine("- [x] PIECE: CPU | box | desc").kind).toBe("PIECE");
+    });
+
+    it("no descarta una pieza con pipes consecutivos o campos vacíos", () => {
+      const raw = `
+ROOM: r-gap | Sala Hueco | cathedral
+PIECE: Concepto || | 
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms[0].pieces).toHaveLength(1);
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto");
     });
   });
 });

@@ -174,7 +174,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
       }
     }
     return {
-      text: `Aris: "${namedRoom.name}" es la Sala ${idx + 1} de ${palace.rooms.length}, con ${namedRoom.pieces.length} conceptos (${done} memorizados).${routeHint || ` ${brief(namedRoom.description || '', 110)}`}`.trim(),
+      text: `Aris: "${namedRoom.name}" es la Sala ${idx + 1} de ${palace.rooms.length}, con ${namedRoom.pieces.length} conceptos (${done} memorizados). ${brief(namedRoom.description || '', 110)}${routeHint}`.trim(),
     }
   }
 

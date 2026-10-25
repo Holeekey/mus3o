@@ -55,7 +55,7 @@ el tipo de error y la latencia (`generate-museum falló tras N ms: <Nombre>`).
 5. **Rate limit general** en `/api/*` (excepto imágenes): **10 peticiones por minuto por IP**.
 6. **Validación del cuerpo:** primero el formato legacy (`{ topic }` o `{ notes }`), luego `GenerateMuseumRequestSchema`.
 7. **Caché** (antes de tocar el presupuesto).
-8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Vive en memoria: se reinicia al reiniciar el proceso.
+8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Los topes diarios (generaciones, TTS, Aris, dioramas) los lleva `budgetStore.ts`: memoria más archivo en `.cache/budget/<namespace>.json` (`BUDGET_CACHE_DIR`), con escritura atómica, así sobreviven a un reinicio del proceso mientras el disco persista.
 
 Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de créditos en una demo pública.
 

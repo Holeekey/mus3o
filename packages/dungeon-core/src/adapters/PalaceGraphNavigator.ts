@@ -49,27 +49,28 @@ export class PalaceGraphNavigator {
     const neighbors = new Map<string, Set<string>>();
     rooms.forEach((r) => neighbors.set(r.id, new Set<string>()));
 
-    // 1. Aristas declaradas en el grafo
-    if (museum.graph?.edges && museum.graph.edges.length > 0) {
-      for (const edge of museum.graph.edges) {
-        if (neighbors.has(edge.from) && neighbors.has(edge.to)) {
-          neighbors.get(edge.from)!.add(edge.to);
-          neighbors.get(edge.to)!.add(edge.from);
-        }
+    // 1. Aristas declaradas en el grafo (las conexiones reales; la dirección no importa al caminar)
+    let declared = 0;
+    for (const edge of museum.graph?.edges ?? []) {
+      if (neighbors.has(edge.from) && neighbors.has(edge.to) && edge.from !== edge.to) {
+        neighbors.get(edge.from)!.add(edge.to);
+        neighbors.get(edge.to)!.add(edge.from);
+        declared++;
       }
     }
 
-    // 2. Conexión secuencial fallback si el grafo está vacío
-    for (let i = 0; i < rooms.length - 1; i++) {
-      const a = rooms[i].id;
-      const b = rooms[i + 1].id;
-      neighbors.get(a)!.add(b);
-      neighbors.get(b)!.add(a);
+    // 2. Cadena secuencial solo si el museo no trae aristas utilizables: con grafo real no se inventan conexiones
+    if (declared === 0) {
+      for (let i = 0; i < rooms.length - 1; i++) {
+        neighbors.get(rooms[i].id)!.add(rooms[i + 1].id);
+        neighbors.get(rooms[i + 1].id)!.add(rooms[i].id);
+      }
     }
 
     // Mapeo a coordenadas 2D discretas para usar AStarNavigator
     // Coordenada x = índice de sala, y = 0
-    // La heurística Manhattan mide la distancia relativa en el temario
+    // El índice no refleja distancia real (una arista puede saltar varias salas), así que la heurística es 0:
+    // admisible, y A* devuelve siempre la ruta más corta.
     const startIndex = roomIndex.get(startRoomId)!;
     const goalIndex = roomIndex.get(goalRoomId)!;
 
@@ -95,7 +96,7 @@ export class PalaceGraphNavigator {
       },
     };
 
-    const navigator = new AStarNavigator(costProvider);
+    const navigator = new AStarNavigator(costProvider, () => 0);
     const pathPositions = navigator.findPath(
       { x: startIndex, y: 0 },
       { x: goalIndex, y: 0 }
