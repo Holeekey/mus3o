@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { sanitizeUntrustedText } from "@mus3o/shared";
 import { AiUnavailableError, getClient } from "./claude";
+import { takeBudget } from "./budgetStore";
 
 // Aris responde por reglas en el navegador. Solo cuando no entiende la pregunta pide ayuda aquí:
 // Haiku contesta con una salida cortísima y sobre lo que Aris le pasa (sala y conceptos), nada más.
@@ -32,13 +33,8 @@ const BodySchema = z
 export type ArisHelpInput = z.infer<typeof BodySchema>;
 
 const MAX_DAILY = () => Number(process.env.MAX_DAILY_ARIS_HELP) || 150;
-let budget = { day: "", used: 0 };
-function takeSlot(): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (budget.day !== day) budget = { day, used: 0 };
-  if (budget.used >= MAX_DAILY()) return false;
-  budget.used++;
-  return true;
+async function takeSlot(): Promise<boolean> {
+  return takeBudget("aris_help", 1, MAX_DAILY());
 }
 
 const ARIS_MODEL = () => process.env.ANTHROPIC_ARIS_MODEL || process.env.ANTHROPIC_FALLBACK_MODEL || "claude-haiku-5-5";
@@ -113,7 +109,7 @@ arisRouter.post("/aris-help", async (req, res) => {
     res.json({ answer: hit });
     return;
   }
-  if (!takeSlot()) {
+  if (!(await takeSlot())) {
     res.status(429).json({ error: "Se alcanzó el tope diario de ayuda de Aris" });
     return;
   }

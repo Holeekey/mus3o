@@ -20,6 +20,7 @@ import {
 import { getClient } from "./claude";
 import { loadImageFile, parseAllowedUrl } from "./images";
 import { readCacheDiorama, readSeedDiorama, writeCacheDiorama, type StoredFile } from "./imageStore";
+import { resetBudgetForTesting, takeBudget } from "./budgetStore";
 
 /**
  * "Cuadros vivos" hechos desde la foto real: se le muestra a Claude (visión) la imagen que ya resolvió el servidor
@@ -233,13 +234,8 @@ export async function recreateFromImage(
 // Cupos: tope diario, concurrencia por proceso y peticiones iguales compartidas
 // ---------------------------------------------------------------------------------------------
 const MAX_DAILY = () => Number(process.env.MAX_DAILY_PHOTO_DIORAMAS) || 150;
-let budget = { day: "", used: 0 };
-function takeSlot(): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (budget.day !== day) budget = { day, used: 0 };
-  if (budget.used >= MAX_DAILY()) return false;
-  budget.used++;
-  return true;
+async function takeSlot(): Promise<boolean> {
+  return takeBudget("photo_dioramas", 1, MAX_DAILY());
 }
 
 /** Ajustes que las pruebas reducen. */
@@ -268,7 +264,7 @@ const inFlight = new Map<string, Promise<PhotoDioramaResponse | "busy" | 502 | 4
 export const resetPhotoDioramaState = () => {
   memory.clear();
   inFlight.clear();
-  budget = { day: "", used: 0 };
+  void resetBudgetForTesting("photo_dioramas");
   active = 0;
   waiting.length = 0;
 };
@@ -330,7 +326,7 @@ photoRouter.post("/diorama-from-image", async (req, res) => {
     }
     let pending = inFlight.get(key);
     if (!pending) {
-      if (!takeSlot()) {
+      if (!(await takeSlot())) {
         res.status(429).json({ error: "Se alcanzó el tope diario de dioramas" });
         return;
       }
