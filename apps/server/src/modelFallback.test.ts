@@ -42,6 +42,26 @@ describe("fillMissingModels", () => {
     expect(await fillMissingModels(m, async () => "no es json")).toBe(m);
   });
 
+  it("recupera las piezas completas cuando la salida se corta a medias", () => {
+    const cut = `{"a": ${JSON.stringify(parts)}, "b": ${JSON.stringify(parts)}, "c": [{"shape":"box","args":[1,`;
+    expect([...parseFallbackModels(cut, ["a", "b", "c"]).keys()]).toEqual(["a", "b"]);
+  });
+
+  it("pide por lotes en paralelo: un lote fallido no deja sin modelo a los demás", async () => {
+    const many = Array.from({ length: 13 }, (_, i) => ({ ...base, id: `p${i}`, searchKeyword: "anvil", model: { type: "glyph" as const, shape: "box" as const } }));
+    const prompts: string[] = [];
+    const out = await fillMissingModels(museum(many), async (p) => {
+      prompts.push(p);
+      if (p.includes('"id":"p6"')) throw new Error("lote caído");
+      return JSON.stringify(Object.fromEntries(many.map((m) => [m.id, parts])));
+    });
+    expect(prompts).toHaveLength(3);
+    const types = out.rooms[0].pieces.map((p) => p.model?.type);
+    expect(types.slice(0, 6).every((t) => t === "procedural")).toBe(true);
+    expect(types.slice(6, 12).every((t) => t === "glyph")).toBe(true);
+    expect(types[12]).toBe("procedural");
+  });
+
   it("descarta partes inválidas", () => {
     const out = parseFallbackModels(JSON.stringify({ a: parts, b: [{ shape: "pyramid" }], c: [] }), ["a", "b", "c", "d"]);
     expect([...out.keys()]).toEqual(["a"]);
