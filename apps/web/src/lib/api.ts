@@ -33,7 +33,7 @@ async function postJson(url: string, body: unknown, signal?: AbortSignal): Promi
 function toMuseum(data: unknown): Museum {
   // La respuesta se valida igual que cualquier entrada externa.
   const parsed = MuseumSchema.safeParse(data);
-  if (!parsed.success) throw new ApiError("La IA devolvió un palacio inválido", 502);
+  if (!parsed.success) throw new ApiError("La IA devolvió un museo inválido", 502);
   return parsed.data;
 }
 
@@ -45,10 +45,10 @@ export async function generateMuseum(text: string, signal?: AbortSignal): Promis
 /** Mensaje para el usuario según el estado HTTP de un fallo de la IA (el mismo con y sin streaming). */
 export function describeAiError(status?: number): string {
   return status === 503
-    ? "La IA no está configurada en el servidor. Puedes construir el palacio sin IA."
+    ? "La IA no está configurada en el servidor. Puedes construir el museo sin IA."
     : status === 429
       ? "Demasiadas solicitudes. Intenta en un minuto."
-      : "No pudimos generar el palacio con IA. Intenta de nuevo o constrúyelo sin IA.";
+      : "No pudimos generar el museo con IA. Intenta de nuevo o constrúyelo sin IA.";
 }
 
 /** Parte un flujo de texto en líneas completas; lo que queda sin salto de línea espera al siguiente trozo. */
@@ -78,7 +78,7 @@ function parseStreamLine(line: string): MuseumStreamEvent {
   }
   // Cada evento se valida igual que cualquier entrada externa.
   const parsed = MuseumStreamEventSchema.safeParse(json);
-  if (!parsed.success) throw new ApiError("La IA devolvió un palacio inválido", 502);
+  if (!parsed.success) throw new ApiError("La IA devolvió un museo inválido", 502);
   return parsed.data;
 }
 

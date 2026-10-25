@@ -174,7 +174,8 @@ describe("image endpoints", () => {
       const res = await get("Ataques a lanchas", `Despliegue militar · ${TOPIC}`);
       expect(res.status).toBe(200);
       expect((await res.json()).title).toMatch(/^Ataques de Estados Unidos/);
-      wiki(["Historia de la Armada venezolana"]);
+      // El gentilicio no cuenta como otro país (relevance.test.ts); aquí, un artículo que además trata del tema.
+      wiki(["Armada Bolivariana de Venezuela"]);
       expect((await get("Armada naval", `Flota · ${TOPIC}`)).status).toBe(200);
     });
 

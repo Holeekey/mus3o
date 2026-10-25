@@ -14,7 +14,8 @@ const MAX_TOPICS = 12;
 const MAX_OUTPUT_TOKENS = 80;
 const MAX_ANSWER_CHARS = 280;
 
-const HELP_SYSTEM_PROMPT = `Eres Aris, un compañero de estudio dentro de un palacio de la memoria 3D.
+const HELP_SYSTEM_PROMPT = `Eres Aris, un compañero de estudio dentro de un museo de la memoria 3D (mus3o).
+Llámalo siempre "museo", nunca "palacio".
 Responde en español, en 1 o 2 frases cortas (máximo 30 palabras), sin listas ni markdown.
 No cuentes chistes, historias ni contenido fuera de la sala.
 Usa solo el tema, la sala y los conceptos que se te dan; si la pregunta no se relaciona con ellos, dilo en una frase y sugiere un concepto de la sala.
@@ -51,7 +52,7 @@ export function arisHelpPrompt(input: ArisHelpInput): string {
   return [
     `<pregunta>${clean(input.query, MAX_QUERY)}</pregunta>`,
     `<contexto>`,
-    `Palacio: ${clean(input.palaceTitle, MAX_TOPIC) || "(sin título)"}`,
+    `Museo: ${clean(input.palaceTitle, MAX_TOPIC) || "(sin título)"}`,
     `Sala actual: ${clean(input.roomName, MAX_TOPIC) || "(desconocida)"}`,
     `Conceptos de la sala: ${topics.join("; ") || "(ninguno)"}`,
     `</contexto>`,

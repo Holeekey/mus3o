@@ -130,10 +130,13 @@ export function classify(mime: string, name: string, description: string, dateOr
 
 type CommonsPage = { title?: string; index?: number; imageinfo?: any[] };
 
+// Formatos que el navegador muestra como cuadro. DjVu y TIFF en Commons son casi siempre escaneos de libros.
+const PAINTABLE = /^image\/(jpeg|png|webp|gif|svg\+xml)$/;
+
 function toResolved(page: CommonsPage, displayTitle?: string): ResolvedImage | null {
   const info = page.imageinfo?.[0];
   const mime: string = info?.mime ?? "";
-  if (!info || !mime.startsWith("image/")) return null;
+  if (!info || !PAINTABLE.test(mime)) return null;
   const url: string = info.thumburl || info.url;
   if (!url) return null;
   const meta = info.extmetadata ?? {};
@@ -285,12 +288,17 @@ export async function searchTitles(title: string, context: string, lang: string)
       return {
         hit,
         i,
+        size: w.length,
         mine: w.filter((x) => own.has(x)).length,
         key: w.filter((x) => key.has(x)).length,
         any: w.filter((x) => all.has(x)).length,
         ctx: w.filter((x) => ctx.has(x) && !own.has(x)).length,
       };
     })
+    // El artículo debe nombrar la pieza entera ("Páez" → "José Antonio Páez") o tratar sobre todo del tema;
+    // un título de sala genérico vale si comparte dos palabras con el contexto (el tema del palacio).
+    // Siempre: una palabra distintiva (o dos del contexto) y ningún país ajeno.
+    .filter((h) => h.ctx >= 2 || (own.size === 0 ? h.any > 0 : h.mine > 0 && (h.mine === own.size || h.any * 2 > h.size)))
     .filter((h) => (h.key > 0 || h.ctx >= 2) && !contradictsCountry(title, context, h.hit))
     .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
     .map((h) => h.hit);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { TEAM_HASH } from './useHash'
 
 // Por debajo de esta altura el header siempre se ve: es la primera pantalla.
@@ -6,9 +6,21 @@ const TOP_ZONE = 80
 
 const LINKS = [
   { href: '#como-funciona', label: 'Cómo funciona' },
-  { href: '#crear', label: 'Crea tu palacio' },
+  { href: '#crear', label: 'Crea tu museo' },
   { href: TEAM_HASH, label: 'Nuestro Equipo' },
 ]
+
+// Las anclas de la landing saltan directo: el scroll suave pasaría por la maqueta y dispararía su zoom.
+// #equipo es otra página (useHash) y se deja al navegador.
+function jumpToSection(e: MouseEvent<HTMLAnchorElement>) {
+  const href = e.currentTarget.getAttribute('href') ?? ''
+  if (!href.startsWith('#') || href === TEAM_HASH) return
+  const target = document.getElementById(href.slice(1))
+  if (!target) return
+  e.preventDefault()
+  target.scrollIntoView({ behavior: 'instant', block: 'start' })
+  history.replaceState(null, '', href)
+}
 
 /** Se esconde al bajar y vuelve al subir. Solo re-renderiza cuando cambia de estado. */
 function useHideOnScrollDown() {
@@ -48,7 +60,7 @@ export function SiteHeader() {
   }, [open])
   return (
     <header className="site-header" data-hidden={hidden && !open} data-open={open}>
-      <a className="site-logo" href="#top" aria-label="mus3o, volver al inicio" />
+      <a className="site-logo" href="#top" aria-label="mus3o, volver al inicio" onClick={jumpToSection} />
       <button
         type="button"
         className="site-menu-btn"
@@ -61,7 +73,7 @@ export function SiteHeader() {
       </button>
       <nav id="site-nav" aria-label="Secciones">
         {LINKS.map((l) => (
-          <a key={l.href} className="site-link" href={l.href} onClick={() => setOpen(false)}>
+          <a key={l.href} className="site-link" href={l.href} onClick={(e) => { setOpen(false); jumpToSection(e) }}>
             {l.label}
           </a>
         ))}

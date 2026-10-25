@@ -218,7 +218,7 @@ export function parsePalace(input: string, format: InputFormat = detectFormat(in
   }
 
   const palace = {
-    title: clip(title ?? rooms[0].title, LIMITS.maxTitle) || 'Mi palacio',
+    title: clip(title ?? rooms[0].title, LIMITS.maxTitle) || 'Mi museo',
     rooms: rooms.map((r, ri) => {
       if (r.concepts.length > LIMITS.maxPiecesPerRoom) {
         warnings.push(`"${clip(r.title, 30)}" tiene más de ${LIMITS.maxPiecesPerRoom} conceptos; se recortó.`)

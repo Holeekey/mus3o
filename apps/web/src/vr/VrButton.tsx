@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { detectVr, enterVr, loadXr } from './enter'
 import { useVr } from './runtime'
+import { VrCalibration } from './VrCalibration'
 
 /**
  * "Ver en VR" para el panel de pausa. Solo aparece en móvil/tableta o si el navegador ofrece WebXR
@@ -30,6 +31,10 @@ export function VrButton() {
       >
         {waiting ? 'Preparando VR…' : 'Ver en VR'}
       </button>
+      {available === 'xr' && (
+        <p className="vr-tip">Si la imagen no encaja con tu visor: en Chrome, al entrar toca el engranaje de Cardboard y escanea el código QR de tu visor.</p>
+      )}
+      {available === 'cardboard' && <VrCalibration />}
       {error && (
         <p className="vr-entry-error" role="alert">
           {error}
