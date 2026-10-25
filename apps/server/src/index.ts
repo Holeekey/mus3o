@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./loadEnv";
 import { app } from "./app";
 
 // Falla pronto ante una clave con formato inválido (una clave vacía sigue permitiendo el modo mock).

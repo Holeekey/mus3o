@@ -5,7 +5,7 @@
  *   npm run library:draw -w @mus3o/server -- --file palabras.txt --out /tmp/dibujos.json
  * Luego se revisa a ojo y se importa lo bueno con `library import /tmp/dibujos.json`.
  */
-import "dotenv/config";
+import "../src/loadEnv";
 import { readFile, writeFile } from "node:fs/promises";
 import { getClient } from "../src/claude";
 import { FALLBACK_MODEL_SYSTEM_PROMPT, fallbackModelPrompt } from "../src/prompts";

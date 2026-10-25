@@ -134,10 +134,10 @@ export async function resolveModels(museum: Museum): Promise<Museum> {
       const u = res.usage;
       console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
       return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-    });
+    }, own.resolved);
   }
   // Último respaldo, sin IA ni red: lo que nadie resolvió recibe un modelo procedural fijo.
-  const done = applyDeterministicModels(current);
+  const done = applyDeterministicModels(current, own.resolved);
   await recordGenerated([...newlyDrawn(hydrated, current, "ai"), ...newlyDrawn(current, done, "deterministic")]);
   return done;
 }

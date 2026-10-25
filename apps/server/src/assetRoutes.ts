@@ -1,10 +1,51 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { listReview, setStatus, type ReviewStatus } from "./assetReview";
-import { isValidAssetId, MAX_ASSET_BYTES, readAsset } from "./assetStore";
+import { downloadUrlOf } from "./assetReview";
+import { DownloadBlockedError, ensureAsset, isValidAssetId, MAX_ASSET_BYTES, readAsset } from "./assetStore";
+import { markPolyBlocked, polyBlocked } from "./polyPizza";
 import { addGlb, addRecipe, listLibrary, readLibraryGlb, removeEntry, setLibraryStatus, updateEntry, type LibraryStatus } from "./library";
 
 export const assetRouter = express.Router();
+
+/**
+ * Descarga bajo demanda: el museo asigna el modelo sin bajarlo y el .glb se trae la primera vez que alguien lo pide.
+ * Peticiones simultáneas del mismo modelo comparten una descarga y se limitan las descargas a la vez.
+ */
+const ON_DEMAND_TIMEOUT_MS = 20_000;
+const MAX_CONCURRENT_DOWNLOADS = 6;
+const inFlight = new Map<string, Promise<Buffer | null>>();
+let active = 0;
+const waiting: (() => void)[] = [];
+const acquire = () => (active < MAX_CONCURRENT_DOWNLOADS ? (active++, Promise.resolve()) : new Promise<void>((r) => waiting.push(r)));
+const release = () => {
+  const next = waiting.shift();
+  if (next) next();
+  else active--;
+};
+
+async function fetchOnDemand(id: string): Promise<Buffer | null> {
+  if (polyBlocked()) return null;
+  const running = inFlight.get(id);
+  if (running) return running;
+  const job = (async () => {
+    const url = await downloadUrlOf(id);
+    if (!url) return null;
+    await acquire();
+    try {
+      if (polyBlocked()) return null;
+      await ensureAsset(id, url, AbortSignal.timeout(ON_DEMAND_TIMEOUT_MS));
+      return await readAsset(id);
+    } catch (err) {
+      if (err instanceof DownloadBlockedError) markPolyBlocked();
+      return null;
+    } finally {
+      release();
+    }
+  })().finally(() => inFlight.delete(id));
+  inFlight.set(id, job);
+  return job;
+}
 
 assetRouter.use(
   "/assets",
@@ -17,7 +58,7 @@ assetRouter.get("/assets/:file", async (req, res) => {
     res.status(400).json({ error: "Modelo inválido" });
     return;
   }
-  const body = m[1].startsWith("lib-") ? await readLibraryGlb(m[1]) : await readAsset(m[1]);
+  const body = m[1].startsWith("lib-") ? await readLibraryGlb(m[1]) : (await readAsset(m[1])) ?? (await fetchOnDemand(m[1]));
   if (!body) {
     res.status(404).json({ error: "Modelo no encontrado" });
     return;

@@ -23,6 +23,11 @@ Problema: con Poly Pizza bloqueado (403 de Cloudflare), los pedestales dependía
 - Herramientas: `npm run library:draw` (dibuja con Sonnet y avisa el costo) y `library import <json>` (alta en lote, aprobada).
 - Test de integridad de la semilla (`librarySeed.test.ts`).
 
+## 2b. Haiku refinado y Poly Pizza (siguiente PR)
+
+- **Haiku refinado:** nuevo prompt de respaldo (4–8 partes, objeto literal, ~2 m, grosor mínimo, colores medios y vivos, ejemplo). Mismos 12 objetos y 12 de informática: objetos reconocibles a ~$0,00017 por pieza, casi al nivel de Sonnet. Sustituye a la fase 7 original.
+- **Poly Pizza:** (1) el `.env` de la raíz no se cargaba con `npm run dev` (Poly quedaba desactivado sin avisar); (2) la descarga ocurría dentro de la generación con un tope compartido de 2,5 s; ahora la asignación es diferida, la descarga es bajo demanda con calentamiento en segundo plano y todas las piezas llevan respaldo procedural.
+
 ## 3. Fases siguientes
 
 | # | Fase | Qué se hace | Hecho cuando |
@@ -33,7 +38,7 @@ Problema: con Poly Pizza bloqueado (403 de Cloudflare), los pedestales dependía
 | 4 | **Ciclo de siembra periódico** | `library gaps` → `library:draw` con Sonnet sobre las 30–50 palabras principales → revisión visual → `library import`. Presupuesto: ~$0,0034 por objeto (50 objetos ≈ $0,17). | Una tanda por semana de pruebas o al cambiar de demo; cada tanda sube la tasa de aciertos. |
 | 5 | **Galería de revisión visual** | Página de depuración (`?demo=biblioteca`) que dibuja la biblioteca en rejilla con etiqueta y botones aprobar / rechazar sobre `/api/library`. Hoy la revisión se hizo con una página temporal. | Se revisan 50 objetos en menos de 5 minutos sin tocar la terminal. |
 | 6 | **`.glb` propios** | Pipeline para tus modelos de Blender: exportar `.glb`, comprimir (skill `gltf-compression`: texturas WebP 1024 px), `library add-glb`, Git LFS. Tienen prioridad sobre las recetas. | Cinco `.glb` propios en la biblioteca, cada uno ≤ 500 KB y verificado en el pedestal en navegador. |
-| 7 | **Calidad del respaldo** | Mejorar el prompt de Haiku (paleta clara, grosor mínimo, proporciones) para el resto de la cola larga; el cliente ya ajusta tamaño y aclara colores oscuros (PR #87). Probar con el mismo conjunto de 12 objetos antes y después. | Revisión visual lado a lado mejora sin subir el costo por pieza por encima de $0,0003. |
+| 7 | **Calidad del respaldo** | Hecho (prompt refinado, §2b). Pendiente: pasar el conjunto de 24 objetos de prueba como regresión visual antes de cambiar el prompt. | Se conserva la calidad de §2b tras cualquier cambio de prompt. |
 
 ## 4. Decisiones y riesgos
 
