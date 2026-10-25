@@ -132,9 +132,9 @@ describe('generateMuseumStream', () => {
 
 describe('describeAiError', () => {
   it('maps statuses to the same messages as before streaming', () => {
-    expect(describeAiError(503)).toContain('no está configurada')
+    expect(describeAiError(503)).toContain('Aris no está disponible')
     expect(describeAiError(429)).toContain('Demasiadas')
-    expect(describeAiError(502)).toContain('No pudimos generar')
-    expect(describeAiError()).toContain('No pudimos generar')
+    expect(describeAiError(502)).toContain('Aris no pudo generar')
+    expect(describeAiError()).toContain('Aris no pudo generar')
   })
 })

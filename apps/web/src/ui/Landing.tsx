@@ -91,7 +91,7 @@ export function Landing() {
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el museo sin IA con todo el texto.`)
+      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el museo sin Aris con todo el texto.`)
       return
     }
     setValidationError(null)
@@ -209,7 +209,7 @@ export function Landing() {
         ) : attachments.length > 0 ? (
           <span>
             {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
-            «Generar con IA»
+            «Generar con Aris»
           </span>
         ) : result.ok ? (
           <span>
@@ -257,7 +257,7 @@ export function Landing() {
         disabled={!input.trim() && attachments.length === 0}
         onClick={generateWithAi}
       >
-        Generar con IA
+        Generar con Aris
       </button>
     </>
   )

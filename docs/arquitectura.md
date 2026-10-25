@@ -44,7 +44,7 @@ packages/
 ┌────────── Navegador ──────────────────────────────────────────────────────────┐
 │ Landing: texto o archivos (pdf/docx/xlsx/csv/txt) → texto plano en el navegador   │
 │   · looksLikeTopic(): 1 línea ≤200 car. = tema; si no = apuntes              │
-│   · "Generar con IA" → POST /api/generate-museum                             │
+│   · "Generar con Aris" → POST /api/generate-museum                           │
 │   · o parsePalace() local (sin IA): texto, JSON o CSV                        │
 │                                                                              │
 │ MuseumSchema.safeParse(respuesta)  →  store.enterPalace(palace, apuntes)     │
