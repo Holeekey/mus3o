@@ -53,7 +53,6 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 En la interfaz la IA se presenta como **Aris** (botón, avisos de construcción y errores). Los errores del servidor ("IA no configurada") nunca se muestran tal cual: `lib/api.ts#describeAiError` los traduce.
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
-| Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
 
 - Mensajes de error y "demasiadas solicitudes" (429) ya están manejados.
