@@ -34,7 +34,7 @@ describe("enrichMuseum", () => {
     expect(JSON.stringify(base)).toBe(snapshot);
     const room = out.rooms[0];
     expect(room.imageSearch).toEqual({ wikiTitle: room.name, lang: "es", context: base.title });
-    expect(room.pieces[0].imageSearch).toEqual({ wikiTitle: "José Antonio Páez", lang: "es", context: room.name });
+    expect(room.pieces[0].imageSearch).toEqual({ wikiTitle: "José Antonio Páez", lang: "es", context: `${room.name} · ${base.title}` });
   });
 
   it("keeps an existing imageSearch", () => {
@@ -126,5 +126,56 @@ describe("resolver retrieval", () => {
     };
     expect(await resolveImage({ wiki: "Zzz Qqq", context: "Xyz", lang: "es" })).toBeNull();
     expect(calls.some((c) => c.includes("/page/summary/Totalmente"))).toBe(false);
+  });
+
+  it("rejects search hits that only share a loose word (Liberación → Operación Liberación del Pueblo)", async () => {
+    handler = (url) => {
+      if (url.includes("list=search")) return json({ query: { search: [{ title: "Operación Liberación del Pueblo" }, { title: "Agenda Venezuela" }] } });
+      if (url.includes("/page/summary/Operaci")) return json(summary("Operación_Liberación_del_Pueblo", true));
+      if (url.includes("commons.wikimedia.org")) return json({});
+      return json({}, 404);
+    };
+    expect(await resolveImage({ wiki: "Liberación de Venezuela", context: "Batalla de Carabobo", lang: "es" })).toBeNull();
+    expect(calls.some((c) => c.includes("/page/summary/Operaci"))).toBe(false);
+    expect(calls.some((c) => c.includes("/page/summary/Agenda"))).toBe(false);
+  });
+
+  const commonsFile = (title: string, mime = "image/jpeg") => ({
+    query: {
+      pages: {
+        "1": {
+          title: `File:${title}`,
+          index: 1,
+          imageinfo: [{ mime, url: `https://upload.wikimedia.org/a/ab/${title}`, thumburl: `https://upload.wikimedia.org/thumb/a/ab/${title}/960px.jpg`, descriptionurl: "https://commons.wikimedia.org/x", extmetadata: {} }],
+        },
+      },
+    },
+  });
+
+  it("ignores Commons files unrelated to the piece title in the free-text fallback", async () => {
+    handler = (url) => {
+      if (url.includes("list=search")) return json({ query: { search: [] } });
+      if (url.includes("generator=search")) return json(commonsFile("Bretón de los Herreros - IA bretndelosherre00degoog.jpg"));
+      return json({}, 404);
+    };
+    expect(await resolveImage({ wiki: "Caballería llanera", context: "Batalla de Carabobo", lang: "es" })).toBeNull();
+  });
+
+  it("keeps Commons files that match the piece title", async () => {
+    handler = (url) => {
+      if (url.includes("list=search")) return json({ query: { search: [] } });
+      if (url.includes("generator=search")) return json(commonsFile("Lanceros de Páez en Carabobo.jpg"));
+      return json({}, 404);
+    };
+    expect((await resolveImage({ wiki: "Lanceros de Páez", context: "Batalla de Carabobo", lang: "es" }))?.title).toBe("Lanceros de Páez en Carabobo");
+  });
+
+  it("never uses book scans (DjVu, TIFF) as a painting", async () => {
+    handler = (url) => {
+      if (url.includes("list=search")) return json({ query: { search: [] } });
+      if (url.includes("generator=search")) return json(commonsFile("Batallón Rifles.djvu", "image/vnd.djvu"));
+      return json({}, 404);
+    };
+    expect(await resolveImage({ wiki: "Batallón Rifles", context: "Batalla de Carabobo", lang: "es" })).toBeNull();
   });
 });

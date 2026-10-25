@@ -43,6 +43,7 @@ import {
 import { attachImageSearches, retrieveSources } from "./enrich";
 import { hydrateMuseumAssets, polyEnabled } from "./polyPizza";
 import { applyDeterministicModels } from "./fallbackShapes";
+import { applyLibrary, recordGenerated } from "./library";
 import { fillMissingModels } from "./modelFallback";
 
 const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
@@ -99,24 +100,46 @@ export function enrichMuseum(museum: Museum, notes?: string): Museum {
   return notes === undefined ? images : retrieveSources(attachSources(images, notes), notes);
 }
 
-/** Buscar primero: trae assets y, solo para las piezas que quedaron sin modelo, la IA dibuja un respaldo. */
+/** Piezas que pasaron de no tener modelo creado a tenerlo entre dos etapas, para registrarlas en la biblioteca. */
+function newlyDrawn(before: Museum, after: Museum, origin: "ai" | "deterministic") {
+  const was = new Map(before.rooms.flatMap((r) => r.pieces).map((p) => [p.id, p]));
+  return after.rooms.flatMap((r) =>
+    r.pieces.flatMap((p) => {
+      const prev = was.get(p.id);
+      if (!prev || prev.dynamicAsset || prev.model?.type === "procedural" || p.model?.type !== "procedural") return [];
+      return [{ keyword: p.searchKeyword, title: p.title, parts: p.model.parts, origin }];
+    }),
+  );
+}
+
+/**
+ * Orden de prioridad por pieza: 1) biblioteca propia (aprobada), 2) Poly Pizza, 3) Haiku dibuja un respaldo, 4) receta
+ * determinista. Lo dibujado en 3 y 4 se registra como pendiente en la biblioteca para que lo revises y, si te gusta,
+ * gane prioridad en las siguientes generaciones.
+ */
 export async function resolveModels(museum: Museum): Promise<Museum> {
-  const hydrated = await hydrateMuseumAssets(museum);
-  if (!process.env.ANTHROPIC_API_KEY) return applyDeterministicModels(hydrated);
-  const modelName = FALLBACK_MODEL();
-  // Último respaldo, sin IA ni red: lo que ni Poly Pizza ni Haiku resolvieron recibe un modelo procedural fijo.
-  return applyDeterministicModels(await fillMissingModels(hydrated, async (prompt, maxTokens) => {
-    const res = await getClient().messages.create({
-      model: modelName,
-      ...noThinking(modelName),
-      max_tokens: maxTokens,
-      system: FALLBACK_MODEL_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    }, { timeout: 20_000, maxRetries: 0 });
-    const u = res.usage;
-    console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
-    return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  }));
+  const own = await applyLibrary(museum);
+  const hydrated = await hydrateMuseumAssets(own.museum, undefined, undefined, own.resolved);
+  let current = hydrated;
+  if (process.env.ANTHROPIC_API_KEY) {
+    const modelName = FALLBACK_MODEL();
+    current = await fillMissingModels(hydrated, async (prompt, maxTokens) => {
+      const res = await getClient().messages.create({
+        model: modelName,
+        ...noThinking(modelName),
+        max_tokens: maxTokens,
+        system: FALLBACK_MODEL_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: prompt }],
+      }, { timeout: 20_000, maxRetries: 0 });
+      const u = res.usage;
+      console.log(`tokens (respaldo): entrada ${u.input_tokens}, salida ${u.output_tokens}`);
+      return res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    });
+  }
+  // Último respaldo, sin IA ni red: lo que nadie resolvió recibe un modelo procedural fijo.
+  const done = applyDeterministicModels(current);
+  await recordGenerated([...newlyDrawn(hydrated, current, "ai"), ...newlyDrawn(current, done, "deterministic")]);
+  return done;
 }
 
 export type GenerateInput = { topic: string } | { notes: string };

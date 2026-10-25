@@ -262,6 +262,7 @@ export function Room({
             diorama={a.diorama}
             roomId={a.roomId}
             title={room.title}
+            alternatives={a.alternatives}
           />
         </Reveal>
       ))}

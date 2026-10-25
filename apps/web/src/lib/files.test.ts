@@ -20,6 +20,31 @@ async function docx(paragraphs: string[]): Promise<File> {
   return new File([await zip.generateAsync({ type: 'arraybuffer' })], 'apuntes.docx')
 }
 
+/** PDF mínimo válido: una línea de texto por página (Helvetica), con la tabla xref calculada. */
+function pdf(pages: string[][], name = 'apuntes.pdf'): File {
+  const objs: string[] = []
+  const kids = pages.map((_, i) => `${3 + i * 2} 0 R`).join(' ')
+  objs.push('<< /Type /Catalog /Pages 2 0 R >>')
+  objs.push(`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`)
+  const font = 3 + pages.length * 2
+  pages.forEach((lines) => {
+    const ops = lines.map((l, j) => `BT /F1 12 Tf 72 ${720 - j * 20} Td (${l}) Tj ET`).join('\n')
+    objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${font} 0 R >> >> /Contents ${objs.length + 2} 0 R >>`)
+    objs.push(`<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`)
+  })
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
+  let out = '%PDF-1.4\n'
+  const offsets = objs.map((o, i) => {
+    const at = out.length
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`
+    return at
+  })
+  const xref = out.length
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`
+  return new File([out], name)
+}
+
 async function xlsx(rows: string[][]): Promise<File> {
   const zip = new JSZip()
   zip.file(
@@ -54,13 +79,14 @@ async function xlsx(rows: string[][]): Promise<File> {
 
 describe('fileKindOf', () => {
   it('recognizes every supported extension, case-insensitively', () => {
-    expect(['a.docx', 'b.XLSX', 'c.csv', 'd.txt', 'e.md', 'f.json'].map(fileKindOf)).toEqual([
+    expect(['a.docx', 'b.XLSX', 'c.csv', 'd.txt', 'e.md', 'f.json', 'g.PDF'].map(fileKindOf)).toEqual([
       'docx',
       'xlsx',
       'csv',
       'txt',
       'md',
       'json',
+      'pdf',
     ])
     expect(['a.png', 'b.JPG', 'c.jpeg', 'd.webp'].map(fileKindOf)).toEqual(['image', 'image', 'image', 'image'])
   })
@@ -120,6 +146,19 @@ describe('readTextAttachment', () => {
   it('reads a .xlsx spreadsheet', async () => {
     const result = await readTextAttachment(await xlsx([['Tema', 'Concepto'], ['Células', 'Núcleo']]))
     expect(result).toEqual({ name: 'tabla.xlsx', kind: 'xlsx', text: 'Tema: Células; Concepto: Núcleo' })
+  })
+
+  it('reads the text of every page of a .pdf', async () => {
+    const result = await readTextAttachment(pdf([['Batalla de Carabobo', '24 de junio de 1821'], ['Bolivar y Paez']]))
+    expect(result).toEqual({ name: 'apuntes.pdf', kind: 'pdf', text: 'Batalla de Carabobo\n24 de junio de 1821\nBolivar y Paez' })
+  })
+
+  it('explains that a PDF without text is probably a scan', async () => {
+    await expect(readTextAttachment(pdf([[]], 'escaneo.pdf'))).rejects.toThrow('no tiene texto seleccionable')
+  })
+
+  it('reports a broken PDF clearly', async () => {
+    await expect(readTextAttachment(new File(['no soy un pdf'], 'roto.pdf'))).rejects.toThrow('No pudimos leer')
   })
 
   it('rejects empty files', async () => {

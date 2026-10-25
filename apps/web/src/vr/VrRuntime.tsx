@@ -1,7 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { dioramaFx, dioramaRequest, useDioramaStore } from '../diorama/dioramaStore'
+import { dioramaFx, dioramaRequest, dioramaWalk, useDioramaStore } from '../diorama/dioramaStore'
+import { DIORAMA_ORIGIN_XZ, validateDioramaTeleport } from '../diorama/walk'
 import { repeatGuide } from '../diorama/guideStore'
 import { introState } from '../intro/store'
 import { canOpenDoor } from '../palace/keys'
@@ -10,6 +11,9 @@ import { pieceKind } from '../palace/pieceKind'
 import { isDoorOpen, useStore } from '../store'
 import { DWELL_DEFAULTS, dwellIdle, forceDwellFire, updateDwell, type DwellState, type DwellTarget } from './dwell'
 import { occluderDistance, pickGazeTarget, type GazeCandidate, type GazeHit, type Ray } from './gaze'
+import { calibState } from './calib'
+import { comfortFactor, comfortView, pulseVignette, reloadComfort, stepVignette } from './comfort'
+import { disposeStereo, renderStereo } from './distort'
 import { head } from './head'
 import {
   buttonsIdle,
@@ -31,6 +35,7 @@ import {
 import { rigOffset } from './rig'
 import { ConceptPanel, ExitButton } from './VrPanel'
 import { FloorMarker, Reticle, Veil } from './Reticle'
+import { Vignette } from './Vignette'
 import { activeColliders, corridorEnds, doorDestination, validateTeleport } from './teleport'
 import { useVr, vrRuntime } from './runtime'
 import { EXIT_BUTTON, gazeView, PANEL_BUTTONS, PANEL_DIST, PANEL_H, PANEL_W } from './view'
@@ -47,8 +52,6 @@ import { EXIT_BUTTON, gazeView, PANEL_BUTTONS, PANEL_DIST, PANEL_H, PANEL_W } fr
 // y mover el rig desplaza el espacio de referencia de la sesión.
 
 const EYE = 1.7
-const CARDBOARD_FOV = 85
-const EYE_SEP = 0.064
 const TELEPORT_OUT = 0.18
 const TELEPORT_IN = 0.28
 const LOOK_AWAY_RAD = THREE.MathUtils.degToRad(55)
@@ -59,7 +62,7 @@ const rig = { x: 0, y: EYE, z: 0, yaw: 0, init: false, skip: false, base: null a
 const last = { x: 0, z: 0, yaw: 0 }
 const snap = { x: 0, y: 0, z: 0, yaw: 0 }
 const fullYaw = { v: 0 }
-const tele = { phase: 'idle' as 'idle' | 'out' | 'in', x: 0, z: 0 }
+const tele = { phase: 'idle' as 'idle' | 'out' | 'in', x: 0, z: 0, dio: false }
 const gaze = { dwell: dwellIdle() as DwellState, lookAway: 0, hintShown: null as string | null, exitSet: false, exitDir: [0, -1] as [number, number] }
 
 const _e = new THREE.Euler()
@@ -67,7 +70,6 @@ const _q = new THREE.Quaternion()
 const _p = new THREE.Vector3()
 const _o = new THREE.Vector3()
 const _d = new THREE.Vector3()
-const _size = new THREE.Vector2()
 
 const camYaw = (cam: THREE.Object3D) => _e.setFromQuaternion(cam.quaternion, 'YXZ').y
 const wrap = (a: number) => ((((a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI
@@ -90,33 +92,6 @@ function applyXr(gl: THREE.WebGLRenderer) {
   const o = rigOffset(rig)
   const t = new XRRigidTransform({ x: o.position.x, y: o.position.y, z: o.position.z, w: 1 }, { x: o.orientation.x, y: o.orientation.y, z: o.orientation.z, w: o.orientation.w })
   gl.xr.setReferenceSpace(rig.base.getOffsetReferenceSpace(t))
-}
-
-// ---------- estéreo ----------
-
-const stereo = new THREE.StereoCamera()
-stereo.eyeSep = EYE_SEP
-stereo.aspect = 0.5
-
-/** Dos vistas lado a lado. La matriz del mundo se calcula una vez y no dos. */
-function renderStereo(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: THREE.PerspectiveCamera) {
-  gl.getSize(_size)
-  const w = _size.x
-  const h = _size.y
-  scene.updateMatrixWorld()
-  cam.updateMatrixWorld()
-  stereo.update(cam)
-  const auto = scene.matrixWorldAutoUpdate
-  scene.matrixWorldAutoUpdate = false
-  gl.setScissorTest(true)
-  gl.setScissor(0, 0, w / 2, h)
-  gl.setViewport(0, 0, w / 2, h)
-  gl.render(scene, stereo.cameraL)
-  gl.setScissor(w / 2, 0, w / 2, h)
-  gl.setViewport(w / 2, 0, w / 2, h)
-  gl.render(scene, stereo.cameraR)
-  gl.setScissorTest(false)
-  scene.matrixWorldAutoUpdate = auto
 }
 
 // ---------- mando y teclado ----------
@@ -190,8 +165,9 @@ function runPad(dt: number, session: XRSession | null, busy: boolean) {
     vrRuntime.move.ax = 0
     vrRuntime.move.az = 0
   } else {
-    vrRuntime.move.ax = ax
-    vrRuntime.move.az = az
+    const cf = comfortFactor()
+    vrRuntime.move.ax = ax * cf
+    vrRuntime.move.az = az * cf
   }
   const mv = stepMoving(padIn.moving, !busy && (ax !== 0 || az !== 0), dt)
   padIn.moving = mv.state
@@ -202,7 +178,13 @@ function runPad(dt: number, session: XRSession | null, busy: boolean) {
   const sk = stepSnap(padIn.keySnap, busy ? 0 : keys.turn, dt)
   padIn.keySnap = sk.state
   const dir = sp.dir !== 0 ? sp.dir : sk.dir
-  if (dir !== 0) rig.yaw += snapYawDelta(dir)
+  if (dir !== 0) {
+    rig.yaw += snapYawDelta(dir)
+    pulseVignette()
+  }
+  // Viñeta: mientras se empuja el stick o justo después de un giro (el movimiento sin cabeza es lo que más marea).
+  comfortView.pulse = Math.max(0, comfortView.pulse - dt)
+  comfortView.vignette = comfortView.on ? stepVignette(comfortView.vignette, mv.moving || comfortView.pulse > 0, dt) : 0
 }
 
 function usePressInputs(active: boolean) {
@@ -246,6 +228,29 @@ function usePressInputs(active: boolean) {
       window.removeEventListener('keydown', onKey)
     }
   }, [active])
+}
+
+// ---------- sombras ----------
+
+// Los mapas de sombra cuestan una pasada extra de dibujo por luz y el teléfono ya dibuja cada ojo: en VR se apagan
+// (los materiales se recompilan solos al cambiar el número de luces con sombra). ?vrshadows=1 las deja.
+const mutedLights = new Set<THREE.Light>()
+const keepShadows = () => new URLSearchParams(window.location.search).get('vrshadows') === '1'
+
+function muteShadows(scene: THREE.Scene) {
+  if (keepShadows()) return
+  scene.traverse((o) => {
+    const l = o as THREE.Light
+    if (l.isLight && l.castShadow) {
+      l.castShadow = false
+      mutedLights.add(l)
+    }
+  })
+}
+
+function restoreShadows() {
+  for (const l of mutedLights) l.castShadow = true
+  mutedLights.clear()
 }
 
 // ---------- mundo mirable ----------
@@ -339,11 +344,12 @@ function openPanel(conceptId: string, walls: World['walls']) {
   useVr.setState({ panelId: conceptId })
 }
 
-function requestTeleport(x: number, z: number) {
+function requestTeleport(x: number, z: number, dio = false) {
   if (tele.phase !== 'idle') return
   tele.phase = 'out'
   tele.x = x
   tele.z = z
+  tele.dio = dio
 }
 
 /** Marca de la mirada del frame: se guarda para que las acciones usen el mismo rayo. */
@@ -405,8 +411,19 @@ function describe(hit: GazeHit | null, w: World, layout: PalaceLayout, colliders
       return { hint: room ? `Ir a: ${room.title.slice(0, 30)}` : 'Cruzar el pasillo', act: () => requestTeleport(dest.x, dest.z), target: key }
     }
     case 'floor': {
+      if (st && useDioramaStore.getState().phase === 'inside') {
+        // Dentro del cuadro: coordenadas locales y las colisiones del propio cuadro (límites, obstáculos, agua).
+        const dw = dioramaWalk.model
+        if (!dw) return NONE
+        const from = { x: gazeRay.o[0] - DIORAMA_ORIGIN_XZ.x, z: gazeRay.o[2] - DIORAMA_ORIGIN_XZ.z }
+        const to = { x: hit.point[0] - DIORAMA_ORIGIN_XZ.x, z: hit.point[2] - DIORAMA_ORIGIN_XZ.z }
+        const dcheck = validateDioramaTeleport(dw.boxes, dw.field, from, to)
+        gazeView.floor = { show: true, valid: dcheck.ok, x: hit.point[0], y: hit.point[1], z: hit.point[2] }
+        if (!dcheck.ok) return NONE
+        return { hint: 'Ir aquí', act: () => requestTeleport(dcheck.x, dcheck.z, true), target: { key: 'floor', point: hit.point } }
+      }
       const check = validateTeleport(layout, colliders, { x: gazeRay.o[0], z: gazeRay.o[2] }, { x: hit.point[0], z: hit.point[2] })
-      gazeView.floor = { show: true, valid: check.ok, x: hit.point[0], z: hit.point[2] }
+      gazeView.floor = { show: true, valid: check.ok, x: hit.point[0], y: 0, z: hit.point[2] }
       if (!check.ok) return NONE
       return { hint: 'Ir aquí', act: () => requestTeleport(check.x, check.z), target: { key: 'floor', point: hit.point } }
     }
@@ -422,6 +439,7 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
   const world = useMemo(() => buildWorld(layout), [layout])
   const setDpr = useThree((s) => s.setDpr)
   const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
   const getState = useThree((s) => s.get)
   if (import.meta.env.DEV) (globalThis as unknown as { __vr?: Record<string, unknown> }).__vr!.getThree = getState
   const desktopCam = useMemo(() => ({ cam: null as THREE.Camera | null }), [])
@@ -432,13 +450,20 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
     if (!kind) return
     const cam = desktopCam.cam as THREE.PerspectiveCamera | null
     const prevFov = cam?.fov ?? 70
-    setDpr(Math.min(window.devicePixelRatio || 1, kind === 'cardboard' ? 1.25 : 1))
-    if (kind === 'cardboard' && cam) {
-      cam.rotation.order = 'YXZ'
-      cam.fov = CARDBOARD_FOV
+    reloadComfort()
+    // Resolución: el teléfono dibuja dos vistas (más una pasada de lente); 1,0 mantiene los fps. ?vrdpr= para probar otra.
+    const dprQ = Number(new URLSearchParams(window.location.search).get('vrdpr'))
+    setDpr(Math.min(window.devicePixelRatio || 1, Number.isFinite(dprQ) && dprQ > 0 ? Math.min(dprQ, 2) : 1))
+    const prevFar = cam?.far ?? 300
+    if (cam) {
+      cam.far = Math.min(cam.far, 120)
       cam.updateProjectionMatrix()
     }
+    if (kind === 'cardboard' && cam) cam.rotation.order = 'YXZ'
+    muteShadows(scene)
     return () => {
+      restoreShadows()
+      disposeStereo()
       const { size } = getState()
       setDpr(Math.min(1.5, window.devicePixelRatio || 1))
       gl.setScissorTest(false)
@@ -446,6 +471,7 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
       const dc = desktopCam.cam as THREE.PerspectiveCamera | null
       if (dc) {
         dc.fov = prevFov
+        dc.far = prevFar
         dc.updateProjectionMatrix()
         dc.position.set(rig.x, EYE, rig.z)
         dc.rotation.set(0, fullYaw.v, 0, 'YXZ')
@@ -509,6 +535,13 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
     snap.yaw = camYaw(cam)
   }, -999)
 
+  // Las luces con sombra que aparecen después (el mundo de un cuadro) también se apagan.
+  const shadowTick = useMemo(() => ({ n: 0 }), [])
+  useFrame((state) => {
+    if (!vrRuntime.active || ++shadowTick.n % 20 !== 0) return
+    muteShadows(state.scene)
+  }, 1)
+
   // Después de la lógica: integra, mira, actúa y recompone.
   useFrame((state, rawDt) => {
     const cam = state.camera
@@ -533,14 +566,22 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
   // Dibujado.
   useFrame((state) => {
     const { gl, scene, camera } = state
-    if (vrRuntime.active && vrRuntime.kind === 'cardboard') renderStereo(gl, scene, camera as THREE.PerspectiveCamera)
-    else gl.render(scene, camera)
+    if (vrRuntime.active && vrRuntime.kind === 'cardboard') {
+      const cam = camera as THREE.PerspectiveCamera
+      if (cam.fov !== calibState.calib.fov) {
+        cam.fov = calibState.calib.fov
+        cam.updateProjectionMatrix()
+      }
+      const vv = window.visualViewport
+      renderStereo(gl, scene, cam, calibState.calib, vv?.width ?? window.innerWidth)
+    } else gl.render(scene, camera)
   }, 3)
 
   if (!kind) return <Veil />
   return (
     <>
       <Reticle />
+      <Vignette />
       <FloorMarker />
       {/* El texto 3D suspende mientras carga su tipografía: cada pieza en su propio límite para no ocultar el resto. */}
       <Suspense fallback={null}>
@@ -594,8 +635,8 @@ function runGaze(cam: THREE.Camera, dt: number, w: World, layout: PalaceLayout) 
         })
       }
     }
-    // Dentro del cuadro no hay suelo al que teletransportarse (se camina con el mando o el teclado).
-    hit = pickGazeTarget(gazeRay, cands, { wallDistance: ds.phase === 'inside' ? Infinity : wallDist, floorMax: ds.phase === 'inside' ? 0 : 10 })
+    if (ds.phase === 'inside') hit = pickInDiorama(cands)
+    else hit = pickGazeTarget(gazeRay, cands, { wallDistance: wallDist, floorMax: 10 })
     const colliders = activeColliders(layout, (id) => isDoorOpen(st, id))
     // Mientras se empuja el stick no se arman teletransportes al suelo (caminar no debe disparar saltos).
     desc = suppressGazeTarget(hit?.cand.kind, vrRuntime.moving) ? NONE : describe(hit, w, layout, colliders)
@@ -652,6 +693,26 @@ function runGaze(cam: THREE.Camera, dt: number, w: World, layout: PalaceLayout) 
   }
 }
 
+/** Mirada dentro del cuadro: el suelo es el terreno (no el plano y = 0), así que el plano se ajusta a la altura de lo mirado. */
+function pickInDiorama(cands: GazeCandidate[]): GazeHit | null {
+  const field = dioramaWalk.model?.field
+  const lx = (x: number) => x - DIORAMA_ORIGIN_XZ.x
+  const lz = (z: number) => z - DIORAMA_ORIGIN_XZ.z
+  let g = field ? field.heightAt(lx(gazeRay.o[0]), lz(gazeRay.o[2])) : 0
+  const other = pickGazeTarget(gazeRay, cands, { floorMax: 0 }) // botón de salida, en coordenadas del mundo
+  let floor: GazeHit | null = null
+  for (let i = 0; i < 3; i++) {
+    const shifted: Ray = { o: [gazeRay.o[0], gazeRay.o[1] - g, gazeRay.o[2]], d: gazeRay.d }
+    floor = pickGazeTarget(shifted, [], { floorMax: 10 })
+    if (!floor || !field) break
+    const g2 = field.heightAt(lx(floor.point[0]), lz(floor.point[2]))
+    if (Math.abs(g2 - g) < 0.05) break
+    g = g2
+  }
+  if (other && (!floor || other.t < floor.t)) return other
+  return floor ? { ...floor, point: [floor.point[0], floor.point[1] + g, floor.point[2]] } : null
+}
+
 function exitCandidate(): GazeCandidate {
   const e = gazeView.exit
   const r = rightOf(e.yaw)
@@ -669,8 +730,11 @@ function runTeleport(dt: number) {
   if (tele.phase === 'out') {
     vrRuntime.fade = Math.min(1, vrRuntime.fade + dt / TELEPORT_OUT)
     if (vrRuntime.fade >= 1) {
-      rig.x = tele.x
-      rig.z = tele.z
+      if (tele.dio) dioramaWalk.goto = { x: tele.x, z: tele.z } // DioramaRuntime mueve al jugador; el rig absorbe el cambio
+      else {
+        rig.x = tele.x
+        rig.z = tele.z
+      }
       closePanel()
       tele.phase = 'in'
     }

@@ -61,3 +61,61 @@ html.vr-on body {
   text-shadow: 0 1px 3px #000;
   pointer-events: none;
 }
+
+/* El lienzo ocupa el área visual real (iOS: la barra de Safari y el indicador de inicio cambian el alto). */
+html.vr-on .palace {
+  inset: 0 auto auto 0;
+  width: var(--vr-w, 100vw);
+  height: var(--vr-h, 100dvh);
+}
+.vr-preset {
+  left: calc(50% + 28px);
+  transform: translateX(-50%);
+  opacity: 0.55;
+}
+.vr-tip {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.vr-cal {
+  flex-basis: 100%;
+}
+.vr-cal-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+.vr-cal-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vr-cal-presets .is-on {
+  outline: 2px solid currentColor;
+}
+.vr-cal-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vr-cal-field {
+  display: grid;
+  gap: 2px;
+  width: 5.5rem;
+}
+.vr-cal-field input {
+  width: 100%;
+  padding: 4px 6px;
+}
+.vr-cal-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.vr-cal-hint {
+  margin: 0;
+  opacity: 0.7;
+}

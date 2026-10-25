@@ -26,6 +26,38 @@ export function yawOf(q: Quaternion): number {
   return _euler.setFromQuaternion(q, 'YXZ').y
 }
 
+/** Ángulo de la pantalla en grados [0, 360): `screen.orientation.angle` (Safari 16.4+, Chrome) o `window.orientation` (iOS antiguo, -90 = 270). */
+export function normAngle(a: number): number {
+  return ((Math.round(a) % 360) + 360) % 360
+}
+export function screenAngle(): number {
+  const so = typeof screen !== 'undefined' ? screen.orientation?.angle : undefined
+  if (typeof so === 'number') return normAngle(so)
+  const wo = typeof window !== 'undefined' ? (window as unknown as { orientation?: number }).orientation : undefined
+  return typeof wo === 'number' ? normAngle(wo) : 0
+}
+
+const _dq = new Quaternion()
+const _axis = new Vector3()
+
+/**
+ * Gira `q` (marco del dispositivo: se multiplica por la derecha) con una velocidad angular `w` en rad/s sobre los ejes del dispositivo.
+ * Es la integración del giroscopio entre dos eventos de orientación: sin retraso, a diferencia de esperar al siguiente evento.
+ */
+export function integrateGyro(q: Quaternion, wx: number, wy: number, wz: number, dt: number): Quaternion {
+  const mag = Math.hypot(wx, wy, wz)
+  if (mag < 1e-6 || dt <= 0) return q
+  _axis.set(wx / mag, wy / mag, wz / mag)
+  return q.multiply(_dq.setFromAxisAngle(_axis, mag * dt))
+}
+
+/** Peso con que cada evento de orientación corrige la deriva del giroscopio integrado (0 = solo giroscopio, 1 = solo orientación). */
+export const GYRO_CORRECT = 0.06
+/** Segundos de predicción: el último giro medido se extrapola hasta que el fotograma llega a la pantalla (~1 frame). */
+export const PREDICT_S = 0.016
+/** Mayor intervalo de integración creíble (s): un evento retrasado no debe lanzar la cabeza. */
+const MAX_GYRO_DT = 0.05
+
 const _calib = new Quaternion()
 const _drag = new Quaternion()
 const _dragEuler = new Euler(0, 0, 0, 'YXZ')
@@ -33,11 +65,21 @@ const _raw = new Quaternion()
 
 type Sample = { alpha: number; beta: number; gamma: number }
 
+const DEG = Math.PI / 180
+const _devQ = new Quaternion()
+const _pred = new Quaternion()
+
 export const head = {
   /** OrientaciÃ³n actual de la cabeza (sin el giro del rig). Se actualiza con `update()`. */
   quat: new Quaternion(),
   source: 'none' as 'none' | 'sensor' | 'drag',
   sample: null as Sample | null,
+  /** Orientación fusionada (giroscopio + DeviceOrientation) en el marco del dispositivo, sin el ángulo de pantalla. */
+  fused: null as Quaternion | null,
+  /** Última velocidad angular (rad/s, ejes del dispositivo) y marca de tiempo; `gyroOn` si el teléfono la da. */
+  rate: new Vector3(),
+  rateT: 0,
+  gyroOn: false,
   calibrated: false,
   calYaw: 0,
   dragYaw: 0,
@@ -49,6 +91,10 @@ export const head = {
   start(sensorsGranted: boolean) {
     this.stop()
     this.sample = null
+    this.fused = null
+    this.gyroOn = false
+    this.rate.set(0, 0, 0)
+    this.rateT = 0
     this.calibrated = false
     this.dragYaw = 0
     this.dragPitch = 0
@@ -57,10 +103,26 @@ export const head = {
     const onOrient = (e: DeviceOrientationEvent) => {
       if (e.beta === null || e.alpha === null || e.gamma === null) return // escritorio: dispara un evento vacÃ­o
       this.sample = { alpha: e.alpha, beta: e.beta, gamma: e.gamma }
+      // Se guarda el cuaternión del dispositivo (sin pantalla) y se funde con el giroscopio. Sin suavizado: nada de filtro paso bajo.
+      deviceQuaternion(e.alpha, e.beta, e.gamma, 0, _devQ)
+      if (!this.fused || !this.gyroOn) this.fused = (this.fused ?? new Quaternion()).copy(_devQ)
+      else this.fused.slerp(_devQ, GYRO_CORRECT)
       if (this.source !== 'sensor') {
         this.source = 'sensor'
         useVr.setState({ sensors: 'ok' })
       }
+    }
+    // El giroscopio (rotationRate, °/s) se integra entre eventos de orientación: menos retraso y sin escalones.
+    const onMotion = (e: DeviceMotionEvent) => {
+      const r = e.rotationRate
+      if (!r || r.alpha === null || r.beta === null || r.gamma === null || !this.fused) return
+      const now = performance.now()
+      const dt = this.rateT ? Math.min(MAX_GYRO_DT, (now - this.rateT) / 1000) : 0
+      this.rateT = now
+      this.gyroOn = true
+      // alpha gira en torno a Z, beta a X, gamma a Y del dispositivo.
+      this.rate.set(r.beta * DEG, r.gamma * DEG, r.alpha * DEG)
+      integrateGyro(this.fused, this.rate.x, this.rate.y, this.rate.z, dt)
     }
     // Arrastrar mira alrededor (ratÃ³n en escritorio; en el telÃ©fono sirve para recentrar el giro).
     let down: { x: number; y: number } | null = null
@@ -78,7 +140,10 @@ export const head = {
     const onUp = () => {
       down = null
     }
-    if (sensorsGranted) window.addEventListener('deviceorientation', onOrient)
+    if (sensorsGranted) {
+      window.addEventListener('deviceorientation', onOrient)
+      window.addEventListener('devicemotion', onMotion)
+    }
     window.addEventListener('pointerdown', onDown)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -89,6 +154,7 @@ export const head = {
     }, 1500)
     this.cleanup = () => {
       window.removeEventListener('deviceorientation', onOrient)
+      window.removeEventListener('devicemotion', onMotion)
       window.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
@@ -101,6 +167,7 @@ export const head = {
     this.cleanup?.()
     this.cleanup = null
     this.sample = null
+    this.fused = null
     this.source = 'none'
   },
 
@@ -112,9 +179,11 @@ export const head = {
 
   /** Calcula `quat` para este frame. */
   update() {
-    if (this.source === 'sensor' && this.sample) {
-      const angle = (typeof screen !== 'undefined' && screen.orientation?.angle) || (window.orientation as number | undefined) || 0
-      deviceQuaternion(this.sample.alpha, this.sample.beta, this.sample.gamma, angle, _raw)
+    if (this.source === 'sensor' && this.fused) {
+      // Se aplica la última muestra en este mismo frame, con una predicción corta con el giro medido.
+      _pred.copy(this.fused)
+      if (this.gyroOn) integrateGyro(_pred, this.rate.x, this.rate.y, this.rate.z, PREDICT_S)
+      _raw.copy(_pred).multiply(_qz.setFromAxisAngle(_zee, -MathUtils.degToRad(screenAngle())))
       if (!this.calibrated) {
         this.calYaw = yawOf(_raw)
         this.calibrated = true

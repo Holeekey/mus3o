@@ -16,6 +16,18 @@ export function wheelScrollTarget<T extends { contains: (target: never) => boole
   return card.contains(target as never) ? null : card
 }
 
+const LINE_PX = 16
+
+/**
+ * Píxeles a desplazar por un evento de rueda. Firefox manda la rueda en líneas (`deltaMode` 1, unas 3 por
+ * muesca) y a veces en páginas (2): usado tal cual, la ficha bajaría 3 px por giro y parecería trabada.
+ */
+export function wheelPixels(e: { deltaY: number; deltaMode: number }, pageHeight: number): number {
+  if (e.deltaMode === 1) return e.deltaY * LINE_PX
+  if (e.deltaMode === 2) return e.deltaY * pageHeight
+  return e.deltaY
+}
+
 /**
  * Desplazamiento de una ficha larga: la rueda la mueve aunque se esté mirando la escena, y `more`
  * indica si queda contenido abajo (para mostrar el aviso). Se recalcula al cargar imágenes o fuentes.
@@ -28,7 +40,7 @@ export function useCardScroll(ref: RefObject<HTMLElement | null>): boolean {
     const update = () => setMore(hasMoreBelow(el))
     const onWheel = (e: WheelEvent) => {
       const card = wheelScrollTarget(el, e.target)
-      if (card) card.scrollBy({ top: e.deltaY })
+      if (card) card.scrollBy({ top: wheelPixels(e, card.clientHeight) })
     }
     update()
     el.addEventListener('scroll', update, { passive: true })
