@@ -47,7 +47,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 | Botón | Qué hace |
 |---|---|
-| Construir offline | Usa el parser local (`parsePalace`), sin IA ni servidor de generación (las imágenes de Wikimedia sí necesitan internet) |
+| Construir offline | Último botón de la fila, discreto (`btn-ghost`): "Generar con Aris" es el principal. Usa el parser local (`parsePalace`), sin IA ni servidor de generación (las imágenes de Wikimedia sí necesitan internet) |
 | Generar con Aris | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
 | Entrar al museo | Aparece tras generar con Aris |
 
