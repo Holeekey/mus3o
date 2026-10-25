@@ -1,4 +1,5 @@
 import { useStore } from '../store'
+import { reloadCalib } from './calib'
 import { parseVrFlag, selectVrMode, type VrKind } from './mode'
 import { useVr, vrRuntime } from './runtime'
 
@@ -91,6 +92,7 @@ async function startCardboard() {
   const granted = await sensorsP
   // head.ts usa three: se carga aquí y no al abrir la página (el módulo ya está en caché si la escena VR se montó).
   const { head } = await import('./head')
+  reloadCalib()
   head.start(granted)
   markActive('cardboard')
   document.addEventListener('visibilitychange', reacquireWakeLock)
