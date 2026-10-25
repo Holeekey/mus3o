@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { canOpenDoor, remainingToMemorize } from '../palace/keys'
 import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
@@ -7,8 +7,6 @@ import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage
 import { closeCard, interact, toggleMemorize } from '../scene/actions'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
-import { TIME_STEPS } from '../memory/model'
-import { useMemory } from '../memory/store'
 import { conceptIdList } from '../palace/conceptIds'
 import { inExamScope, isDoorOpen, useStore } from '../store'
 import { roomPalettes, DEFAULT_THEME, type RoomPalette } from '../theme'
@@ -21,12 +19,12 @@ import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
 import { Minimap } from './Minimap'
 import { Narrator } from './Narrator'
-import { SourceBlock } from './SourceBlock'
 import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
 import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
 import { useResumeKeys } from './resume'
+import { useLegendShown } from './legend'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -68,7 +66,6 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
         ) : concept.fact ? (
           <p className="card-meta">{concept.fact}</p>
         ) : null}
-        <SourceBlock concept={concept} />
         {concept.dynamicAsset?.license === 'CC-BY' && (
           <p className="card-meta">
             Modelo 3D «{concept.dynamicAsset.title}» por {concept.dynamicAsset.author || 'autor desconocido'} ·{' '}
@@ -164,8 +161,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const roomIds = useMemo(() => room.pedestals.map((p) => p.concept.id), [room])
   const roomMem = useRoomMemory(roomIds)
   const due = useDueCount()
-  const offsetDays = useMemory((s) => s.timeOffsetDays)
-  const setOffset = useMemory((s) => s.setOffset)
+  const roomDone = roomIds.filter((id) => memorized[id]).length
+  const legendShown = useLegendShown(locked && !open && !touch)
+  const [moreOptions, setMoreOptions] = useState(false)
 
   // Aviso de llave ganada: se muestra unos segundos.
   useEffect(() => {
@@ -196,6 +194,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         <p className="plaque-memory">
           {roomMem.learned ? `Memoria de la sala: ${Math.round(roomMem.strength * 100)}%` : 'Sala sin estudiar todavía'}
         </p>
+        {/* El progreso vive en el cartel de la sala: una caja menos sobre la escena. */}
+        <p className="plaque-progress">
+          {mode === 'explore'
+            ? `${roomDone} de ${roomIds.length} memorizadas · ${memorizedCount} de ${conceptCount} en total`
+            : `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`}
+        </p>
+        <div className="plaque-bar" aria-hidden>
+          <i style={{ width: `${mode === 'explore' ? (roomIds.length ? (roomDone / roomIds.length) * 100 : 0) : total ? (answered.length / total) * 100 : 0}%` }} />
+        </div>
       </div>
 
       <div className="hud-right">
@@ -206,14 +213,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
           </div>
         )}
         {!hasKey && currentRoomKey && <div className="key-badge">🗝️ Llave de {room.title}</div>}
-        <p className="hud-progress">
-          {mode === 'explore' ? (
-            <>{memorizedCount} de {conceptCount} memorizados</>
-          ) : (
-            <>Examen: {score} de {answered.length} correctas, faltan {total - answered.length}</>
-          )}
-        </p>
-        <p className={due > 0 ? 'hud-due hud-due-on' : 'hud-due'}>Repasos pendientes: {due}</p>
+        {due > 0 && <p className="hud-due hud-due-on">Repasos pendientes: {due}</p>}
       </div>
 
       {locked && <div className="crosshair" />}
@@ -257,11 +257,14 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <Narrator layout={layout} />
 
-      <p className="hud-legend">
-        <kbd>W A S D</kbd> moverse · <kbd>Shift</kbd> correr · {arisAvailable && <><kbd>T</kbd> hablar con Aris · </>}<kbd>Mouse</kbd> mirar · <kbd>Esc</kbd> pausa
-      </p>
+      {/* Lo mínimo para arrancar; la lista completa está en la pausa. */}
+      {legendShown && (
+        <p className="hud-legend">
+          <kbd>W A S D</kbd> moverte · <kbd>Mouse</kbd> mirar · <kbd>E</kbd> examinar · <kbd>Esc</kbd> pausa
+        </p>
+      )}
 
-      {locked && arisAvailable && (
+      {locked && arisAvailable && !open && (
         <button
           type="button"
           className="aris-trigger-btn"
@@ -309,7 +312,9 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               <p className="pause-keys">
                 <kbd>Enter</kbd> o clic fuera del panel para volver
                 <br />
-                <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
+                <kbd>W A S D</kbd> moverte · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar
+                <br />
+                <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> Aris · <kbd>N</kbd> narrador
                 {mode === 'exam' && (
                   <>
                     <br />
@@ -325,50 +330,35 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
                 {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
               </button>
-              <button className="btn btn-ghost" onClick={exitToLanding}>Editar apuntes</button>
+              {due > 0 && (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (startReview()) pointerLock.lock()
+                  }}
+                >
+                  Repasar lo pendiente ({due})
+                </button>
+              )}
               <VrButton />
             </div>
-            <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
-
-
-            <div className="memory-panel">
-              <button
-                className="btn btn-primary"
-                disabled={due === 0}
-                onClick={() => {
-                  if (startReview()) pointerLock.lock()
-                }}
-              >
-                Repasar lo pendiente{due > 0 ? ` (${due})` : ''}
-              </button>
-              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
-              <fieldset className="time-machine">
-                <legend>Simular el paso del tiempo</legend>
-                <div className="time-steps" role="group" aria-label="Días simulados">
-                  {TIME_STEPS.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className={offsetDays === d ? 'btn btn-step is-on' : 'btn btn-step'}
-                      aria-pressed={offsetDays === d}
-                      onClick={() => setOffset(d)}
-                    >
-                      {d === 0 ? 'Hoy' : `${d} ${d === 1 ? 'día' : 'días'}`}
-                    </button>
-                  ))}
+            {/* Lo secundario queda plegado: la pausa se lee de un vistazo. */}
+            <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
+              {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
+            </button>
+            {!moreOptions && <p className="muted pause-more-hint">Salir del museo · exploración libre</p>}
+            {moreOptions && (
+              <>
+                <div className="pause-actions pause-more-actions">
+                  <button className="btn btn-ghost" onClick={exitToLanding}>Salir del museo</button>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={30}
-                  step={1}
-                  value={Math.min(offsetDays, 30)}
-                  onChange={(e) => setOffset(Number(e.target.value))}
-                  aria-label="Días que han pasado"
-                />
-                <p className="muted memory-note">{offsetDays === 0 ? 'Es hoy.' : `Han pasado ${offsetDays} ${offsetDays === 1 ? 'día' : 'días'}.`}</p>
-              </fieldset>
-            </div>
+                <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
+
+                <div className="memory-panel">
+                  {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
