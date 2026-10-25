@@ -27,7 +27,8 @@ export function shiftPrincipalPoint(m: THREE.Matrix4, dx: number): void {
 
 function aim(eye: THREE.PerspectiveCamera, src: THREE.PerspectiveCamera, dx: number) {
   eye.matrixWorld.copy(src.matrixWorld)
-  eye.matrixWorldInverse.copy(src.matrixWorldInverse)
+  // StereoCamera solo actualiza matrixWorldInverse al dibujar (con un frame de retraso): se calcula aqui desde matrixWorld.
+  eye.matrixWorldInverse.copy(eye.matrixWorld).invert()
   eye.projectionMatrix.copy(src.projectionMatrix)
   shiftPrincipalPoint(eye.projectionMatrix, dx)
   eye.projectionMatrixInverse.copy(eye.projectionMatrix).invert()
