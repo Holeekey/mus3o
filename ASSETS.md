@@ -14,6 +14,8 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 | **Public Sans** | U.S. Web Design System / Google Fonts | [Google Fonts](https://fonts.google.com/specimen/Public+Sans) | SIL Open Font License, 1.1 | Fuente variable autoalojada para toda la interfaz; licencia en `apps/web/public/fonts/PublicSans-OFL.txt` |
 | **Gloock** | Veronica Burian, Lisandro Murphy | [Google Fonts](https://fonts.google.com/specimen/Gloock) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
 | **Hanken Grotesk** | Hanken Design Co. | [Google Fonts](https://fonts.google.com/specimen/Hanken+Grotesk) | SIL Open Font License, 1.1 | Archivo conservado; reemplazada por Public Sans en la interfaz |
+| **Marca mus3o** (logotipo y monograma "3D") | Equipo mus3o | — | Propia del proyecto | Fuentes en `assets/brand/logo-wordmark.svg` y `assets/brand/logo-mark.png`; derivados web en `apps/web/public/brand.svg`, `favicon.png` y `apple-touch-icon.png` |
+| **Busto de mármol** | Generado con Google Gemini para el equipo | — | Imagen generada por IA para uso del proyecto | Original en `assets/brand/marble-bust.png` (2752x1536); aún no se usa en la web |
 
 ---
 

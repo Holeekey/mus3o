@@ -23,7 +23,7 @@ El módulo de WebXR (~150 kB) y la escena VR (`vr/VrScene.tsx`) se cargan con `l
 - Al tocar "Ver en VR" (dentro del gesto): permiso de sensores (`DeviceOrientationEvent.requestPermission()` en iOS),
   pantalla completa, bloqueo a horizontal (donde se pueda) y `wakeLock` de pantalla.
 - Cámara a 1,7 m fija, sin balanceo (en un cuadro sigue la altura del terreno, suavizada). Resolución con DPR 1,0 (un iPhone tiene 3; `?vrdpr=` para probar otro), sin sombras, `far` 120 m.
-- Calibración, corrección de lente, cabeza y comodidad: ver §1b.
+- Calibración, separación de lentes, cabeza y comodidad: ver §1b.
 - Si no hay sensores (permiso denegado o escritorio), se mira arrastrando.
 - El HUD y el resto del DOM se ocultan (`vr/vr.css`); queda un botón ✕ abajo al centro para salir.
 
@@ -35,20 +35,15 @@ El módulo de WebXR (~150 kB) y la escena VR (`vr/VrScene.tsx`) se cargan con `l
 Ángulo de pantalla: `screen.orientation.angle` (Safari 16.4+, Chrome) con respaldo `window.orientation` (iOS: -90 ≡ 270); horizontal izquierda (90) y derecha (270) están probados por separado.
 `alpha` en iOS es relativo a un arranque arbitrario: se calibra al entrar y no se usa `webkitCompassHeading` (saltaría). Sin permiso de `devicemotion` (iOS pide ambos) se usa solo la orientación.
 
-**Estéreo y lente (`vr/distort.ts`, `vr/calib.ts`).** Cada ojo se dibuja a una textura y una pasada corrige el barril: radio de origen = r·(1 + k1·r² + k2·r⁴), con r en unidades de media altura y zoom para que el borde vertical quede justo.
-El centro de cada imagen se desplaza hacia el centro de la pantalla hasta caer sobre su lente (`lens`, mm del centro de la pantalla al centro de cada lente; ~32 mm en un VR Box, unos 20 px en un iPhone de 6,1" apaisado).
-Los mm se pasan a píxeles con `mmPerPx` (0,1655 iPhone, 0,159 Android; aproximado, se afina con `?vrmm=`). Sin k1, k2 ni lens se dibuja directo, sin pasada extra. El ancho que se usa es el de `visualViewport`
-(la barra de Safari y el indicador de inicio cambian el alto visible; el lienzo sigue a `--vr-w/--vr-h`). La app instalada (PWA, #83) no tiene barras.
+**Estéreo y separación de lentes (`vr/stereo.ts`, `vr/calib.ts`).** Cada ojo se dibuja directo a su mitad de la pantalla (viewport + scissor en píxeles CSS, sin textura intermedia ni distorsión de barril). La separación entre lentes se logra con **proyección descentrada** (off-axis): se desplaza el punto principal de cada ojo, así la imagen siempre llena su mitad (antes se remuestreaba la textura y los píxeles fuera de rango quedaban en negro).
+Para un desplazamiento horizontal `dx` en NDC, `P' = T(dx)·P`, que en una perspectiva es `elements[8] -= dx` (con `w = -z`, `x_ndc = P00·x/w − P02`, así que restar `dx` a `P02` mueve la imagen `+dx` hacia la derecha; está probado en `calib.test.ts`). El ojo izquierdo usa `+shift` (hacia el centro de la pantalla) y el derecho `-shift`.
+`shift = 2·offsetPx / (ancho de la mitad)`, con `offsetPx = (centro de la mitad − sep/2) / mmPerPx` y `sep` = distancia entre los centros de las dos lentes (mm). `StereoCamera` cachea sus matrices, por eso no se mutan: `stereo.ts` copia matrices y proyección a dos cámaras propias por ojo y aplica el desplazamiento absoluto en cada frame.
+Por defecto `sep` = auto: desplazamiento 0 (cada ojo centrado en su mitad). Los mm se pasan a píxeles con `mmPerPx` (0,1655 iPhone, 0,159 Android; aproximado, se afina con `?vrmm=`). El ancho usado es el de `visualViewport`.
 
-| Preset | FOV | k1 | k2 | Lente |
-|---|---|---|---|---|
-| VR Box (por defecto) | 92° | 0,22 | 0,06 | 32 mm |
-| Google Cardboard | 90° | 0,34 | 0,15 | 30 mm |
-| Sin corrección | 85° | 0 | 0 | — |
+**Pantalla completa en iPhone.** Al entrar en cardboard (`vr/enter.ts`) se añade `viewport-fit=cover` a la meta viewport (se restaura al salir) para que la página llegue bajo el notch y el indicador de inicio y las dos mitades sean simétricas; con eso `visualViewport` incluye las zonas seguras y el lienzo (`--vr-w/--vr-h`) ocupa toda la pantalla. Los botones ✕ y ⚙ respetan `env(safe-area-inset-bottom)`. La app instalada (PWA, #83) no tiene barras.
 
-Parámetros de URL (mandan sobre lo guardado): `?vrpreset=vrbox|cardboard|none` `?vrfov=` `?vripd=` (m, o mm si >1) `?vrk1=` `?vrk2=` `?vrlens=` (mm) `?vrmm=` `?vrdpr=` `?vrcomfort=0|1` `?vrshadows=1`.
-Antes de entrar (panel de pausa, "Ajustar el visor") hay botones de preset y campos numéricos; se guardan en `localStorage` (`mus3o.vr.calib`). Dentro del visor, el botón ◐ (abajo, junto a ✕) pasa al siguiente preset desde fuera sin quitarse el visor.
-**Los valores de los presets son estimaciones, no están medidos con un visor real**: se afinan en el teléfono.
+Panel de ajuste (⚙ dentro del visor, o "Ajustar el visor" en el panel de pausa): Separación −/+ (paso 1 mm, 50–75 mm, "auto (≈ N mm)" si no se tocó), Zoom −/+ (FOV, paso 4°, 60–110°), Restablecer. Se aplica en vivo y se guarda en `localStorage` (`mus3o.vr.calib.v2`); la clave antigua `mus3o.vr.calib` (presets con k1/k2/lens) se borra y se ignora.
+Parámetros de URL (mandan sobre lo guardado): `?vrfov=` `?vripd=` (m, o mm si >1) `?vrsep=` (mm) `?vrmm=` `?vrdpr=` `?vrcomfort=0|1` `?vrshadows=1`. Se quitaron la distorsión de barril (`k1`/`k2`) y los presets VR Box / Cardboard.
 
 **Comodidad (`vr/comfort.ts`, `vr/Vignette.tsx`).** "Modo cómodo" (activo por defecto, casilla en el panel de ajustes): marcha ~1,4 m/s en el palacio (~1,6 en el cuadro) en vez de 3,4, y viñeta (bordes negros, dibujada en la escena para que salga bien en cada ojo, en cardboard y en WebXR)
 mientras se empuja el stick o justo tras un giro por pasos. El giro sigue siendo por pasos de 30°. Sombras apagadas y `far` a 120 m mientras dura la VR; `AdaptiveQuality` no actúa en VR.
@@ -150,7 +145,7 @@ cloudflared tunnel --url http://localhost:5173    # terminal 3
 - Verificado en Chrome de escritorio con `?vr=cardboard` (capturas y simulación de mirada) y con el emulador de WebXR
   (inicio y fin de sesión, render). **No verificado en un teléfono real**: el movimiento por *rig* en WebXR solo está probado
   con una prueba unitaria de la matemática (el emulador ignora el desplazamiento del espacio de referencia).
-- La corrección de lente y los presets no están medidos con un visor real (ver §1b). `mmPerPx` es aproximado.
+- La separación de lentes no está medida con un visor real (ver §1b). `mmPerPx` es aproximado.
 - WebXR dentro de un cuadro: el emulador de escritorio no se pudo arrancar en esta revisión, así que el salto por mirada y la marcha en WebXR solo tienen la prueba unitaria de la matemática; hay que confirmarlos en el teléfono.
 - El mando está probado con un gamepad simulado (`navigator.getGamepads` sustituido en Chrome de escritorio) y con pruebas unitarias; **no con el mando real de un VR Box**: qué ejes y botones expone cada modelo, y si Chrome de Android lo ve al emparejarlo, solo se confirma en el teléfono.
 - Giro por pasos en WebXR: gira alrededor del origen del rig, no de la cabeza; con la cabeza lejos del centro del área el punto de vista se desplaza un poco.

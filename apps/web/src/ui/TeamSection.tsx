@@ -59,6 +59,9 @@ export function TeamPage() {
               <div className="team-text">
                 <strong className="team-name">{m.name}</strong>
                 <p className="team-bio">{m.bio}</p>
+                <a className="team-link" href={m.profile} target="_blank" rel="noopener noreferrer" aria-label={`Perfil de LinkedIn de ${m.name}`}>
+                  LinkedIn <span aria-hidden>↗</span>
+                </a>
               </div>
             </li>
           ))}
