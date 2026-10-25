@@ -207,8 +207,8 @@ conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre t
 
 Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
 (`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
-(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
-por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
+(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) llamadas en paralelo por lotes de 6 piezas (máx. 24) con 2 a 5 partes procedurales
+por pieza (350 tokens de salida por pieza de tope); una salida cortada se recupera hasta la última pieza completa, las partes se validan con `PartSchema` y las inválidas se descartan. Si un lote falla, solo sus piezas conservan el glifo. (Con una sola llamada de 18 piezas la salida llegó al tope, el JSON quedó truncado y todas las piezas se quedaron con el glifo plano.) Solo corre con
 `POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
 
 ### Formato DSL actual y tolerancia del parser
