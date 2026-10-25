@@ -438,7 +438,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 
 /* Botones de la landing: píldoras sin borde y todas del mismo tamaño; solo construir va en mostaza. */
 .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 4px; }
-.landing-workbench .btn {
+:is(.landing-workbench, .lobby-wall) .btn {
   min-height: 52px;
   padding: 12px 22px;
   border: 0;
@@ -451,12 +451,12 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   text-decoration: none;
   transition: transform 0.15s ease, background 0.15s ease;
 }
-.landing-workbench .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: none; background: color-mix(in srgb, var(--bg) 10%, var(--surface)); }
-.landing-workbench .btn:active:not(:disabled) { transform: none; box-shadow: none; }
-.landing-workbench .btn-primary { background: var(--accent); color: var(--ink); }
-.landing-workbench .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, #000); }
-.landing-workbench .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.landing-workbench .btn-primary:focus-visible { outline-color: var(--surface); }
+:is(.landing-workbench, .lobby-wall) .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: none; background: color-mix(in srgb, var(--bg) 10%, var(--surface)); }
+:is(.landing-workbench, .lobby-wall) .btn:active:not(:disabled) { transform: none; box-shadow: none; }
+:is(.landing-workbench, .lobby-wall) .btn-primary { background: var(--accent); color: var(--ink); }
+:is(.landing-workbench, .lobby-wall) .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, #000); }
+:is(.landing-workbench, .lobby-wall) .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+:is(.landing-workbench, .lobby-wall) .btn-primary:focus-visible { outline-color: var(--surface); }
 
 /* Maqueta: se abre a pantalla completa con el scroll y se vuelve a cerrar.
    --open (0..1) lo escribe useShowcaseScroll; el canvas no cambia de tamaño, solo el recorte. */
@@ -493,6 +493,97 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   opacity: clamp(0, (var(--open) - 0.6) * 2.5, 1);
   transform: translateY(calc((1 - var(--open)) * 24px));
 }
+/* "Crea tu palacio" colgado en la pared del lobby (drei Html, 1 px = 5 mm). */
+.lobby-wall {
+  --panel-radius: 18px;
+  --panel-line: color-mix(in srgb, var(--ink) 12%, transparent);
+  padding: 24px;
+  background: var(--bg);
+  /* Esquinas rectas: el marco 3D es rectangular y una esquina redondeada deja ver el fondo. */
+  border-radius: 0;
+}
+/* Misma sección "Crea tu palacio", con tamaños fijos (los vw no tienen sentido dentro de la escena 3D). */
+.lobby-workbench { display: flex; flex-direction: column; gap: 18px; height: 100%; }
+.lobby-wall .workbench-head { margin-bottom: 0; }
+.lobby-wall .workbench-head h2 { font-size: 64px; }
+.lobby-wall .workbench-head p { font-size: 20px; margin-top: 10px; }
+.lobby-wall .workbench-grid { flex: 1; min-height: 0; }
+.lobby-wall .editor textarea { min-height: 0; }
+.lobby-wall .presets-section { min-height: 0; }
+.walk-use {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 34px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+.walk-use kbd { font: inherit; }
+.walk-bar { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 10px; }
+.walk-bar-btn {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(31, 20, 17, 0.78);
+  color: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.walk-bar-btn:hover { background: rgba(31, 20, 17, 0.92); }
+.walk-bar-btn kbd { font: inherit; color: var(--accent); margin-left: 6px; }
+.walk-bar-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Caminar por el lobby: invitación al centro cuando la sala llena la pantalla, y ayuda mientras se camina. */
+.walk-cta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  animation: walk-cta-in 0.35s ease-out;
+}
+.walk-cta:hover { background: color-mix(in srgb, var(--accent) 88%, #000); }
+.walk-cta:focus-visible { outline: 3px solid var(--surface); outline-offset: 3px; }
+@keyframes walk-cta-in { from { opacity: 0; transform: translate(-50%, -40%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.walk-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(31, 20, 17, 0.72);
+  color: var(--surface);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.walk-hint kbd { font: inherit; font-weight: 700; color: var(--accent); }
+/* Mira en el centro, como en el museo. */
+.walk-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) { .walk-cta { animation: none; } }
 .plinth-title { margin: 0; font-family: var(--font-display); font-size: clamp(1.15rem, 2.4vw, 1.9rem); font-weight: 700; }
 .plinth-sub { margin: 2px 0 0; font-size: 0.95rem; color: var(--ink-muted); }
 

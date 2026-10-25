@@ -70,8 +70,8 @@ export const ROOM_COLORS = ['#2EE6D6', '#FF3DA5', '#FFB547', '#8B7CFF', '#7CFF6B
 const MONUMENTS: Monument[] = ['icosahedron', 'torusKnot', 'octahedron', 'dodecahedron', 'cone', 'torus']
 const SHAPES: Shape[] = ['icosahedron', 'octahedron', 'dodecahedron', 'tetrahedron', 'torus', 'cone', 'box', 'sphere']
 
-const WALL_T = 0.4
-const DOOR_W = 2.8
+export const WALL_T = 0.4
+export const DOOR_W = 2.8
 const CORRIDOR_LEN = 6
 const PEDESTAL_SPACING = 2.6
 const PEDESTAL_SIZE = 0.9

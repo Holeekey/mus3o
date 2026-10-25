@@ -8,16 +8,14 @@ import { canOpenDoor } from '../palace/keys'
 import { handleDioramaKey, isDioramaActive, useDioramaStore } from '../diorama/dioramaStore'
 import { allowedKeys, findDoor } from '../palace/inputKeys'
 import { canListen } from '../lib/voice'
-import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
+import { roomAt, type PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import { inExamScope, isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
 import { consumeTouchLook, touchInput } from './touchInput'
+import { EYE, stepWalk } from './walk'
 
-const EYE = 1.7
-const WALK = 4.5
-const RUN = 8
 const REACH = 3.2
 
 const onLock = () => useStore.getState().set({ locked: true })
@@ -132,40 +130,11 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     f.normalize()
 
     if (s.locked) {
-      const keyAx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      const keyAz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      const keyRunning = k.ShiftLeft || k.ShiftRight
-
-      const touchAx = touchInput.moveX
-      const touchAz = touchInput.moveZ
-      const touchRunning = touchInput.isRunning
-
-      const ax = keyAx !== 0 ? keyAx : touchAx
-      const az = keyAz !== 0 ? keyAz : touchAz
-      const isRunning = keyRunning || touchRunning
-
-      if (ax !== 0 || az !== 0) {
-        const speed = (isRunning ? RUN : WALK) * dt
-        // derecha = forward × up = (-f.z, 0, f.x)
-        let dx = f.x * az - f.z * ax
-        let dz = f.z * az + f.x * ax
-        const len = Math.hypot(dx, dz)
-        if (len > 0.001) {
-          const mag = Math.min(1, len)
-          dx = (dx / len) * speed * mag
-          dz = (dz / len) * speed * mag
-
-          // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
-          const doorColliders = (layout.doors ?? [])
-            .filter((d) => !isDoorOpen(s, d.id))
-            .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
-          const totalColliders = [...layout.colliders, ...doorColliders]
-
-          const next = moveWithCollisions(totalColliders, camera.position.x, camera.position.z, dx, dz)
-          camera.position.x = next.x
-          camera.position.z = next.z
-        }
-      }
+      // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
+      const doorColliders = (layout.doors ?? [])
+        .filter((d) => !isDoorOpen(s, d.id))
+        .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
+      stepWalk(camera, f, k, dt, [...layout.colliders, ...doorColliders])
     }
 
     playerPose.x = camera.position.x
