@@ -274,7 +274,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       <TouchControls layout={layout} />
 
-      {!locked && !(open && inExamScope({ mode, reviewIds }, open.concept.id)) && (
+      {/* Con una ficha abierta no hay pausa: el puntero suelto sirve para leerla, desplazarla y abrir sus enlaces. */}
+      {!locked && !open && (
         <div className="pause">
           <div className="pause-panel">
             <p className="pause-sub">{palace?.title}</p>

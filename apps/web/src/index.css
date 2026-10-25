@@ -787,6 +787,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .card-more, .card-sources { margin: 12px 0 0; padding-top: 10px; border-top: 2px solid var(--line); }
 .card-more h3, .card-sources h3 { margin: 0 0 4px; font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
 .card-more p { margin: 0; font-size: 0.92rem; line-height: 1.5; color: var(--ink); }
+.card-more-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 4); overflow: hidden; }
+.card-more-toggle { margin-top: 4px; padding: 0; background: transparent; border: 0; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--ink); text-decoration: underline; cursor: pointer; }
 .card-skeleton { display: grid; gap: 7px; padding-top: 4px; }
 .card-skeleton i { display: block; height: 9px; background: rgba(31, 20, 17, 0.14); border-radius: var(--radius); }
 .card-skeleton i:nth-child(2) { width: 92%; }
