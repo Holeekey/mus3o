@@ -46,7 +46,43 @@ export function nextStop(ids: string[], memorized: Record<string, unknown>): num
   return k === -1 ? null : k
 }
 
-/** Aviso del recorrido: invita a empezar por el 1 en una sala sin estudiar; si no, señala el siguiente. */
-export function routeHintText(next: number, done: number, title: string): string {
-  return next === 0 && done === 0 ? `Empieza por el 1 · ${title}` : `Siguiente: ${next + 1} · ${title}`
+/** Número del primer tótem de cada sala: el museo es una sola secuencia (sala 1: 1–3, sala 2: 4–6…). */
+export function routeStarts(rooms: { pieces: unknown[] }[]): number[] {
+  let next = 1
+  return rooms.map((room) => {
+    const first = next
+    next += room.pieces.length
+    return first
+  })
+}
+
+type RouteRoom = { id: string; index: number; title: string; firstOrder: number; pedestals: { concept: { id: string; title: string } }[] }
+/** Próximo tótem del recorrido. `room` solo aparece cuando hay que pasar a otra sala (la actual ya está completa). */
+export type RouteNext = { number: number; title: string; fresh: boolean; room?: string }
+
+/**
+ * Siguiente paso de estudio desde la sala actual: su primer tótem sin memorizar; si ya está completa, el primero
+ * pendiente del museo en el orden de las salas. `fresh`: la sala no se empezó y toca su primer tótem.
+ */
+export function routeNext(rooms: RouteRoom[], currentRoomId: string | null, memorized: Record<string, unknown>): RouteNext | null {
+  const ids = (r: RouteRoom) => r.pedestals.map((p) => p.concept.id)
+  const here = rooms.find((r) => r.id === currentRoomId)
+  if (here) {
+    const k = nextStop(ids(here), memorized)
+    if (k !== null) {
+      const fresh = k === 0 && ids(here).every((id) => !memorized[id])
+      return { number: here.firstOrder + k, title: here.pedestals[k].concept.title, fresh }
+    }
+  }
+  for (const r of [...rooms].sort((a, b) => a.index - b.index)) {
+    const k = nextStop(ids(r), memorized)
+    if (k !== null) return { number: r.firstOrder + k, title: r.pedestals[k].concept.title, fresh: false, room: r.title }
+  }
+  return null
+}
+
+/** Aviso del recorrido: empezar la sala, seguir con el siguiente, o pasar a la próxima sala. */
+export function routeHintText(next: RouteNext): string {
+  if (next.room) return `Sala completa → sigue en «${next.room}»: ${next.number} · ${next.title}`
+  return next.fresh ? `Empieza por el ${next.number} · ${next.title}` : `Siguiente: ${next.number} · ${next.title}`
 }
