@@ -162,7 +162,7 @@ Lógica en `memory/model.ts` y `palace/keys.ts`, con tests. Actualiza [memoria-y
 
 ### Un tipo de prop del diorama
 
-Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`buildProp`, `variantsFor`), valor nuevo en `KINDS` (schema) y en `DIORAMA_RULES`. Actualiza [diorama.md](./diorama.md).
+Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`buildProp`, `variantsFor`), valor nuevo en `KINDS` (schema) y en `PHOTO_SYSTEM_PROMPT` (`photoDiorama.ts`). Actualiza [diorama.md](./diorama.md).
 
 ## 9. Solución de problemas conocidos
 

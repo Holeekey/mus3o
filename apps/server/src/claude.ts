@@ -4,7 +4,6 @@ import {
   DigestSourcesResponseSchema,
   findImageAssignmentIssues,
   LIMITS,
-  parseDiorama,
   ImprovePromptResponseSchema,
   MuseumSchema,
   parseMus3oDSL,
@@ -31,8 +30,6 @@ import {
   IMPROVE_SYSTEM_PROMPT,
   improvePrompt as improvePromptText,
   notesPrompt,
-  DIORAMA_SYSTEM_PROMPT,
-  dioramaPrompt,
   FALLBACK_MODEL_SYSTEM_PROMPT,
   FLOW_DSL_SYSTEM_PROMPT,
   flowMaxTokens,
@@ -51,8 +48,6 @@ const MODEL = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 /** Modelo barato para resumir fuentes largas en un temario base. */
 /** Modelo barato para dibujar el respaldo de las piezas sin asset. */
 const FALLBACK_MODEL = () => process.env.ANTHROPIC_FALLBACK_MODEL || "claude-haiku-5-5";
-/** Los dioramas piden props y posiciones coherentes: por defecto el modelo principal. */
-const DIORAMA_MODEL = () => process.env.ANTHROPIC_DIORAMA_MODEL || MODEL();
 /** "dsl" (por defecto) o "json" (formato anterior, más caro). */
 const flowFormat = () => (process.env.FLOW_FORMAT === "json" ? "json" : "dsl");
 /** Haiku razona por defecto (y se cobra como salida); Sonnet 5.5 no lo admite como "disabled". */
@@ -235,42 +230,12 @@ export function buildFlowContent(request: GenerateMuseumRequest, format: "json" 
 }
 
 /** Salida DSL del flujo completo: valida el formato y las imágenes asignadas contra el request. */
-export function parseFlowDsl(raw: string, request: GenerateMuseumRequest, onDioramaRooms?: (ids: string[]) => void): Museum {
+export function parseFlowDsl(raw: string, request: GenerateMuseumRequest): Museum {
   const imageIds = request.images.map((i) => i.id);
-  const museum = repairAndSanitizeMuseum(parseMus3oDSL(stripFence(raw), { mode: request.mode, imageIds, onDioramaRooms }));
+  const museum = repairAndSanitizeMuseum(parseMus3oDSL(stripFence(raw), { mode: request.mode, imageIds }));
   const issues = findImageAssignmentIssues(museum, imageIds);
   if (issues.length > 0) throw new Error(issues.join("; "));
   return museum;
-}
-
-/**
- * Los dioramas van en una llamada aparte y SOLO para las salas que el modelo marcó como representables
- * (sin marcas no hay llamada). Un fallo no bloquea el museo.
- */
-export async function addDioramas(museum: Museum, roomIds: string[]): Promise<Museum> {
-  const wanted = roomIds.filter((id) => museum.rooms.some((r) => r.id === id)).slice(0, 2);
-  if (wanted.length === 0) return museum;
-  try {
-    const res = await getClient().messages.create(
-      {
-        model: DIORAMA_MODEL(),
-        ...noThinking(DIORAMA_MODEL()),
-        max_tokens: 4000,
-        system: [{ type: "text", text: DIORAMA_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: dioramaPrompt(museum, wanted) }],
-      },
-      { timeout: 60_000, maxRetries: 0 },
-    );
-    console.log(`tokens (diorama): entrada ${res.usage.input_tokens}, salida ${res.usage.output_tokens}, caché leída ${res.usage.cache_read_input_tokens ?? 0}`);
-    const raw = JSON.parse(stripFence(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""))) as Record<string, unknown>;
-    const ids = new Set(museum.rooms.map((r) => r.id));
-    const chosen = Object.keys(raw).filter((id) => ids.has(id) && wanted.includes(id));
-    if (chosen.length === 0) return museum;
-    return { ...museum, rooms: museum.rooms.map((r) => (chosen.includes(r.id) ? { ...r, diorama: parseDiorama(raw[r.id]) } : r)) };
-  } catch (err) {
-    console.error(`dioramas fallaron: ${(err as Error).name}`);
-    return museum;
-  }
 }
 
 export async function generateFlowMuseum(request: GenerateMuseumRequest): Promise<Museum> {
@@ -293,13 +258,12 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
 
 /**
  * Flujo completo por DSL: una salida de ~2-4 mil tokens en lugar de un JSON de hasta 16 mil. El servidor deriva
- * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas, en paralelo.
+ * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas ya no los genera la IA (biblioteca a mano o foto real, ver photoDiorama.ts).
  */
 async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Museum> {
   const { system, content, maxTokens } = flowDslCall(request);
-  let dioramaRooms: string[] = [];
-  const museum = await askForJson({ system, content, maxTokens }, (raw) => parseFlowDsl(raw, request, (ids) => (dioramaRooms = ids)));
-  return completeMuseum(enrichMuseum(museum, flowNotesText(request)), dioramaRooms);
+  const museum = await askForJson({ system, content, maxTokens }, (raw) => parseFlowDsl(raw, request));
+  return completeMuseum(enrichMuseum(museum, flowNotesText(request)));
 }
 
 /** Lo que se le pide al modelo en el flujo completo por DSL (compartido por la generación con y sin streaming). */
@@ -312,14 +276,11 @@ export function flowDslCall(request: GenerateMuseumRequest) {
 export const flowStreamable = () => flowFormat() === "dsl";
 
 /**
- * Cierre de la generación DSL ya enriquecida: modelos 3D (búsqueda + respaldo) y, en paralelo, los dioramas de
- * las salas marcadas. Lo usan tanto la generación completa como el final del streaming.
+ * Cierre de la generación DSL ya enriquecida: modelos 3D (búsqueda + respaldo). Lo usan tanto la generación completa
+ * como el final del streaming. El museo no lleva dioramas: los cuadros usan la biblioteca hecha a mano o recrean su foto.
  */
-export async function completeMuseum(enriched: Museum, dioramaRooms: string[] = []): Promise<Museum> {
-  const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms)]);
-  // Cada tarea devuelve el museo completo: se combinan por sala/pieza.
-  const dioramaByRoom = new Map(withDioramas.rooms.map((r) => [r.id, r.diorama]));
-  return { ...withModels, rooms: withModels.rooms.map((r) => (dioramaByRoom.get(r.id) ? { ...r, diorama: dioramaByRoom.get(r.id) } : r)) };
+export async function completeMuseum(enriched: Museum): Promise<Museum> {
+  return resolveModels(enriched);
 }
 
 /** Comprueba que la IA solo use imágenes del request (la misma regla que `parseFlowDsl`, sobre un museo ya armado). */

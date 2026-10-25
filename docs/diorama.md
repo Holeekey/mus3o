@@ -25,7 +25,7 @@ del día) y coloca. El cliente construye todo con primitivas low-poly.
 | `packages/shared/src/schema.ts` | `DioramaSchema` (con `backdrop` opcional), `DioramaPropSchema`, `KINDS`, `POSES`, `TERRAINS`, `TIMES`, `MAX_PROPS`, `PhotoDioramaRequestSchema` y `PhotoDioramaResponseSchema` |
 | `apps/web/src/diorama/photoDiorama.ts`, `usePhotoDiorama.ts` | Cola de peticiones (2 a la vez), caché por imagen y hook que decide el portal de cada cuadro |
 | `apps/server/src/photoDiorama.ts` | Endpoint que recrea la escena de una imagen real |
-| `apps/server/src/prompts.ts` (`DIORAMA_RULES`) | Qué pedirle a la IA y cómo colocar (dioramas que la IA marca al generar el museo; los de foto usan `PHOTO_SYSTEM_PROMPT`) |
+| `apps/server/src/photoDiorama.ts` (`PHOTO_SYSTEM_PROMPT`) | Qué pedirle a la IA al recrear una foto y cómo colocar. La generación del museo ya **no** pide dioramas |
 | `apps/web/src/diorama/dioramaStore.ts` | Fase de la transición, portales registrados, atajos `E` y `Q` |
 | `apps/web/src/diorama/DioramaRuntime.tsx` | Transiciones, cámara, colisiones dentro del diorama, cuadro-portal (`MeshPortalMaterial`) |
 | `apps/web/src/diorama/DioramaScene.tsx` | Escena de la maqueta: cielo, luz, suelo, props instanciados |
@@ -134,13 +134,14 @@ Un prop con `pieceId` y `label` queda enlazado a una pieza de la sala (`Linked`)
 (coseno ≥ 0.9). Si lo encuentra, lo pone como `focusedId`: el mismo foco que usa `E` para examinar la
 pieza. Máximo 5 enlaces recomendados en el prompt.
 
-## 4. Reglas para la IA (resumen de `DIORAMA_RULES`)
+## 4. Reglas para la IA (resumen de `PHOTO_SYSTEM_PROMPT`)
 
-- Solo en 1 o 2 salas, las más representables. En salas abstractas, no.
-- 8 a 16 props. Usa `count` para multitudes en vez de repetir.
-- Personas y animales: siempre `figure`, `rider` o `horse`, nunca partes sueltas.
-- `pos` en metros dentro de ±14. Deja libre `z > 6`: ahí entra la vista.
-- Máximo 5 enlaces `pieceId` a piezas de **esa misma sala**.
+- Solo escenas recreables (batalla, paisaje, lugar, evento, interior, microscópico); retratos, diagramas, mapas, texto y logos no.
+- Describe solo lo que se ve; pocos props bien escalados (6 a 14) mejor que muchos equivocados. Usa `count` para multitudes.
+- Personas y animales: siempre `figure`, `rider` (ya montado) o `horse`, nunca partes sueltas.
+- `pos` en metros dentro de ±14, reflejando la composición de la imagen. Deja libre `z > 6`: ahí entra la vista.
+- Interiores: `terrain` `interior` y sin edificios de exterior como mobiliario (el saneado además reduce su escala y cantidad).
+- Sin enlaces `pieceId`: los props llevan solo `label` en español.
 
 ## 5. Cómo probarlo
 
@@ -166,3 +167,11 @@ Al entrar, Aris explica qué se ve; no usa IA, solo plantillas sobre los datos d
 - **Salida**: al salir del cuadro se calla la voz, se cierra el globo y se olvida lo contado.
 - **Dónde se ve y se oye**: globo de Aris existente (`arisMessage`, `ui/ArisDialog.tsx`, que dura más con textos largos). Voz solo si el narrador está activo (`N`) y Aris no está silenciada; el estado de lo que dice Aris vive en `useGuideStore` (`line`), para que otro panel (VR) lo lea.
 - **Límites**: si un concepto no tiene texto, solo se nombra; el resumen de Wikipedia se usa únicamente si ya estaba en caché (la guía lo pide para la siguiente vez, nunca espera).
+
+### En mundos de foto
+
+Los props de una foto no enlazan conceptos (`pieceId`), solo llevan `label`. La guía (plantillas, sin IA) funciona así:
+
+- **Introducción** (`buildPhotoIntro`): dice que es una recreación en 3D de la imagen real, con título y autor si ya se conocen (`peekResolvedImage` de la sala), y lista hasta 5 rótulos con su dirección, sin repetir rótulos iguales (sin mayúsculas ni tildes; se queda el más cercano): «soldados realistas (a tu derecha)».
+- **Prop mirado**: el runtime publica `useGuideStore.focusedProp` (`prop:N`, mismo alcance y ángulo que los conceptos, con `layout.labelled`) y Aris dice el rótulo. Si el rótulo coincide con el título de un concepto de la sala (contiene, sin mayúsculas ni tildes, mínimo 4 letras; `matchConcept`), añade el texto de los apuntes y la fuente igual que con un concepto enlazado.
+- `G` repite el prop mirado.

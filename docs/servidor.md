@@ -103,7 +103,6 @@ Detalles:
 | `flowPrompt(req)` | Modo flujo: añade `mode`, `graph`, imágenes disponibles y reglas de fuente |
 | `MODE_GUIDES` | Forma del grafo y campos obligatorios por modo |
 | `IMAGE_SEARCH_RULES` | Pistas `imageSearch` (Wikipedia + Commons) |
-| `DIORAMA_RULES` | Dioramas: solo en 1–2 salas representables, `props` de la biblioteca |
 | `sourceRules(where)` | Cada pieza cita un fragmento literal de 240 caracteres como máximo |
 | `IMPROVE_SYSTEM_PROMPT` | Sugerencias de mejora del pedido |
 
@@ -192,7 +191,7 @@ Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el s
 - **Salida liviana con Poly Pizza** (`POLY_PIZZA_API_KEY` definida): se usa `SYSTEM_PROMPT_LIGHT`; la IA ya no dibuja 2 a 8 partes procedurales
   por pieza (lo más caro de la salida) sino un glifo de respaldo + `searchKeyword`. `max_tokens` baja de 16 000 a 9 000. Sin clave se
   mantiene el prompt completo con partes procedurales, porque no habría modelo que lo reemplace.
-- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes y dioramas) van al final del system prompt con `cache_control`,
+- **Prompt caching**: las reglas fijas (`FLOW_STATIC_RULES`: imágenes) van al final del system prompt con `cache_control`,
   no en el mensaje del usuario; las lecturas de caché cuestan ~10 % de la entrada. El mensaje queda solo con lo variable.
 - **Sin parámetro `thinking`**: Sonnet 5.5 no razona antes de responder y rechaza `thinking: {type:"disabled"}` (400); por eso `askForJson` no lo envía. Solo se desactiva en llamadas a Haiku (digest y respaldo).
 - **Visibilidad**: cada llamada registra `tokens: entrada/salida/caché leída/caché escrita` (solo conteos). Úsalo para comparar antes y después.
@@ -231,7 +230,7 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | Llamada aparte **solo** para las salas que la IA marcó con `diorama` (8.º campo de `ROOM`, máx. 2); sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal) |
+| Dioramas | **Ya no los genera la IA al crear el museo** (se quitó `addDioramas`, el prompt y el 8.º campo `diorama` de `ROOM`, que el parser sigue tolerando y se ignora). Los mundos salen de la biblioteca hecha a mano o de `POST /api/diorama-from-image` |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
@@ -245,7 +244,7 @@ en quiz) se reintenta una vez con el error, como antes. Cada llamada registra su
 | DSL (por defecto) | 1 847 + 1 518 del diorama = **3 365** (entrada 191 + 155) | 27 s | 5 salas, 18 piezas, 1 diorama |
 
 ≈ 3,2× menos salida y 2,6× menos tiempo, con más contenido. Un solo pedido por formato: es una muestra, no un promedio.
-Hallazgo de la medición: sin la instrucción explícita de marcar salas con `diorama`, el modelo no marcó ninguna y se perdía el diorama; el prompt ahora lo pide para temas de historia, geografía y naturaleza.
+Nota histórica: las mediciones de arriba incluían una llamada de dioramas; ya no existe (los mundos concepto→props se descartaron a favor de la foto real).
 
 ### Más ahorros y mediciones (2026-10-24)
 

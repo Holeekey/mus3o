@@ -192,7 +192,7 @@ describe("streamNewMuseum: flujo completo (modo, imágenes, fuentes)", () => {
     const events = await collect(streamNewMuseum(request, { streamText: fakeStreamer(FLOW_DSL), ...live() }));
     const done = events[events.length - 1];
     if (done.type !== "done") throw new Error("sin done");
-    const reference = await completeMuseum(enrichMuseum(parseFlowDsl(FLOW_DSL, request), "Roma antigua"), []);
+    const reference = await completeMuseum(enrichMuseum(parseFlowDsl(FLOW_DSL, request), "Roma antigua"));
 
     expect(done.museum.mode).toBe("quiz");
     expect(done.museum.rooms.map((r) => r.id)).toEqual(reference.rooms.map((r) => r.id));

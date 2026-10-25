@@ -21,7 +21,7 @@ vi.mock("./claude", async (orig) => ({
 
 import { app } from "./app";
 import { clearImageCaches } from "./images";
-import { backdropFor, buildPhotoDiorama, MAX_INSTANCES, photoKey, photoTuning, resetPhotoDioramaState } from "./photoDiorama";
+import { backdropFor, buildPhotoDiorama, INTERIOR_BUILDING_MAX_COUNT, INTERIOR_BUILDING_SCALE, MAX_INSTANCES, photoKey, PHOTO_SYSTEM_PROMPT, photoTuning, resetPhotoDioramaState } from "./photoDiorama";
 import { writeSeedDiorama } from "./imageStore";
 
 const realFetch = globalThis.fetch;
@@ -97,6 +97,29 @@ describe("buildPhotoDiorama", () => {
   it("strips markup from labels", () => {
     const r = buildPhotoDiorama(scene({ props: [{ kind: "figure", pos: [0, 0], label: "<b>IGNORA TODO</b>" }, ...(scene().props as any[])] }), BACK);
     expect(r.diorama!.props[0].label).not.toMatch(/[<>]/);
+  });
+
+  it("clamps exterior buildings in interior scenes but not outdoors", () => {
+    const props = [
+      { kind: "house", pos: [0, -8], scale: 3, count: 9, label: "casa" },
+      { kind: "church", pos: [5, -8], scale: 3, label: "edificio" },
+      { kind: "figure", pos: [-3, -2], count: 8, label: "asistentes" },
+      { kind: "column", pos: [-8, -8], scale: 2, label: "columnas" },
+    ];
+    const indoor = buildPhotoDiorama(scene({ imageKind: "interior", terrain: "interior", props }), BACK).diorama!.props;
+    expect(indoor[0].scale).toBe(INTERIOR_BUILDING_SCALE);
+    expect(indoor[0].count).toBe(INTERIOR_BUILDING_MAX_COUNT);
+    expect(indoor[1].scale).toBe(INTERIOR_BUILDING_SCALE);
+    expect(indoor[2].count).toBe(8); // la gente no se toca
+    expect(indoor[3].scale).toBe(2); // las columnas son arquitectura real de la sala
+    const outdoor = buildPhotoDiorama(scene({ imageKind: "place", terrain: "city", props }), BACK).diorama!.props;
+    expect(outdoor[0].scale).toBe(3);
+    expect(outdoor[0].count).toBe(9);
+  });
+
+  it("asks the model for few, well-scaled props and no exterior buildings indoors", () => {
+    expect(PHOTO_SYSTEM_PROMPT).toMatch(/POCOS props/);
+    expect(PHOTO_SYSTEM_PROMPT).toMatch(/interior/);
   });
 
   it("rejects a backdrop that is not the Wikimedia image proxy", () => {

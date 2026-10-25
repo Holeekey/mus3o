@@ -113,7 +113,8 @@ export const PHOTO_SYSTEM_PROMPT = `Recreas en 3D de baja geometría la ESCENA q
    - Naturaleza: "tree" (count), "rock". Montañas, colinas, mar, río, desierto o ciudad NO son props: se expresan con "terrain" (plain, hills, mountains, coast, river, forest, city, interior, desert; microscópico: cellular, organic, vessel).
    - Ciencia (solo si la imagen es microscópica/anatómica): nucleus, mitochondrion, ribosome, rough-er, golgi, dna-helix, atp, membrane-protein, vesicle, blood-cell, heart-chamber-valve, vessel-mouth, node-pacemaker, muscle-wall, neuron, organ, microscope, flask, test-tube-rack.
 3. Posiciones: "pos" [x, z] en metros reflejando la composición de la imagen vista de frente: x de -14 (borde izquierdo) a 14 (derecho); z de -14 (al fondo, junto al horizonte) a 6 (primer plano). Deja libre z > 6. Lo que en la imagen está lejos va con z negativo; lo cercano, con z cercano a 0 o 6. Separa los grupos; no apiles todo en el centro.
-4. 8 a 18 props. Un grupo grande es UN prop con "count" alto, no muchos props iguales. Nunca superes ${MAX_PROPS}.
+4. Mejor POCOS props bien escalados y bien ubicados (6 a 14) que muchos equivocados: si dudas de un elemento, no lo pongas. Un grupo grande es UN prop con "count" alto, no muchos props iguales. Nunca superes ${MAX_PROPS}.
+   - Escenas de interior o actos dentro de una sala (salón, congreso, taller): terrain "interior"; NO uses edificios de exterior ("house", "church", "tent", "ship") como mobiliario; la sala ya es el escenario. Usa personas ("figure" con pose "seated" o "standing"), "column" o "arch" solo si se ven, y "flag" para banderas.
 5. Colores: muestrea de la imagen (uniformes, velas, banderas, tierra, cielo). "palette" = suelo dominante, cielo/fondo y color más característico. "time" según la luz (day, sunset, night, storm).
 6. "label" (español, máx. 40 caracteres) en cada prop: qué representa en ESA imagen, sin inventar. No pongas nombres propios de personas, fechas ni lugares salvo que estén escritos en la imagen o en la lista de contexto Y lo que se ve lo respalde. No reconozcas personas por su cara.
 7. No inventes elementos que no se ven (si no hay barcos, no pongas barcos). El contexto (<contexto>) sirve solo para entender qué escena es, jamás para agregar cosas.
@@ -138,6 +139,10 @@ export function photoUserPrompt(req: { title: string; roomTitle: string; concept
 /** Instancias totales máximas de una maqueta (count × props): mantiene el dibujo barato. */
 export const MAX_INSTANCES = 160;
 const MIN_PROPS = 3;
+/** Edificios de exterior: en una escena de interior no son mobiliario, así que se reducen mucho. */
+const EXTERIOR_BUILDINGS = new Set(["house", "church", "tent", "ship"]);
+export const INTERIOR_BUILDING_SCALE = 0.6;
+export const INTERIOR_BUILDING_MAX_COUNT = 2;
 
 const asObj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 
@@ -160,17 +165,22 @@ export function buildPhotoDiorama(raw: unknown, backdrop: string): PhotoDioramaR
       const label = clean(typeof p.label === "string" ? p.label : "", 40) || KIND_LABEL[p.kind as string] || String(p.kind);
       return { ...rest, label };
     });
-  const parsed = parseDiorama({
+  const parsedInput = {
     title: clean(typeof input.title === "string" ? input.title : "", 80) || "Escena",
     terrain: input.terrain,
     time: input.time,
     palette: input.palette,
     props,
-  });
+  };
+  const parsed = parseDiorama(parsedInput);
+  const indoors = parsed.terrain === "interior" || kind === "interior";
   // Tope de instancias: se reducen proporcionalmente los grupos grandes.
   const total = parsed.props.reduce((n, p) => n + p.count, 0);
   const scale = total > MAX_INSTANCES ? MAX_INSTANCES / total : 1;
-  const finalProps = parsed.props.map((p) => (scale < 1 ? { ...p, count: Math.max(1, Math.floor(p.count * scale)) } : p));
+  const finalProps = parsed.props
+    .map((p) => (scale < 1 ? { ...p, count: Math.max(1, Math.floor(p.count * scale)) } : p))
+    // Interior: un edificio de exterior nunca llena la sala (escala y cantidad acotadas).
+    .map((p) => (indoors && EXTERIOR_BUILDINGS.has(p.kind) ? { ...p, scale: Math.min(p.scale, INTERIOR_BUILDING_SCALE), count: Math.min(p.count, INTERIOR_BUILDING_MAX_COUNT) } : p));
   if (finalProps.length < MIN_PROPS) return { recreatable: false, reason: "too-few-props" };
   const diorama: Diorama = parseDiorama({ ...parsed, props: finalProps, backdrop });
   return { recreatable: true, reason, diorama };

@@ -3,7 +3,7 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
-import { addDioramas, buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
+import { buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
 import { FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
@@ -199,7 +199,7 @@ describe("generación liviana", () => {
     expect(lean).not.toContain('agrega a CADA sala "imageSearch"');
     expect(lean).not.toContain("Dioramas");
     expect(FLOW_STATIC_RULES).toContain('agrega a CADA sala "imageSearch"');
-    expect(FLOW_STATIC_RULES).toContain("Dioramas");
+    expect(FLOW_STATIC_RULES).not.toContain("Dioramas");
     expect(lean.length).toBeLessThan(withRules.length);
   });
 });
@@ -212,13 +212,12 @@ IMAGE: img-1
 ROOM: b | República | ancient | #112233 | #000000 | torus | a |
 PIECE: Senado | box | cue | column | Órgano de gobierno`;
 
-  it("parseFlowDsl arma el museo según el modo y reporta las salas con diorama", () => {
-    let marked: string[] = [];
-    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }), (ids) => (marked = ids));
+  it("parseFlowDsl arma el museo según el modo (un campo diorama heredado se ignora)", () => {
+    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
     expect(m.mode).toBe("exploration");
     expect(m.graph?.edges).toEqual([{ from: "a", to: "b", kind: "related" }]);
     expect(m.rooms[0].pieces[0].image).toEqual({ imageId: "img-1" });
-    expect(marked).toEqual(["a"]);
+    expect(m.rooms.every((r) => r.diorama === undefined)).toBe(true);
   });
 
   it("ignora una imagen que no llegó en el request", () => {
@@ -231,11 +230,6 @@ PIECE: Senado | box | cue | column | Órgano de gobierno`;
     expect(text).toContain("Modo quiz");
     expect(text).toContain("<user_notes>");
     expect(text).not.toContain("terrain");
-  });
-
-  it("sin salas marcadas no se hace llamada de dioramas", async () => {
-    const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
-    expect(await addDioramas(m, [])).toBe(m);
   });
 });
 
