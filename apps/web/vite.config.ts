@@ -1,11 +1,14 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 
 // Para probar la VR en el teléfono hace falta un contexto seguro (WebXR, sensores de movimiento y pantalla completa):
 // - `npm run dev:https` (modo "https"): HTTPS en la red local con un certificado autofirmado generado al vuelo.
 // - `npm run dev:tunnel` (modo "tunnel"): acepta el host de un túnel `cloudflared tunnel --url http://localhost:5173`.
 // `npm run dev` no cambia en nada.
 export default defineConfig(async ({ mode }) => {
+  const rootEnv = loadEnv(mode, path.resolve(__dirname, "../.."), "");
+  const apiPort = rootEnv.PORT || rootEnv.API_PORT || process.env.PORT || 3001;
   const https = mode === "https";
   const tunnel = mode === "tunnel";
   return {
@@ -14,7 +17,7 @@ export default defineConfig(async ({ mode }) => {
       port: 5173,
       ...(https ? { host: true } : {}),
       ...(tunnel ? { allowedHosts: [".trycloudflare.com"] } : {}),
-      proxy: { "/api": "http://localhost:3001" },
+      proxy: { "/api": `http://localhost:${apiPort}` },
     },
   };
 });
