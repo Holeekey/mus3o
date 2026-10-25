@@ -558,7 +558,7 @@ export function findImageAssignmentIssues(museum: Museum, requestImageIds: strin
   );
 }
 
-export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json"]);
+export const SourceKindSchema = z.enum(["docx", "xlsx", "csv", "txt", "md", "json", "pdf"]);
 
 export const SourceSchema = z.object({
   name: z.string().min(1).max(120),

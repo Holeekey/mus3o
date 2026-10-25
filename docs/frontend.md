@@ -33,6 +33,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 | Tipo | Cómo se lee |
 |---|---|
+| `.pdf` | `pdfjs-dist` (build legacy, cargado bajo demanda), hasta 60 páginas. Un PDF sin texto (escaneo) se rechaza con "no tiene texto seleccionable" |
 | `.docx` | `mammoth.extractRawText` |
 | `.xlsx` | `read-excel-file/universal`; cada fila queda como `encabezado: valor; ...` |
 | `.csv` | Separador `,` o `;` detectado, con comillas; mismo formato que `.xlsx` |
