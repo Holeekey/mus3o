@@ -1,0 +1,1908 @@
+[
+  {
+    "id": "lib-mvna5wus1e5fb1",
+    "kind": "recipe",
+    "keywords": [
+      "padlock"
+    ],
+    "title": "Primera División de Tomás García",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.4,
+          0.15
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8860b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.12,
+          0.12,
+          0.5,
+          12
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.25,
+          0.06
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wus0434fa",
+    "kind": "recipe",
+    "keywords": [
+      "helmet"
+    ],
+    "title": "Batallón Valencey",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.3,
+          16,
+          12
+        ],
+        "pos": [
+          0,
+          1.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a7a7a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.32,
+          0.25,
+          16
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6b6b6b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.06,
+          0.22,
+          0.04
+        ],
+        "pos": [
+          0,
+          1.4,
+          0.28
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a4a4a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.02,
+          16
+        ],
+        "pos": [
+          0,
+          1.27,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#555555"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wus1873e4",
+    "kind": "recipe",
+    "keywords": [
+      "clock"
+    ],
+    "title": "Batallón Hostarlizh",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.5,
+          0.5,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6d4c1f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.45,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          1.3,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.9,
+          0.4
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.04,
+          0.35,
+          0.02
+        ],
+        "pos": [
+          0,
+          1.15,
+          0.21
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.03,
+          0.25,
+          0.02
+        ],
+        "pos": [
+          0.05,
+          1,
+          0.21
+        ],
+        "rot": [
+          0,
+          0,
+          0.8
+        ],
+        "color": "#222222"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wus7bfe78",
+    "kind": "recipe",
+    "keywords": [
+      "cannon"
+    ],
+    "title": "Artillería y caballería",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.18,
+          0.22,
+          1.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          1.2,
+          0,
+          0
+        ],
+        "color": "#3d3d3d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.3,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6b4f2a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.35,
+          0.12,
+          16
+        ],
+        "pos": [
+          0.3,
+          0.35,
+          0.35
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#4a3a2a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.35,
+          0.12,
+          16
+        ],
+        "pos": [
+          -0.3,
+          0.35,
+          0.35
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#4a3a2a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wusab6174",
+    "kind": "recipe",
+    "keywords": [
+      "hill"
+    ],
+    "title": "Buenavista",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.9,
+          16,
+          10
+        ],
+        "pos": [
+          0,
+          -0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a8f3c"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.5,
+          12,
+          8
+        ],
+        "pos": [
+          0.6,
+          -0.4,
+          0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6aa04a"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.25,
+          0.5,
+          8
+        ],
+        "pos": [
+          -0.5,
+          0.4,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2e6b2e"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wus8096cf",
+    "kind": "recipe",
+    "keywords": [
+      "telescope"
+    ],
+    "title": "Observación desde las alturas",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.06,
+          1,
+          10
+        ],
+        "pos": [
+          0,
+          0.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#555555"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.6,
+          8
+        ],
+        "pos": [
+          0.2,
+          0.7,
+          0.1
+        ],
+        "rot": [
+          0,
+          0,
+          -1
+        ],
+        "color": "#777777"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.2,
+          0.12
+        ],
+        "pos": [
+          0,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3a3a3a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.07,
+          0.07,
+          0.05,
+          12
+        ],
+        "pos": [
+          -0.4,
+          1.3,
+          -0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.596Z",
+    "updatedAt": "2026-10-25T03:40:56.596Z"
+  },
+  {
+    "id": "lib-mvna5wutdd610c",
+    "kind": "recipe",
+    "keywords": [
+      "map"
+    ],
+    "title": "Táctica original",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.05,
+          0.9
+        ],
+        "pos": [
+          0,
+          0.025,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d9c08c"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.9,
+          6
+        ],
+        "pos": [
+          -0.55,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a4b1e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.9,
+          6
+        ],
+        "pos": [
+          0.55,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a4b1e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.02,
+          0.4
+        ],
+        "pos": [
+          0.1,
+          0.06,
+          0.1
+        ],
+        "rot": [
+          0,
+          0.3,
+          0
+        ],
+        "color": "#b32d2d"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.05,
+          6,
+          4
+        ],
+        "pos": [
+          0.3,
+          0.08,
+          -0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2d5fb3"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wut512154",
+    "kind": "recipe",
+    "keywords": [
+      "open door"
+    ],
+    "title": "Ataque por el flanco derecho",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          2,
+          1
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a5a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          2,
+          0.1
+        ],
+        "pos": [
+          0.02,
+          1,
+          0.45
+        ],
+        "rot": [
+          0,
+          0.6,
+          0
+        ],
+        "color": "#a06b35"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.2,
+          0.04
+        ],
+        "pos": [
+          0.06,
+          1,
+          0.5
+        ],
+        "rot": [
+          0,
+          0.6,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.05,
+          1.8,
+          0.5
+        ],
+        "pos": [
+          -0.05,
+          0.9,
+          0.5
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3b6e3b"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wut40bcb1",
+    "kind": "recipe",
+    "keywords": [
+      "domino"
+    ],
+    "title": "Ataque por el centro",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          1,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          0.5,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.25,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.06,
+          6,
+          4
+        ],
+        "pos": [
+          0,
+          0.85,
+          -0.15
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.06,
+          6,
+          4
+        ],
+        "pos": [
+          0,
+          0.85,
+          0.15
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wutd737cf",
+    "kind": "recipe",
+    "keywords": [
+      "armor"
+    ],
+    "title": "Batallón Burgos",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.7,
+          0.5
+        ],
+        "pos": [
+          0,
+          0.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c6b3a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.7,
+          0.4,
+          0.5
+        ],
+        "pos": [
+          0,
+          1.05,
+          0.05
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6e7f45"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          1,
+          6
+        ],
+        "pos": [
+          0.3,
+          1.1,
+          0.4
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#333333"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.2,
+          8
+        ],
+        "pos": [
+          0,
+          0.2,
+          0.55
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.25,
+          0.15
+        ],
+        "pos": [
+          0,
+          0.15,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a4a4a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wutbf39b5",
+    "kind": "recipe",
+    "keywords": [
+      "slide"
+    ],
+    "title": "Repliegue de los Bravos de Apure",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.4,
+          0.1,
+          1.6
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.4,
+          0.1,
+          1.2
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#757575"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.4,
+          0.1,
+          0.8
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          1.4,
+          0.1
+        ],
+        "pos": [
+          0.25,
+          0.7,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a3d1e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          1.4,
+          0.1
+        ],
+        "pos": [
+          -0.25,
+          0.7,
+          -0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a3d1e"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wutea9e9f",
+    "kind": "recipe",
+    "keywords": [
+      "top hat"
+    ],
+    "title": "Cazadores Británicos",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.35,
+          12
+        ],
+        "pos": [
+          0,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#111111"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.36,
+          0.36,
+          0.04,
+          12
+        ],
+        "pos": [
+          0,
+          1.36,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#111111"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.06,
+          12
+        ],
+        "pos": [
+          0,
+          1.41,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b1a1a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wut007bb7",
+    "kind": "recipe",
+    "keywords": [
+      "river"
+    ],
+    "title": "Refuerzo de Bolívar",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.1,
+          0.8
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3a7bd5"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.15,
+          0.5
+        ],
+        "pos": [
+          -0.6,
+          0.15,
+          0.1
+        ],
+        "rot": [
+          0,
+          0.3,
+          0
+        ],
+        "color": "#5b8fd9"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.15,
+          0.5
+        ],
+        "pos": [
+          0.4,
+          0.15,
+          -0.1
+        ],
+        "rot": [
+          0,
+          -0.2,
+          0
+        ],
+        "color": "#5b8fd9"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.2,
+          0.3
+        ],
+        "pos": [
+          0.2,
+          0.1,
+          0.25
+        ],
+        "rot": [
+          0,
+          0.5,
+          0
+        ],
+        "color": "#8b6b4a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wut3303a9",
+    "kind": "recipe",
+    "keywords": [
+      "king card"
+    ],
+    "title": "Contraataque realista",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          1.2,
+          0.05
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          1.2,
+          0.06
+        ],
+        "pos": [
+          0,
+          1,
+          -0.005
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b22222"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.12,
+          0.12,
+          0.1,
+          8
+        ],
+        "pos": [
+          0,
+          1.45,
+          0.04
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.25,
+          0.02
+        ],
+        "pos": [
+          0,
+          1.2,
+          0.04
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.597Z",
+    "updatedAt": "2026-10-25T03:40:56.597Z"
+  },
+  {
+    "id": "lib-mvna5wuub44646",
+    "kind": "recipe",
+    "keywords": [
+      "wave"
+    ],
+    "title": "Entrada de la primera división",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          2,
+          0.1,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2e6fbf"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.35,
+          12,
+          8
+        ],
+        "pos": [
+          -0.5,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a90e2"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.25,
+          12,
+          8
+        ],
+        "pos": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6aa8f0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.2,
+          0.4
+        ],
+        "pos": [
+          0.6,
+          0.35,
+          -0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0.3
+        ],
+        "color": "#f0f4f8"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  },
+  {
+    "id": "lib-mvna5wuu1f0e2b",
+    "kind": "recipe",
+    "keywords": [
+      "white flag"
+    ],
+    "title": "Retirada realista",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          1.8,
+          8
+        ],
+        "pos": [
+          0,
+          0.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b7355"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.7,
+          0.45,
+          0.02
+        ],
+        "pos": [
+          0.35,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffffff"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.05,
+          8,
+          6
+        ],
+        "pos": [
+          0,
+          1.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.15,
+          0.15,
+          0.15
+        ],
+        "pos": [
+          0,
+          0.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a4a3a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  },
+  {
+    "id": "lib-mvna5wuu03536b",
+    "kind": "recipe",
+    "keywords": [
+      "broken chain"
+    ],
+    "title": "Batalla decisiva",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.5,
+          8
+        ],
+        "pos": [
+          -0.6,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#6b6b6b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.5,
+          8
+        ],
+        "pos": [
+          -0.1,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#7a7a7a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.5,
+          8
+        ],
+        "pos": [
+          0.4,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#6b6b6b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.4,
+          8
+        ],
+        "pos": [
+          0.9,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.9
+        ],
+        "color": "#5a5a5a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.15,
+          0.08,
+          0.3
+        ],
+        "pos": [
+          0.9,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a6a3a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  },
+  {
+    "id": "lib-mvna5wuu7bfec0",
+    "kind": "recipe",
+    "keywords": [
+      "calendar"
+    ],
+    "title": "Liberación definitiva en 1823",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1,
+          1.2,
+          0.12
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1,
+          0.3,
+          0.14
+        ],
+        "pos": [
+          0,
+          1.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1f4e79"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.7,
+          0.02
+        ],
+        "pos": [
+          0,
+          0.85,
+          0.07
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffffff"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.15,
+          6
+        ],
+        "pos": [
+          -0.25,
+          1.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b6b4a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  },
+  {
+    "id": "lib-mvna5wuufbc6e5",
+    "kind": "recipe",
+    "keywords": [
+      "hat"
+    ],
+    "title": "Bajas realistas",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.5,
+          0.6,
+          16
+        ],
+        "pos": [
+          0,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2b2b2b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.45,
+          0.08,
+          16
+        ],
+        "pos": [
+          0,
+          0.04,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a1a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a1a"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  },
+  {
+    "id": "lib-mvna5wuua0b61b",
+    "kind": "recipe",
+    "keywords": [
+      "harbor"
+    ],
+    "title": "Refugio en Puerto Cabello",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.2,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a3d2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.6,
+          0.5
+        ],
+        "pos": [
+          -0.4,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c8a46e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.6,
+          0.5
+        ],
+        "pos": [
+          0.4,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d9d9d9"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.45,
+          0.4,
+          4
+        ],
+        "pos": [
+          -0.4,
+          1.1,
+          0
+        ],
+        "rot": [
+          0,
+          0.785,
+          0
+        ],
+        "color": "#8b2d2d"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.45,
+          0.4,
+          4
+        ],
+        "pos": [
+          0.4,
+          1.1,
+          0
+        ],
+        "rot": [
+          0,
+          0.785,
+          0
+        ],
+        "color": "#8b2d2d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          0.9,
+          8
+        ],
+        "pos": [
+          0.8,
+          0.55,
+          0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6b4a2e"
+      }
+    ],
+    "origin": "ai",
+    "status": "pending",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:40:56.598Z",
+    "updatedAt": "2026-10-25T03:40:56.598Z"
+  }
+]
