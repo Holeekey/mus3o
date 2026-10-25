@@ -119,3 +119,65 @@ html.vr-on .palace {
   margin: 0;
   opacity: 0.7;
 }
+
+/* Ajuste del visor sobre la vista dividida: botones grandes para tocar antes de meter el teléfono al visor. */
+.vr-adjust {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  display: grid;
+  gap: 8px;
+  width: min(92vw, 520px);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 0.9rem;
+}
+.vr-adjust-title {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+.vr-adjust-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.vr-adjust-btn {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.vr-adjust-btn.is-on {
+  background: #fff;
+  color: #000;
+}
+.vr-adjust-step {
+  width: 52px;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.vr-adjust-label {
+  display: grid;
+  flex: 1;
+  max-width: 220px;
+  text-align: center;
+}
+.vr-adjust-label small {
+  opacity: 0.7;
+}
+.vr-adjust-done {
+  justify-self: center;
+  font-weight: 600;
+}
