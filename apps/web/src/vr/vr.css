@@ -23,7 +23,7 @@ html.vr-on body {
 .vr-exit {
   position: fixed;
   left: 50%;
-  bottom: 6px;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 100000;
   width: 34px;
@@ -88,27 +88,10 @@ html.vr-on .palace {
   margin-top: 8px;
   font-size: 0.85rem;
 }
-.vr-cal-presets {
+.vr-cal-step {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.vr-cal-presets .is-on {
-  outline: 2px solid currentColor;
-}
-.vr-cal-fields {
-  display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-}
-.vr-cal-field {
-  display: grid;
-  gap: 2px;
-  width: 5.5rem;
-}
-.vr-cal-field input {
-  width: 100%;
-  padding: 4px 6px;
 }
 .vr-cal-check {
   display: flex;
