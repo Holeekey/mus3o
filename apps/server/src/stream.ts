@@ -22,7 +22,7 @@ import {
 } from "./claude";
 import { cleanNotes, DSL_SYSTEM_PROMPT, dslNotesPrompt, dslUserPrompt, flowNotesText } from "./prompts";
 
-const FALLBACK_TITLE = "Palacio de la Memoria";
+const FALLBACK_TITLE = "Museo de la Memoria";
 
 /** Lo que acepta el streaming: lo mismo que la generación sin streaming (tema, apuntes o flujo completo). */
 export type StreamInput = GenerateInput | GenerateMuseumRequest;

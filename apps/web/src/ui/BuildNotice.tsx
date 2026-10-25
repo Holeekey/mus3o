@@ -19,8 +19,8 @@ export function BuildNotice() {
       ? phase === 'done'
         ? 'La IA sigue levantando salas…'
         : arrived === 0
-          ? 'La IA está trazando el palacio…'
-          : `La IA está levantando el palacio · ${arrived} ${arrived === 1 ? 'sala' : 'salas'}`
+          ? 'La IA está trazando el museo…'
+          : `La IA está levantando el museo · ${arrived} ${arrived === 1 ? 'sala' : 'salas'}`
       : null
   const final = phase === 'done' ? (build.status === 'cut' ? build.notice : build.status === 'done' ? build.summary : null) : null
 

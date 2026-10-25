@@ -181,7 +181,7 @@ export function repairAndSanitizePiece(piece: Piece): Piece {
  * - Garantiza que el número de salas y piezas respete los límites de render.
  */
 export function repairAndSanitizeMuseum(museum: Museum): Museum {
-  const cleanTitle = sanitizeDisplayText(museum.title, 120) || "Palacio de la Memoria";
+  const cleanTitle = sanitizeDisplayText(museum.title, 120) || "Museo de la Memoria";
   const usedPieceIds = new Set<string>();
 
   const rooms: Room[] = (museum.rooms || []).slice(0, LIMITS.maxRooms).map((room, rIdx) => {
