@@ -1,10 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   cleanTextForSpeech,
   selectBestSpanishVoice,
   playArisVoice,
   defaultVoiceEngine,
-  HybridArisVoiceEngine,
   type IArisVoiceEngine,
 } from './arisAudio'
 
@@ -92,135 +91,5 @@ describe('playArisVoice', () => {
     playArisVoice('Aris: Mensaje con motor default', { muted: false })
     expect(spy).toHaveBeenCalledWith('Aris: Mensaje con motor default')
     spy.mockRestore()
-  })
-})
-
-describe('HybridArisVoiceEngine', () => {
-  let originalFetch: typeof globalThis.fetch
-  let originalAudio: typeof globalThis.Audio
-  let originalCreateObjectURL: typeof URL.createObjectURL
-  let originalRevokeObjectURL: typeof URL.revokeObjectURL
-
-  let mockAudioInstance: {
-    play: ReturnType<typeof vi.fn>
-    pause: ReturnType<typeof vi.fn>
-    onended: (() => void) | null
-  }
-  let mockFallback: IArisVoiceEngine
-
-  class MockAudio {
-    src: string
-    play = vi.fn().mockResolvedValue(undefined)
-    pause = vi.fn()
-    onended: (() => void) | null = null
-    constructor(src?: string) {
-      this.src = src || ''
-      mockAudioInstance = this
-    }
-  }
-
-  beforeEach(() => {
-    originalFetch = globalThis.fetch
-    originalAudio = globalThis.Audio
-    originalCreateObjectURL = URL.createObjectURL
-    originalRevokeObjectURL = URL.revokeObjectURL
-
-    globalThis.Audio = MockAudio as unknown as typeof Audio
-    URL.createObjectURL = vi.fn(() => 'blob:mock-audio-url')
-    URL.revokeObjectURL = vi.fn()
-
-    mockFallback = {
-      speak: vi.fn(),
-      cancel: vi.fn(),
-    }
-  })
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch
-    globalThis.Audio = originalAudio
-    URL.createObjectURL = originalCreateObjectURL
-    URL.revokeObjectURL = originalRevokeObjectURL
-    vi.restoreAllMocks()
-  })
-
-  it('uses ElevenLabs (/api/tts) successfully without invoking fallback', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      blob: () => Promise.resolve(new Blob(['mock-mp3'], { type: 'audio/mpeg' })),
-    })
-
-    const engine = new HybridArisVoiceEngine(mockFallback)
-    engine.speak('Hola, viajero del palacio')
-
-    // Wait for microtasks
-    await new Promise((r) => setTimeout(r, 20))
-
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/tts', expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ text: 'Hola, viajero del palacio' }),
-    }))
-    expect(mockAudioInstance.play).toHaveBeenCalled()
-    expect(mockFallback.speak).not.toHaveBeenCalled()
-  })
-
-  it('falls back to browser WebSpeech if /api/tts returns an HTTP error', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 502,
-    })
-
-    const engine = new HybridArisVoiceEngine(mockFallback)
-    engine.speak('Texto de prueba')
-
-    await new Promise((r) => setTimeout(r, 20))
-
-    expect(mockFallback.speak).toHaveBeenCalledWith('Texto de prueba', undefined)
-    expect(mockAudioInstance.play).not.toHaveBeenCalled()
-  })
-
-  it('falls back to browser WebSpeech if fetch encounters a network error', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
-
-    const engine = new HybridArisVoiceEngine(mockFallback)
-    engine.speak('Texto de prueba')
-
-    await new Promise((r) => setTimeout(r, 20))
-
-    expect(mockFallback.speak).toHaveBeenCalledWith('Texto de prueba', undefined)
-  })
-
-  it('falls back to browser WebSpeech if ElevenLabs times out', async () => {
-    // Hangs forever
-    globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
-
-    const engine = new HybridArisVoiceEngine(mockFallback, 50) // 50ms timeout for test
-    engine.speak('Texto que demora')
-
-    await new Promise((r) => setTimeout(r, 100))
-
-    expect(mockFallback.speak).toHaveBeenCalledWith('Texto que demora', undefined)
-  })
-
-  it('cancels active request and stops audio immediately upon cancel() without triggering fallback', async () => {
-    let abortSignalCaptured: AbortSignal | undefined
-    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
-      abortSignalCaptured = init?.signal
-      return new Promise((resolve) => setTimeout(resolve, 100))
-    })
-
-    const engine = new HybridArisVoiceEngine(mockFallback)
-    engine.speak('Texto a cancelar')
-
-    expect(mockFallback.cancel).toHaveBeenCalled()
-
-    engine.cancel()
-
-    expect(mockFallback.cancel).toHaveBeenCalledTimes(2)
-    expect(abortSignalCaptured?.aborted).toBe(true)
-
-    await new Promise((r) => setTimeout(r, 120))
-
-    // Fallback should NOT be called because it was explicitly cancelled by user
-    expect(mockFallback.speak).not.toHaveBeenCalled()
   })
 })

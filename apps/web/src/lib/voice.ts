@@ -130,6 +130,9 @@ function remoteTts(): Promise<boolean> {
   return remoteEnabled
 }
 
+// Si ElevenLabs no responde a tiempo se cae al navegador: el silencio se nota más que la voz genérica.
+const REMOTE_TIMEOUT_MS = 2500
+
 let currentAudio: HTMLAudioElement | null = null
 let currentUrl: string | null = null
 let abort: AbortController | null = null
@@ -150,16 +153,21 @@ function releaseAudio(): void {
 
 async function speakRemote(text: string, mine: number): Promise<boolean> {
   if (typeof Audio === 'undefined' || !(await remoteTts())) return false
-  abort = new AbortController()
+  if (mine !== token) return true
+  const ctrl = new AbortController()
+  abort = ctrl
+  // El timeout aborta la petición; el catch la trata como fallo (no como cancelación) y cae al navegador.
+  const timer = setTimeout(() => ctrl.abort(), REMOTE_TIMEOUT_MS)
   try {
     const res = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 500) }),
-      signal: abort.signal,
+      signal: ctrl.signal,
     })
     if (!res.ok) return false
     const blob = await res.blob()
+    clearTimeout(timer)
     if (mine !== token) return true // llegó tarde: otra frase o un stop ya la reemplazó
     const audioUrl = URL.createObjectURL(blob)
     currentUrl = audioUrl
@@ -175,6 +183,8 @@ async function speakRemote(text: string, mine: number): Promise<boolean> {
     return true
   } catch {
     return mine !== token // si la cancelaron a propósito no se cae al navegador
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -182,14 +192,15 @@ export function canSpeak(): boolean {
   return synth() !== null
 }
 
-function speakBrowser(text: string, lang: string): void {
+function speakBrowser(text: string, lang: string, pitch: number, rate: number): void {
   const s = synth()
   if (!s) return
   try {
     s.cancel()
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang
-    u.rate = 1
+    u.pitch = pitch
+    u.rate = rate
     const voice = pickSpanishVoice(s.getVoices())
     if (voice) {
       u.voice = voice
@@ -201,12 +212,14 @@ function speakBrowser(text: string, lang: string): void {
   }
 }
 
-export function speak(text: string, { lang = 'es-ES' }: { lang?: string } = {}): void {
+export type SpeakOptions = { lang?: string; pitch?: number; rate?: number }
+
+export function speak(text: string, { lang = 'es-ES', pitch = 1, rate = 1 }: SpeakOptions = {}): void {
   if (!text.trim()) return
   stopSpeaking()
   const mine = token
   void speakRemote(text, mine).then((done) => {
-    if (!done && mine === token) speakBrowser(text, lang)
+    if (!done && mine === token) speakBrowser(text, lang, pitch, rate)
   })
 }
 

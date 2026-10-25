@@ -6,6 +6,8 @@
  * - Interfaz desacoplada (VoiceEngine) lista para soportar proveedores externos (ej. ElevenLabs) a futuro.
  */
 
+import { speak as speakVoice, stopSpeaking } from '../lib/voice'
+
 export interface VoiceOptions {
   pitch?: number
   rate?: number
@@ -157,124 +159,11 @@ export class WebSpeechVoiceEngine implements IArisVoiceEngine {
   }
 }
 
-/**
- * Motor híbrido para Aris:
- * - Intenta primero sintetizar con ElevenLabs a través del endpoint backend (/api/tts).
- * - Control de cancelación inmediata con AbortController y corte del elemento Audio.
- * - Descarte de respuestas tardías mediante tokens de turno (token incremental).
- * - Timeout de 3500ms contra el backend para evitar latencias excesivas.
- * - Fallback automático y transparente al sintetizador nativo del navegador (WebSpeechVoiceEngine).
- */
-export class HybridArisVoiceEngine implements IArisVoiceEngine {
-  private fallbackEngine: IArisVoiceEngine
-  private currentAudio: HTMLAudioElement | null = null
-  private currentUrl: string | null = null
-  private abortController: AbortController | null = null
-  private currentToken = 0
-  private timeoutMs: number
-
-  constructor(fallbackEngine: IArisVoiceEngine = new WebSpeechVoiceEngine(), timeoutMs = 3500) {
-    this.fallbackEngine = fallbackEngine
-    this.timeoutMs = timeoutMs
-  }
-
-  private releaseAudio() {
-    if (this.abortController) {
-      this.abortController.abort()
-      this.abortController = null
-    }
-    if (this.currentAudio) {
-      this.currentAudio.pause()
-      this.currentAudio = null
-    }
-    if (this.currentUrl) {
-      URL.revokeObjectURL(this.currentUrl)
-      this.currentUrl = null
-    }
-  }
-
-  speak(text: string, options?: VoiceOptions) {
-    this.cancel()
-    const cleanText = cleanTextForSpeech(text)
-    if (!cleanText) return
-
-    const myToken = ++this.currentToken
-    this.abortController = new AbortController()
-
-    void this.speakRemote(cleanText, myToken, options).then((success) => {
-      if (!success && myToken === this.currentToken) {
-        this.fallbackEngine.speak(cleanText, options)
-      }
-    })
-  }
-
-  private async speakRemote(cleanText: string, token: number, _options?: VoiceOptions): Promise<boolean> {
-    if (typeof fetch === 'undefined' || typeof Audio === 'undefined') {
-      return false
-    }
-
-    try {
-      const signal = this.abortController?.signal
-      let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-      const fetchPromise = fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText.slice(0, 500) }),
-        signal,
-      })
-
-      const timeoutPromise = new Promise<Response>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          if (token === this.currentToken && this.abortController) {
-            this.abortController.abort()
-          }
-          reject(new Error('TTS timeout'))
-        }, this.timeoutMs)
-      })
-
-      const res = await Promise.race([fetchPromise, timeoutPromise]).finally(() => {
-        if (timeoutId) clearTimeout(timeoutId)
-      })
-
-      if (!res.ok) {
-        return false
-      }
-
-      const blob = await res.blob()
-      if (token !== this.currentToken) {
-        return true
-      }
-
-      const audioUrl = URL.createObjectURL(blob)
-      this.currentUrl = audioUrl
-      const audio = new Audio(audioUrl)
-      this.currentAudio = audio
-
-      audio.onended = () => {
-        if (this.currentUrl === audioUrl) {
-          URL.revokeObjectURL(audioUrl)
-          this.currentUrl = null
-          this.currentAudio = null
-        }
-      }
-
-      await audio.play()
-      return true
-    } catch {
-      return token !== this.currentToken
-    }
-  }
-
-  cancel() {
-    this.currentToken++
-    this.releaseAudio()
-    this.fallbackEngine.cancel()
-  }
+// Instancia por defecto: ElevenLabs con fallback al navegador (lógica en lib/voice).
+export const defaultVoiceEngine: IArisVoiceEngine = {
+  speak: (text, options) => speakVoice(text, { lang: options?.lang, pitch: options?.pitch, rate: options?.rate }),
+  cancel: stopSpeaking,
 }
-
-// Instancia por defecto (Motor Híbrido: ElevenLabs con fallback a WebSpeech)
-export const defaultVoiceEngine: IArisVoiceEngine = new HybridArisVoiceEngine()
 
 /**
  * Despacha la voz de Aris con feedback sonoro procedural y control de mute.
