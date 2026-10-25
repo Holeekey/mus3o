@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { dioramaFx, dioramaRequest, useDioramaStore } from '../diorama/dioramaStore'
+import { repeatGuide } from '../diorama/guideStore'
 import { introState } from '../intro/store'
 import { canOpenDoor } from '../palace/keys'
 import { roomAt, type PalaceLayout } from '../palace/layout'
@@ -10,6 +11,23 @@ import { isDoorOpen, useStore } from '../store'
 import { DWELL_DEFAULTS, dwellIdle, forceDwellFire, updateDwell, type DwellState, type DwellTarget } from './dwell'
 import { occluderDistance, pickGazeTarget, type GazeCandidate, type GazeHit, type Ray } from './gaze'
 import { head } from './head'
+import {
+  buttonsIdle,
+  keyAxes,
+  isNavKey,
+  mapAxes,
+  movingIdle,
+  schemeIdle,
+  snapIdle,
+  snapYawDelta,
+  stepButtons,
+  stepMoving,
+  stepSnap,
+  suppressGazeTarget,
+  updateScheme,
+  VR_WALK_SCALE,
+  type SchemeState,
+} from './pad'
 import { rigOffset } from './rig'
 import { ConceptPanel, ExitButton } from './VrPanel'
 import { FloorMarker, Reticle, Veil } from './Reticle'
@@ -42,7 +60,7 @@ const last = { x: 0, z: 0, yaw: 0 }
 const snap = { x: 0, y: 0, z: 0, yaw: 0 }
 const fullYaw = { v: 0 }
 const tele = { phase: 'idle' as 'idle' | 'out' | 'in', x: 0, z: 0 }
-const gaze = { dwell: dwellIdle() as DwellState, lookAway: 0, pad: false, hintShown: null as string | null, exitSet: false, exitDir: [0, -1] as [number, number] }
+const gaze = { dwell: dwellIdle() as DwellState, lookAway: 0, hintShown: null as string | null, exitSet: false, exitDir: [0, -1] as [number, number] }
 
 const _e = new THREE.Euler()
 const _q = new THREE.Quaternion()
@@ -101,14 +119,90 @@ function renderStereo(gl: THREE.WebGLRenderer, scene: THREE.Scene, cam: THREE.Pe
   scene.matrixWorldAutoUpdate = auto
 }
 
-// ---------- entradas de pulsación ----------
+// ---------- mando y teclado ----------
 
-function pollGamepad() {
-  const pads = navigator.getGamepads?.() ?? []
-  let down = false
-  for (const p of pads) if (p?.buttons.some((b) => b.pressed)) down = true
-  if (down && !gaze.pad) vrRuntime.press = true
-  gaze.pad = down
+// Estado del mando entre frames: esquema (uno o dos sticks) por mando, giros por pasos, botones y "caminando".
+const padIn = {
+  schemes: new Map<string, SchemeState>(),
+  padSnap: snapIdle(),
+  keySnap: snapIdle(),
+  buttons: buttonsIdle(),
+  moving: movingIdle(),
+  /** Teclas de navegación sostenidas (mandos en modo teclado: flechas / WASD). */
+  held: new Set<string>(),
+}
+
+function resetPadInput() {
+  padIn.schemes.clear()
+  padIn.padSnap = snapIdle()
+  padIn.keySnap = snapIdle()
+  padIn.buttons = buttonsIdle()
+  padIn.moving = movingIdle()
+  padIn.held.clear()
+  vrRuntime.move.ax = 0
+  vrRuntime.move.az = 0
+  vrRuntime.moving = false
+}
+
+/** Mandos del navegador y, en una sesión WebXR, los de sus fuentes de entrada (algunos controles Android salen por ahí). */
+function collectPads(session: XRSession | null): Gamepad[] {
+  const out: Gamepad[] = []
+  for (const p of navigator.getGamepads?.() ?? []) if (p && p.connected !== false) out.push(p)
+  for (const src of session?.inputSources ?? []) if (src.gamepad) out.push(src.gamepad)
+  return out
+}
+
+/**
+ * Lee mando + teclado y lo deja en `vrRuntime.move` (lo consumen Player y DioramaRuntime vía `moveAxes`, con sus
+ * colisiones y puertas), gira el rig por pasos y despacha los botones. Corre antes que la lógica del juego.
+ * `busy`: intro, teletransporte o transición de cuadro; no se camina ni se gira.
+ */
+function runPad(dt: number, session: XRSession | null, busy: boolean) {
+  let ax = 0
+  let az = 0
+  let turn = 0
+  const pressed: boolean[] = []
+  collectPads(session).forEach((p, n) => {
+    const id = `${n}:${p.id}`
+    const u = updateScheme(padIn.schemes.get(id) ?? schemeIdle(), p.axes)
+    padIn.schemes.set(id, u.state)
+    const m = mapAxes(p.axes, u.scheme)
+    if (Math.abs(m.ax) + Math.abs(m.az) + Math.abs(m.turn) > Math.abs(ax) + Math.abs(az) + Math.abs(turn)) {
+      ax = m.ax
+      az = m.az
+      turn = m.turn
+    }
+    p.buttons.forEach((b, i) => {
+      pressed[i] = !!pressed[i] || b.pressed
+    })
+  })
+
+  // Botones: 0 = seleccionar, 1 = "Aris, repite", el resto seleccionan. Una pulsación = una acción.
+  const btn = stepButtons(padIn.buttons, pressed, performance.now())
+  padIn.buttons = btn.state
+  if (btn.action === 'select') vrRuntime.press = true
+  else if (btn.action === 'repeat') repeatGuide() // fuera de un cuadro no hace nada
+
+  // Teclado (mando en modo teclado): arriba/W avanza, abajo/S retrocede, izquierda/derecha giran por pasos.
+  const keys = keyAxes(padIn.held)
+  if (keys.forward !== 0) az = keys.forward * VR_WALK_SCALE
+  if (busy) {
+    vrRuntime.move.ax = 0
+    vrRuntime.move.az = 0
+  } else {
+    vrRuntime.move.ax = ax
+    vrRuntime.move.az = az
+  }
+  const mv = stepMoving(padIn.moving, !busy && (ax !== 0 || az !== 0), dt)
+  padIn.moving = mv.state
+  vrRuntime.moving = mv.moving
+
+  const sp = stepSnap(padIn.padSnap, busy ? 0 : turn, dt)
+  padIn.padSnap = sp.state
+  const sk = stepSnap(padIn.keySnap, busy ? 0 : keys.turn, dt)
+  padIn.keySnap = sk.state
+  const dir = sp.dir !== 0 ? sp.dir : sk.dir
+  if (dir !== 0) rig.yaw += snapYawDelta(dir)
 }
 
 function usePressInputs(active: boolean) {
@@ -123,7 +217,13 @@ function usePressInputs(active: boolean) {
       if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 10) vrRuntime.press = true
       start = null
     }
+    const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
     const onKey = (e: KeyboardEvent) => {
+      if (isNavKey(e.code) && !typing(e)) {
+        padIn.held.add(e.code)
+        e.preventDefault() // las flechas no deben desplazar la página
+        return
+      }
       if (e.repeat) return
       if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space' || e.code === 'MediaPlayPause') {
         vrRuntime.press = true
@@ -132,8 +232,15 @@ function usePressInputs(active: boolean) {
     }
     window.addEventListener('pointerdown', onDown)
     window.addEventListener('pointerup', onUp)
+    const onKeyUp = (e: KeyboardEvent) => void padIn.held.delete(e.code)
+    const onBlur = () => padIn.held.clear()
     window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
     return () => {
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+      padIn.held.clear()
       window.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('keydown', onKey)
@@ -352,6 +459,7 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
       rig.base = null
       rig.lastKey = ''
       tele.phase = 'idle'
+      resetPadInput()
       gaze.dwell = dwellIdle()
       gazeView.key = null
       gazeView.progress = 0
@@ -363,10 +471,12 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
   }, [kind])
 
   // Antes que la lógica del juego.
-  useFrame((state) => {
+  useFrame((state, rawDt) => {
     const cam = state.camera
     if (!vrRuntime.active) {
       rig.init = false
+      vrRuntime.move.ax = 0
+      vrRuntime.move.az = 0
       desktopCam.cam = cam
       last.x = cam.position.x
       last.z = cam.position.z
@@ -389,6 +499,9 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
         head.recenter()
       }
     }
+    // Mando y teclado, antes de que Player / DioramaRuntime lean `vrRuntime.move`; el giro por pasos entra en la pose de este frame.
+    const dsPhase = useDioramaStore.getState().phase
+    runPad(Math.min(rawDt, 0.05), vrRuntime.kind === 'xr' ? state.gl.xr.getSession() : null, introState.active || tele.phase !== 'idle' || dsPhase === 'entering' || dsPhase === 'leaving')
     if (vrRuntime.kind === 'cardboard') poseCardboard(cam)
     snap.x = cam.position.x
     snap.y = cam.position.y
@@ -448,7 +561,6 @@ function runGaze(cam: THREE.Camera, dt: number, w: World, layout: PalaceLayout) 
   cam.getWorldDirection(_d)
   gazeRay.o = [_o.x, _o.y, _o.z]
   gazeRay.d = [_d.x, _d.y, _d.z]
-  pollGamepad()
   const press = vrRuntime.press
   vrRuntime.press = false
 
@@ -485,7 +597,8 @@ function runGaze(cam: THREE.Camera, dt: number, w: World, layout: PalaceLayout) 
     // Dentro del cuadro no hay suelo al que teletransportarse (se camina con el mando o el teclado).
     hit = pickGazeTarget(gazeRay, cands, { wallDistance: ds.phase === 'inside' ? Infinity : wallDist, floorMax: ds.phase === 'inside' ? 0 : 10 })
     const colliders = activeColliders(layout, (id) => isDoorOpen(st, id))
-    desc = describe(hit, w, layout, colliders)
+    // Mientras se empuja el stick no se arman teletransportes al suelo (caminar no debe disparar saltos).
+    desc = suppressGazeTarget(hit?.cand.kind, vrRuntime.moving) ? NONE : describe(hit, w, layout, colliders)
   }
 
   // Dwell o pulsación inmediata.
