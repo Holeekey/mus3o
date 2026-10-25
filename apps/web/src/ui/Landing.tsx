@@ -82,7 +82,7 @@ export function Landing() {
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
+      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el museo sin IA con todo el texto.`)
       return
     }
     setValidationError(null)
@@ -211,7 +211,7 @@ export function Landing() {
   )
   const presetsList = (
     <div className="presets-section">
-      <p className="presets-label">Entrada directa a palacios destacados</p>
+      <p className="presets-label">Entrada directa a museos destacados</p>
       <div className="presets-list">
         {PRESET_PALACES.map((preset) => (
           <button
@@ -237,7 +237,7 @@ export function Landing() {
   const primaryActions = (
     <>
       <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
-        Construir palacio
+        Construir museo
       </button>
       <button
         className={attachments.length > 0 ? 'btn btn-primary btn-lg' : 'btn'}
@@ -252,7 +252,7 @@ export function Landing() {
   const workbenchHead = (
     <header className="workbench-head">
       <h2 data-reveal>Ahora, <i>el tuyo</i></h2>
-      <p data-reveal>Pega tus apuntes o entra directo a uno de los palacios destacados.</p>
+      <p data-reveal>Pega tus apuntes o entra directo a uno de los museos destacados.</p>
     </header>
   )
   const actionButtons = (
@@ -299,7 +299,7 @@ export function Landing() {
       </section>
 
       {/* Al hacer scroll la maqueta se abre a pantalla completa y luego se vuelve a cerrar. */}
-      <section id="como-funciona" ref={showcaseRef} className="showcase" aria-label="Vista previa del palacio">
+      <section id="como-funciona" ref={showcaseRef} className="showcase" aria-label="Vista previa del museo">
         <div className="showcase-sticky">
           <div className="showcase-frame">
             {EXAMPLE_LAYOUT && (

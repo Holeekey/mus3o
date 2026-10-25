@@ -287,7 +287,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
           <div className="pause-panel">
             <p className="pause-sub">{palace?.title}</p>
             {buildSummary && <p className="pause-sub">{buildSummary}</p>}
-            <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu palacio está levantado'}</h1>
+            <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu museo está levantado'}</h1>
             <p className="muted">
               {mode === 'exam'
                 ? reviewIds
@@ -320,7 +320,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
             )}
             <div className="pause-actions">
               <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
-                {mode === 'exam' ? 'Empezar examen' : 'Entrar al palacio'}
+                {mode === 'exam' ? 'Empezar examen' : 'Entrar al museo'}
               </button>
               <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
                 {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
@@ -341,7 +341,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               >
                 Repasar lo pendiente{due > 0 ? ` (${due})` : ''}
               </button>
-              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el palacio los recuerde.</p>}
+              {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
               <fieldset className="time-machine">
                 <legend>Simular el paso del tiempo</legend>
                 <div className="time-steps" role="group" aria-label="Días simulados">

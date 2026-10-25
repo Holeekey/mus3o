@@ -20,7 +20,7 @@ apps/
     app.ts          rutas, rate limits, tope diario, manejo de errores
     index.ts        arranque (PORT, default 3001)
     claude.ts       llamadas a Claude, reintento de JSON, mock sin API key
-    prompts.ts      todos los prompts y reglas de la IA
+    prompts.ts      todos los prompts y reglas de la IA (`MUSEUM_WORDING`: al usuario se le dice "museo", nunca "palacio")
     cache.ts        caché en memoria de museos (100 entradas)
     images.ts       proxy de imágenes de Wikimedia (/api/image, /api/image/file)
   web/src/
