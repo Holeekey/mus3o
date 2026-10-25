@@ -129,10 +129,13 @@ export function classify(mime: string, name: string, description: string, dateOr
 
 type CommonsPage = { title?: string; index?: number; imageinfo?: any[] };
 
+// Formatos que el navegador muestra como cuadro. DjVu y TIFF en Commons son casi siempre escaneos de libros.
+const PAINTABLE = /^image\/(jpeg|png|webp|gif|svg\+xml)$/;
+
 function toResolved(page: CommonsPage, displayTitle?: string): ResolvedImage | null {
   const info = page.imageinfo?.[0];
   const mime: string = info?.mime ?? "";
-  if (!info || !mime.startsWith("image/")) return null;
+  if (!info || !PAINTABLE.test(mime)) return null;
   const url: string = info.thumburl || info.url;
   if (!url) return null;
   const meta = info.extmetadata ?? {};
@@ -208,12 +211,17 @@ async function fromWikipedia(title: string, lang: string): Promise<ResolvedImage
   };
 }
 
-async function fromCommons(query: string): Promise<ResolvedImage | null> {
+/**
+ * Búsqueda libre en Commons. Con `mustShare`, el nombre del archivo debe compartir alguna de esas palabras:
+ * la búsqueda también mira descripciones y devuelve cosas ajenas (escaneos de libros, fotos de otro tema).
+ */
+async function fromCommons(query: string, mustShare?: Set<string>): Promise<ResolvedImage | null> {
   const data = await getJson(
     `${COMMONS}?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=5&${IIPROP}`,
   );
   const pages = Object.values<CommonsPage>(data?.query?.pages ?? {}).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   for (const page of pages) {
+    if (mustShare?.size && !words(page.title ?? "").some((w) => mustShare.has(w))) continue;
     const resolved = toResolved(page);
     if (resolved) return resolved;
   }
@@ -255,9 +263,12 @@ export async function searchTitles(title: string, context: string, lang: string)
   return hits
     .map((hit, i) => {
       const w = words(hit);
-      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length };
+      return { hit, i, size: w.length, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length };
     })
-    .filter((h) => h.any > 0)
+    // El artículo debe nombrar la pieza entera ("Páez" → "José Antonio Páez") o, si solo comparte parte,
+    // tratar sobre todo del tema: una palabra suelta no basta ("Liberación de Venezuela" no es
+    // "Operación Liberación del Pueblo").
+    .filter((h) => (own.size === 0 ? h.any > 0 : h.mine > 0 && (h.mine === own.size || h.any * 2 > h.size)))
     .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
     .map((h) => h.hit);
 }
@@ -329,8 +340,8 @@ async function retrieve(wiki: string, commons: string, context: string, lang: st
   }
   if (generic) return commons ? fromCommons(commons) : null;
   // Con la consulta de Commons dada se usa tal cual; sin ella, solo se busca por título + contexto.
-  const query = commons || (context ? `${wiki} ${context}` : "");
-  return query ? fromCommons(query) : null;
+  if (commons) return fromCommons(commons);
+  return context ? fromCommons(`${wiki} ${context}`, new Set(words(wiki))) : null;
 }
 
 // LRU de archivos: 60 entradas / 40 MB.

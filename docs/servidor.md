@@ -126,7 +126,9 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 | `PORT` | `3001` | Puerto HTTP |
 | `WEB_ORIGIN` | `http://localhost:5173` | Origen permitido por CORS |
 | `MAX_DAILY_GENERATIONS` | `200` | Tope diario de llamadas a Claude |
-| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt` |
+| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt`, `/api/assets-review` y `/api/library` |
+| `LIBRARY_DIR` | `apps/server/seed/library` | Biblioteca propia de modelos (`index.json` + `.glb`); ver «Biblioteca propia» |
+| `LIBRARY_SOURCE_URL` | URL del repo | Enlace que lleva el crédito de los `.glb` propios |
 | `ELEVENLABS_API_KEY` | (vacía) | Activa la voz natural; sin ella el cliente usa la voz del navegador |
 | `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voz por defecto / `eleven_multilingual_v2` | Voz y modelo (el id se valida alfanumérico) |
 | `MAX_DAILY_TTS_CHARS` | `30000` | Tope diario de caracteres enviados a ElevenLabs |
@@ -183,6 +185,27 @@ Cada asignación queda en `.cache/assets/review.json` (`assetReview.ts`) con su 
 defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra persistente: la hidratación no lo vuelve a
 asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
 Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
+
+## Biblioteca propia de modelos (`library.ts`)
+
+Para que cada museo salga mejor que el anterior: lo que tú creas, y lo que la IA o el respaldo dibujaron y tú aprobaste, se guarda por palabra clave y **se usa antes que cualquier otra fuente**.
+
+**Orden de resolución por pieza** (`resolveModels`): 1) biblioteca propia aprobada → 2) Poly Pizza → 3) Haiku dibuja un respaldo → 4) receta determinista (`fallbackShapes.ts`). Lo resuelto en 1 no se vuelve a buscar en Poly Pizza (`hydrateMuseumAssets(..., skip)`).
+
+**Entradas** (`index.json`, un `<id>.glb` por cada `.glb`): `kind` `recipe` (partes procedurales, como `Part`) o `glb`; `keywords` (normalizadas: minúsculas, sin signos); `origin` `manual | ai | deterministic`; `status` `pending | approved | rejected`; `uses`.
+- Coincidencia: palabra clave exacta o, si no, su última palabra («ancient sword» → «sword»). Desempate: exacta > `.glb` > recetas, lo tuyo (`manual`) > lo generado, más usos.
+- Los `.glb` se sirven por `/api/assets/lib-….glb` (misma ruta que los de Poly Pizza) y llegan a la pieza como `dynamicAsset` con `license: "own"`; las recetas, como `model` procedural.
+
+**Cómo mejora**
+1. Cada generación registra como `pending` lo que dibujaron Haiku o el respaldo determinista (una entrada por palabra clave y origen; máx. 400 pendientes, las más viejas se descartan; lo rechazado no se vuelve a proponer).
+2. Tú revisas: aprobar (gana prioridad), corregir las partes o palabras clave (queda `manual` y aprobada) o rechazar.
+3. Lo que subes tú (`.glb` o receta) entra ya aprobado.
+
+**Curaduría**
+- Terminal, sin servidor: `npm run library -w @mus3o/server -- list [pending|approved|rejected] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b | approve|reject|reset|remove <id>`.
+- API (solo con `ENABLE_DEBUG_ROUTES=true`, si no 404): `GET /api/library?status=`, `POST /api/library/recipe` (`{keywords, title, parts}`), `POST /api/library/glb?keywords=a,b&title=T` (cuerpo `model/gltf-binary`, ≤ 4 MB, firma `glTF`), `PATCH /api/library/:id`, `POST /api/library/:id/(approve|reject|reset)`, `DELETE /api/library/:id`.
+- Los `.glb` van por **Git LFS** (`.gitattributes`); las recetas son JSON pequeño. Lo aprobado en local se versiona con git. En producción el disco es efímero: cura en local y sube el cambio.
+- Privacidad: solo viajan palabras clave de objeto generadas por la IA, nunca el texto de los apuntes.
 
 ## Costo de generación (flujo `/api/generate-museum`)
 

@@ -46,7 +46,7 @@ export async function startLiveBuild(request: LiveBuildRequest, onStage?: (stage
   const text = request.text.trim()
   const store = () => useStore.getState()
   store().beginBuildingPalace({
-    title: files ? 'Tu palacio' : looksLikeTopic(text) ? text : 'Tu palacio',
+    title: files ? 'Tu museo' : looksLikeTopic(text) ? text : 'Tu museo',
     sourceText: text || null,
     userImages: files ? request.userImages : {},
     reducedMotion: prefersReducedMotion(),

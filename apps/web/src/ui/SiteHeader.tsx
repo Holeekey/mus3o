@@ -6,7 +6,7 @@ const TOP_ZONE = 80
 
 const LINKS = [
   { href: '#como-funciona', label: 'Cómo funciona' },
-  { href: '#crear', label: 'Crea tu palacio' },
+  { href: '#crear', label: 'Crea tu museo' },
   { href: TEAM_HASH, label: 'Nuestro Equipo' },
 ]
 
