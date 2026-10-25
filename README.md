@@ -84,7 +84,7 @@ Toda la especificación técnica vive en el directorio [`docs/`](./docs/README.m
 | Documento | Enfoque |
 |---|---|
 | [arquitectura.md](./docs/arquitectura.md) | Visión holística del monorepo, ciclo de datos y separación por capas |
-| [catalogo-optimizaciones.md](./docs/catalogo-optimizaciones.md) | **28 optimizaciones catalogadas** (LLM, red, WebGL/Three.js, frontend y almacenamiento) |
+| [catalogo-optimizaciones.md](./docs/catalogo-optimizaciones.md) | **18 optimizaciones activas implementadas** (LLM, red, WebGL/Three.js, frontend y almacenamiento) |
 | [reporte-costos-y-ahorros.md](./docs/reporte-costos-y-ahorros.md) | Tarifas de Anthropic, métricas reales medidas y proyección de escala |
 | [servidor.md](./docs/servidor.md) | Endpoints Express, DSL, rate limits, prompts, assets y deduplicación |
 | [frontend.md](./docs/frontend.md) | React Three Fiber, Zustand, HUD, shaders y controles de cámara |
