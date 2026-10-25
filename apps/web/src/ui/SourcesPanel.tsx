@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LIMITS, type Source } from '@mus3o/shared'
 import type { ImageAttachment } from '../lib/files'
 
-export const ACCEPT = '.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.png,.jpg,.jpeg,.webp'
+export const ACCEPT = '.pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.png,.jpg,.jpeg,.webp'
 
 export type Attachment = { id: string; kind: 'text'; source: Source } | { id: string; kind: 'image'; image: ImageAttachment }
 
@@ -55,7 +55,7 @@ export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, erro
         </button>
       </header>
       <p className="sources-lead">
-        Word, Excel, CSV, texto, JSON o imágenes. Se leen en tu navegador.
+        PDF, Word, Excel, CSV, texto, JSON o imágenes. Se leen en tu navegador.
       </p>
 
       <button className="btn sources-add" onClick={() => inputRef.current?.click()}>

@@ -20,6 +20,7 @@
     "@react-three/postprocessing": "^3.0.0",
     "@react-three/xr": "6.6.32",
     "mammoth": "^1.13.0",
+    "pdfjs-dist": "^5.7.284",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "read-excel-file": "^9.3.12",

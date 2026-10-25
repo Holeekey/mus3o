@@ -26,6 +26,7 @@ import { KeyHint } from './KeyHint'
 import { TouchControls } from './TouchControls'
 import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
+import { useResumeKeys } from './resume'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -47,6 +48,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
   const touch = useIsTouch()
   const inner = useRef<HTMLDivElement>(null)
   const more = useCardScroll(inner)
+  const locked = useStore((s) => s.locked)
   return (
     <aside className="card" style={wallVars(palette)}>
       <div className="card-header-bar">
@@ -106,6 +108,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
             ) : (
               <>
                 <kbd>M</kbd> marcar · <kbd>E</kbd> cerrar
+                {locked ? <> · <kbd>Esc</kbd> usar el mouse</> : <> · clic fuera o <kbd>Enter</kbd> para seguir</>}
               </>
             )}
           </span>
@@ -170,6 +173,10 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
     const timer = setTimeout(() => setState({ lastKeyRoomId: null }), 4000)
     return () => clearTimeout(timer)
   }, [lastKeyRoomId, setState])
+
+  const reading = !!open && !inExamScope({ mode, reviewIds }, open.concept.id)
+  // Pausa o ficha leída con el mouse: Enter, Espacio o un clic fuera retoman el palacio.
+  useResumeKeys(!locked && (!open || reading))
 
   const focusedDoor = layout.doors.find((d) => d.id === focusedDoorId)
   const doorLocked = !!focusedDoor && !doorOpen(focusedDoor.id)
@@ -241,7 +248,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         </p>
       )}
 
-      {open && (!inExamScope({ mode, reviewIds }, open.concept.id) ? (
+      {reading && !locked && !touch && <div className="card-backdrop" onClick={() => pointerLock.lock()} aria-hidden />}
+      {open && (reading ? (
         <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={open.room.title} />
       ) : (
         <ExamCard key={open.concept.id} concept={open.concept} palette={palettes[open.room.index]} />
@@ -275,7 +283,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       {/* Con una ficha abierta no hay pausa: el puntero suelto sirve para leerla, desplazarla y abrir sus enlaces. */}
       {!locked && !open && (
-        <div className="pause">
+        <div className="pause" onClick={(e) => e.target === e.currentTarget && pointerLock.lock()}>
           <div className="pause-panel">
             <p className="pause-sub">{palace?.title}</p>
             {buildSummary && <p className="pause-sub">{buildSummary}</p>}
@@ -299,6 +307,8 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
               </p>
             ) : (
               <p className="pause-keys">
+                <kbd>Enter</kbd> o clic fuera del panel para volver
+                <br />
                 <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>N</kbd> narrador
                 {mode === 'exam' && (
                   <>

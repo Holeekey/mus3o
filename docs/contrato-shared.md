@@ -143,7 +143,7 @@ Detalle en [diorama.md](./diorama.md).
 ## 5. Fuentes (`SourceSchema`) y request de generación
 
 ```ts
-Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json, text (≤20 000) }   // texto ya extraído en el navegador
+Source = { name (≤120), kind: docx|xlsx|csv|txt|md|json|pdf, text (≤20 000) }   // texto ya extraído en el navegador
 
 GenerateMuseumRequest = {
   mode: MuseumMode (default "exploration"),

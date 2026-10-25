@@ -165,7 +165,7 @@ export function Landing() {
         <button
           className="tab tab-file"
           onClick={() => setSourcesOpen((open) => !open)}
-          title="Word, Excel, CSV, texto, JSON o imágenes"
+          title="PDF, Word, Excel, CSV, texto, JSON o imágenes"
           aria-expanded={sourcesOpen}
           aria-controls="sources-panel"
         >
