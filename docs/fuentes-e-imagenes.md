@@ -52,8 +52,8 @@ IA → quote (copiada, NO parafraseada)
 ### Qué ve el usuario
 
 - En la landing: "17 de 17 conceptos verificados en tus apuntes", o "15 de 17 · 2 sin fuente".
-- En el HUD: `SourceBlock` muestra el fragmento y su línea, con contexto (`palace/sources.ts#sourceView`).
-- Los conceptos `unverified` muestran un aviso en `SourceBlock` ("la IA lo agregó"), y el contador de la landing cuenta cuántos hay.
+- En la ficha, la línea "Fuentes:" dice de qué línea de los apuntes sale (`ConceptInfo.tsx`), junto al crédito de Wikipedia y "Abrir artículo". La cita completa ya no se repite: la definición de la ficha es ese mismo texto.
+- Los conceptos `unverified` dicen "No está en tus apuntes" en rojo en esa línea, y el contador de la landing cuenta cuántos hay.
 
 ### Modo sin IA
 
