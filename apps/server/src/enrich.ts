@@ -21,6 +21,11 @@ export function detectLang(text: string): string {
   return en >= 5 && en > es * 1.5 ? "en" : "es";
 }
 
+const cleanName = <R extends { name: string }>(room: R): R => {
+  const name = cleanRoomName(room.name);
+  return name === room.name ? room : { ...room, name };
+};
+
 const search = (title: string, lang: string, context: string): ImageSearch => ({
   wikiTitle: title.slice(0, 120),
   lang,
@@ -34,12 +39,27 @@ export function pieceContext(roomName: string, museumTitle: string): string {
   return `${room} · ${museumTitle.slice(0, 120 - room.length - 3)}`;
 }
 
+/**
+ * Quita el envoltorio que a veces agrega el modelo al nombre de una sala ("Sala de la Asamblea del museo" → "La Asamblea"):
+ * así el nombre se lee bien y, sobre todo, la imagen de la sala se busca por su tema (un artículo llamado
+ * "Sala de … del museo" no existe y la sala se quedaba sin cuadro ni mundo vivo).
+ */
+export function cleanRoomName(name: string): string {
+  const stripped = name
+    .trim()
+    .replace(/^(?:la\s+)?sala\s+(?:del?|sobre)\s+/i, "")
+    .replace(/\s+(?:del|de este|de nuestro|en el)\s+(?:mus3o|museo)\b.*$/i, "")
+    .trim();
+  if (stripped.length < 3) return name.trim();
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
+
 /** Pone `imageSearch` en cada sala (contexto: título del museo) y pieza (contexto: sala + título del museo) que no la tenga. */
 export function attachImageSearches(museum: Museum, text: string): Museum {
   const lang = detectLang(text || museum.title);
   return {
     ...museum,
-    rooms: museum.rooms.map((room) => ({
+    rooms: museum.rooms.map((room) => cleanName(room)).map((room) => ({
       ...room,
       imageSearch: room.imageSearch ?? search(room.name, lang, museum.title),
       pieces: room.pieces.map((piece) =>

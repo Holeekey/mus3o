@@ -6,8 +6,12 @@ import { createPhotoDioramaClient, wikimediaUrlOf } from './photoDiorama'
 /** Cliente único de la sesión: cola de 2 peticiones, la sala del jugador primero. */
 export const photoDioramas = createPhotoDioramaClient({ currentRoomId: () => useStore.getState().currentRoomId })
 
-/** Salas a esta distancia (m) de la del jugador ya piden su diorama: así está listo cuando llega, sin pedirlo todo de golpe. */
-const NEAR_ROOM_M = 64
+/**
+ * Salas a esta distancia (m) de la del jugador ya piden su diorama. Antes eran 64 m y, como cada mundo tarda 12-16 s,
+ * al llegar a una sala su cuadro vivo aún no estaba. Ahora alcanza a todo el museo: la cola pide de a 2 y la sala del
+ * jugador primero, así que nada se pide de golpe y cada respuesta queda en la caché del servidor.
+ */
+const NEAR_ROOM_M = 1000
 
 /** ¿Esta sala está cerca de donde está el jugador (o de la sala inicial, antes de entrar a alguna)? */
 function useRoomNear(roomId: string | undefined) {

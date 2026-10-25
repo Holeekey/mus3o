@@ -12,7 +12,7 @@ export const PARTS_RULES = `- Cada pieza usa "procedural" con 2 a 8 partes que, 
 - args por forma: box [ancho, alto, fondo]; cylinder [radioSuperior, radioInferior, alto, segmentos]; sphere [radio, segmentosAncho, segmentosAlto]; cone [radio, alto, segmentos]. rot en radianes.
 `;
 /** La app se llama mus3o: el usuario nunca debe leer "palacio", aunque la técnica sea el palacio de la memoria. */
-export const MUSEUM_WORDING = `En todo texto que vea el usuario (títulos, nombres, textos, narración, pedidos reescritos) di "museo", nunca "palacio".`;
+export const MUSEUM_WORDING = `En todo texto que vea el usuario (títulos, nombres, textos, narración, pedidos reescritos) di "museo", nunca "palacio". Los títulos de sala nombran SOLO su tema, como el título de un artículo de Wikipedia (ej. "La Asamblea Nacional", "Toma de la Bastilla"): nunca empiezan con "Sala" ni mencionan "museo".`;
 
 export const RECIPE = `
 Ejemplo de receta (columna):
