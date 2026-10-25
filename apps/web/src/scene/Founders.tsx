@@ -14,7 +14,7 @@ const PHOTO_H = 1.6 // retrato 3:4, igual que las fotos de public/team
 const MAT = 0.1
 const FRAME = 0.07
 const DEPTH = 0.08
-const GAP = 0.7
+const GAP = 0.4 // juntos para que los extremos no queden tras las columnas de las esquinas
 const CENTER_Y = 2.5
 
 const FRAME_COLOR = '#2B211C'
