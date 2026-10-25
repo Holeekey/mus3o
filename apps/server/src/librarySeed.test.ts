@@ -33,8 +33,8 @@ describe("semilla de la biblioteca propia", () => {
     }
   });
 
-  it("no repite palabra clave", () => {
-    const all = seed.flatMap((e) => e.keywords);
+  it("no repite palabra clave entre las aprobadas (la biblioteca solo sirve esas)", () => {
+    const all = seed.filter((e) => e.status === "approved").flatMap((e) => e.keywords);
     expect(new Set(all).size).toBe(all.length);
   });
 });
