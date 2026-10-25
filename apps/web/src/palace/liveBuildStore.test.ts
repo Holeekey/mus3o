@@ -104,14 +104,14 @@ describe('building store actions', () => {
     expect(state().palace?.rooms.length).toBe(LIMITS.maxRooms)
   })
 
-  it('every arriving room gets a diorama right away (library or composed), with no AI call', () => {
+  it('arriving rooms only get hand-made library dioramas: never a world composed from their concepts', () => {
     state().beginBuildingPalace({ title: 'T' })
     for (const r of ids.map((id) => room(id))) {
       state().addBuiltRoom(r)
       const arrived = state().palace!.rooms[state().palace!.rooms.length - 1]
-      // Las salas de prueba no encajan con la biblioteca: reciben uno compuesto al llegar.
-      expect(arrived.diorama).toBeDefined()
-      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBeDefined()
+      // Las salas de prueba no encajan con la biblioteca: su cuadro pide recrear su foto real al resolverse (usePhotoDiorama).
+      expect(arrived.diorama).toBeUndefined()
+      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBeUndefined()
     }
   })
 

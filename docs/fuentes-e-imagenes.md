@@ -89,6 +89,8 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 - `fetchResolvedImage`: comparte una sola petición entre llamadas iguales, también las simultáneas.
 - **Reintentos** ante límite de Wikimedia: esperas de 2 s y 5 s; después da error transitorio.
 - `useResolvedImage(search)` devuelve `undefined` mientras carga, `null` si no hay imagen, o la imagen.
+- **El cuadro principal de cada sala es único en el palacio** (`decideMainImage` / `useRoomMainImage` en `lib/images.ts`): las salas deciden **en orden de sala** (cadena de promesas, determinista aunque las respuestas lleguen desordenadas). Si la imagen de su búsqueda (archivo de Wikimedia o título) ya es el cuadro principal de otra sala, usa la primera imagen de sus piezas que no esté tomada; si ninguna sirve, queda el lienzo de yeso. Si su propia búsqueda no tiene imagen, no toma prestada una pieza. `resetMainImages()` lo reinicia al entrar o empezar a construir un palacio.
+- **Filtro de relevancia del servidor:** ver `servidor.md` §7 (un resultado de búsqueda que nombra otro país se descarta).
 - `peekResolvedImage` lee lo ya resuelto sin esperar (no hay "cargando" en un instante).
 - `prefetchPalaceImages(palace)` descarga y decodifica en segundo plano al entrar.
 - `creditLine(image)` arma la placa: título · autor · licencia. "public domain" se muestra como "Dominio público".

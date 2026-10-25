@@ -55,6 +55,96 @@ export function fetchResolvedImage(search: ImageSearch): Promise<ResolvedImage |
   return pending
 }
 
+// ---- Cuadro principal ÚNICO por palacio ----
+// Los títulos de sala genéricos ("Antecedentes", "Despliegue militar") colapsan al mismo artículo y varias salas mostraban
+// la misma imagen. Cada sala decide su cuadro principal EN ORDEN DE SALA (determinista, aunque las respuestas lleguen
+// desordenadas): si su imagen ya es el cuadro principal de otra sala, usa la imagen de una de sus piezas (la primera que
+// no esté tomada) y, si ninguna sirve, queda el lienzo de yeso. Nunca se repite.
+const mainDecisions = new Map<string, Promise<ResolvedImage | null>>()
+const mainSettled = new Map<string, ResolvedImage | null>()
+const takenImages = new Set<string>()
+let mainChain: Promise<unknown> = Promise.resolve()
+
+/** Olvida las decisiones del palacio anterior (al entrar a otro o empezar a construir uno). */
+export function resetMainImages() {
+  mainDecisions.clear()
+  mainSettled.clear()
+  takenImages.clear()
+  mainChain = Promise.resolve()
+}
+
+/** Identidad de una imagen: el archivo de Wikimedia (sin miniatura ni parámetros) y su título. Sirve para detectar repetidas. */
+export function imageIdentities(image: ResolvedImage): string[] {
+  let raw = image.src
+  if (image.src.startsWith('/api/image/file?')) raw = new URLSearchParams(image.src.slice(image.src.indexOf('?') + 1)).get('u') ?? image.src
+  let file = raw
+  try {
+    const parts = new URL(raw, 'http://local').pathname.split('/')
+    file = decodeURIComponent((parts.includes('thumb') ? parts[parts.length - 2] : parts[parts.length - 1]) ?? raw)
+  } catch {
+    // src raro: se compara completo
+  }
+  return [`file:${file.toLowerCase()}`, `title:${image.title.trim().toLowerCase()}`]
+}
+
+const isTaken = (image: ResolvedImage) => imageIdentities(image).some((id) => takenImages.has(id))
+const take = (image: ResolvedImage) => imageIdentities(image).forEach((id) => takenImages.add(id))
+
+/**
+ * Decide (una sola vez por sala) la imagen de su cuadro principal: la de su búsqueda, o la de la primera pieza con
+ * imagen propia si la principal ya la usa otra sala. Si su búsqueda no tiene imagen, la sala queda sin cuadro (yeso).
+ */
+export function decideMainImage(roomId: string, search: ImageSearch, alternatives: ImageSearch[] = []): Promise<ResolvedImage | null> {
+  const known = mainDecisions.get(roomId)
+  if (known) return known
+  void fetchResolvedImage(search) // se adelanta la consulta; la decisión espera su turno
+  const decision = mainChain.then(async () => {
+    const own = await fetchResolvedImage(search)
+    if (!own) {
+      // Sin imagen definitiva = yeso; un fallo transitorio no se recuerda, para poder decidir de nuevo más adelante.
+      if (!settled.has(keyOf(search))) mainDecisions.delete(roomId)
+      else mainSettled.set(roomId, null)
+      return null
+    }
+    let chosen: ResolvedImage | null = null
+    for (const candidate of [own, ...alternatives]) {
+      const image = candidate === own ? own : await fetchResolvedImage(candidate as ImageSearch)
+      if (image && !isTaken(image)) {
+        chosen = image
+        break
+      }
+    }
+    if (chosen) take(chosen)
+    mainSettled.set(roomId, chosen)
+    return chosen
+  })
+  mainChain = decision.catch(() => undefined)
+  mainDecisions.set(roomId, decision)
+  return decision
+}
+
+/** Imagen del cuadro principal de una sala: la decidida si ya se sabe; si no, la de su búsqueda sin esperar. */
+export const peekMainImage = (roomId: string, search: ImageSearch) =>
+  mainSettled.has(roomId) ? mainSettled.get(roomId) : settled.get(keyOf(search))
+
+/** `undefined` mientras se decide, `null` si la sala queda sin imagen. Registra la sala si nadie lo hizo (el orden es el de llegada). */
+export function useRoomMainImage(roomId: string | undefined, search: ImageSearch | undefined, alternatives: ImageSearch[]): ResolvedImage | null | undefined {
+  const key = roomId && search ? `${roomId}|${keyOf(search)}` : ''
+  const [state, setState] = useState<{ key: string; image: ResolvedImage | null } | null>(null)
+  useEffect(() => {
+    if (!roomId || !search) return
+    let alive = true
+    decideMainImage(roomId, search, alternatives).then((image) => alive && setState({ key, image }))
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  if (!roomId || !search) return null
+  if (state?.key === key) return state.image
+  return mainSettled.has(roomId) ? mainSettled.get(roomId) : undefined
+}
+
 const preloaded = new Set<string>()
 
 /** Descarga y decodifica la imagen en segundo plano para que el navegador la tenga lista al mostrarla. */
@@ -73,12 +163,20 @@ const hasSearch = (s?: ImageSearch): s is ImageSearch => !!(s?.wikiTitle?.trim()
 
 const PREFETCH_CONCURRENCY = 4
 
+/** Registra el cuadro principal de la sala (ver `decideMainImage`) y precarga la imagen que quede. */
+function registerMain(room: Room) {
+  if (!hasSearch(room.imageSearch)) return
+  void decideMainImage(room.id, room.imageSearch, room.pieces.map((p) => p.imageSearch).filter(hasSearch)).then((image) => image && preload(image.src))
+}
+
 /**
  * Resuelve y precarga las imágenes de todas las salas y piezas al entrar al palacio,
  * para que la ficha de un objeto las muestre al instante. Como mucho 4 a la vez y los cuadros
  * principales de las salas primero, para no saturar al servidor ni a Wikimedia.
  */
 export async function prefetchPalaceImages(palace: Museum): Promise<void> {
+  // Las decisiones de cuadro principal se registran en orden de sala antes de cualquier otra cosa.
+  for (const room of palace.rooms) registerMain(room)
   const ordered = [
     ...palace.rooms.map((room) => room.imageSearch),
     ...palace.rooms.flatMap((room) => room.pieces.map((p) => p.imageSearch)),
@@ -120,6 +218,7 @@ async function withRoomSlot<T>(task: () => Promise<T>): Promise<T> {
  * peticiones a la vez entre todas las salas, en orden de llegada. Las imágenes que otra petición ya trajo no se repiten.
  */
 export function prefetchRoomImages(room: Room): Promise<void> {
+  registerMain(room)
   const seen = new Set<string>()
   const searches = [room.imageSearch, ...room.pieces.map((p) => p.imageSearch)].filter(hasSearch).filter((s) => {
     const key = keyOf(s)

@@ -26,7 +26,7 @@ vi.mock('../lib/api', async (importOriginal) => ({
   generateMuseumFromFilesStream: api.generateMuseumFromFilesStream,
   generateMuseumFromFiles: api.generateMuseumFromFiles,
 }))
-vi.mock('../lib/images', () => ({ prefetchRoomImages: (room: Room) => void prefetched.push(room.id) }))
+vi.mock('../lib/images', () => ({ prefetchRoomImages: (room: Room) => void prefetched.push(room.id), resetMainImages: () => {} }))
 
 import { ApiError } from '../lib/api'
 import { resetIntroForTests } from '../intro/store'
