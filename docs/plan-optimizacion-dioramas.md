@@ -156,7 +156,7 @@ Notas:
 Orden revisado: primero la fusión con hidratación mínima, que entrega casi todo el valor; las zonas semánticas van después.
 
 ### Fase 0: Línea base (medir antes de tocar)
-- [ ] Generar 5 museos de temas distintos con diorama y anotar del log `tokens (diorama): entrada X, salida Y, caché leída Z` y el tiempo de la llamada de diorama frente al total.
+- [x] (2 museos, 1 pareado; ver sección 6) Generar 5 museos de temas distintos con diorama y anotar del log `tokens (diorama): entrada X, salida Y, caché leída Z` y el tiempo de la llamada de diorama frente al total.
 - [ ] Reemplazar las estimaciones de la sección 4 por esos números.
 
 ### Fase 1: Parser (`@mus3o/shared`)
@@ -185,8 +185,25 @@ Orden revisado: primero la fusión con hidratación mínima, que entrega casi to
 
 ---
 
-## 6. Qué falta por verificar
+## 6. Medición real (2026-10-25, `claude-sonnet-5-5`, mismo tema en ambos)
 
-- Línea base real de tokens y latencia (Fase 0).
+Tema: "Revolución francesa: Bastilla, Asamblea Nacional y Terror" (5 salas). Salida de Claude, del log `tokens`:
+
+| | Antes (JSON aparte) | Ahora (micro-DSL fusionado) |
+|---|---|---|
+| Llamada principal | 3.341 tokens | 3.514 tokens (+173 por las líneas `DIO`/`D_PROP`) |
+| Llamada de diorama | 2.825 tokens | **no existe** (no aparece `tokens (diorama)`) |
+| **Total de salida** | **6.166** | **3.514 (−43 %)** |
+| Costo de salida a $10/MTok | ~$0,062 | ~$0,035 (−$0,027) |
+
+- Un museo de Carabobo dio 6 props válidos (jinetes, infantería, bandera con color) en la sala con diorama; el modelo siguió el formato sin ayuda.
+- La llamada de diorama de JSON gastó 2.825 tokens, más que los ~1.518 que estimaba el plan; el ahorro absoluto fue mayor.
+- **Latencia: no concluyente.** 45,0 s antes y 40,9 s ahora, pero ambos dominados por `poly.pizza` bloqueado (403) y el respaldo de modelos en este entorno. Hay que repetirlo con red normal.
+- **Navegador:** con Vite y Chromium headless, `enterPalace` con una sala con directivas dejó `time: night`, `rider` ×6 y `figure` enlazados a piezas, `cannon` ×2 y bandera `saltire`; el palacio renderiza sin errores de la app. No se recorrió a pie el cuadro portal.
+- Muestra pequeña (2 museos nuevos, 1 pareado): sirve para confirmar el orden de magnitud, no para fijar porcentajes.
+
+## 7. Qué falta por verificar
+
+- Latencia con red normal (la medición de tokens ya está en la sección 6).
 - Qué compone la clave de caché de `cache.ts`.
-- Calidad visual del micro-DSL frente al JSON en los temas del demo.
+- Calidad visual del micro-DSL frente al JSON entrando al cuadro (portal) en un tema histórico.
