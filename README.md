@@ -37,6 +37,10 @@ npm run dev              # web en :5173, server en :3001
 
 Demos rápidas: `?demo`, `?demo=ia`, `?demo=historia`, `?demo=medicina`, `?demo=dungeon`, `?demo=compuesto` (salas sin diorama: cada una recibe uno compuesto por `diorama/compose.ts`; con `?dioramas=library` se desactiva la composición).
 
+## Costo y ahorro
+
+Un museo generado cuesta unos **$0,04** (el JSON antiguo costaba ~$0,12) y el tope diario del servidor acota el gasto máximo en IA a ~$7/día. Construir mus3o con un agente de código salió ~**89 % más barato** gracias a la caché de prompts: **~USD 246 ahorrados** en 7 días, **99 % de aciertos de caché** y USD 29 de gasto real frente a ~USD 275 sin caché (consola de Anthropic; verificado con los registros de sesión del repo). Detalle, gráficos y método en [`docs/reporte-costos-y-ahorros.md`](./docs/reporte-costos-y-ahorros.md).
+
 ## Documentación
 
 Toda la documentación técnica está en [`docs/`](./docs/README.md): arquitectura, contrato de datos, servidor, frontend, memoria y examen, diorama, fuentes e imágenes, estado y pendientes, y guía de desarrollo.
