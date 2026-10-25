@@ -8,6 +8,7 @@ import { playerPose, useStore } from '../store'
 import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
+import { DIORAMA_SPAWN } from './guide'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
 import { applyTouchLook, moveAxes } from '../scene/moveInput'
@@ -23,7 +24,7 @@ const RUN = 9
 const REACH = 7
 const BOUND = 13.4
 const PLAYER_R = 0.4
-const SPAWN_Z = 10.6
+const SPAWN_Z: number = DIORAMA_SPAWN.z
 const GATE_Z = 13.2
 const ENTER_SECS = 1.05
 const LEAVE_SECS = 0.8

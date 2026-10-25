@@ -19,6 +19,9 @@ del día) y coloca. El cliente construye todo con primitivas low-poly.
 | `apps/web/src/diorama/DioramaRuntime.tsx` | Transiciones, cámara, colisiones dentro del diorama, cuadro-portal (`MeshPortalMaterial`) |
 | `apps/web/src/diorama/DioramaScene.tsx` | Escena de la maqueta: cielo, luz, suelo, props instanciados |
 | `apps/web/src/diorama/DioramaOverlay.tsx` | Capa DOM: velo, "E · Entrar al cuadro", recordatorio de salida |
+| `apps/web/src/diorama/guide.ts` | Guía de Aris (funciones puras): dirección relativa, texto de introducción y de cada concepto, registro de piezas ya contadas |
+| `apps/web/src/diorama/guideStore.ts` | Guía de Aris (estado): arma lo que dice, lo publica en el globo de Aris (`arisMessage`) y, si el narrador está activo, lo dice con `speak` |
+| `apps/web/src/diorama/DioramaGuide.tsx` | Cablea la guía: presenta la escena al entrar, cuenta el concepto que se mira, tecla `G`, calla al salir |
 | `apps/web/src/diorama/DioramaMinimap.tsx` | Minimapa dentro del diorama |
 | `apps/web/src/diorama/RoomEcho.tsx` | Versión ligera de la sala, vista por el marco de regreso |
 | `apps/web/src/diorama/model.ts` | Construcción y caché del modelo por diorama, precalentado en tiempo libre |
@@ -138,3 +141,16 @@ pieza. Máximo 5 enlaces recomendados en el prompt.
 - Solo escritorio.
 - `caraboboDiorama.ts` (mock) es un ejemplo de contenido, no es un diorama real generado por IA.
 - No hay pruebas automáticas de render; la validación visual es manual.
+
+---
+
+## Guía de Aris dentro del cuadro
+
+Al entrar, Aris explica qué se ve; no usa IA, solo plantillas sobre los datos del museo.
+
+- **Introducción** (900 ms después de entrar): título del diorama, sala y periodo (si existen) y hasta 4 conceptos enlazados con su dirección respecto al punto de aparición (`justo delante`, `a tu derecha`, `detrás, a tu izquierda`…).
+- **Concepto mirado** (el mismo `focusedId` que usa la ficha, tras 650 ms de mirada): título, hasta 2 oraciones (240 caracteres) del texto de los apuntes, y la fuente (`Según tus apuntes, línea N`, `Esto sale de tus apuntes`, aviso si la idea no está en los apuntes, y el título de Wikipedia solo si ya estaba recuperado). Una vez por visita.
+- **Tecla `G`** (o el botón táctil): repite el concepto mirado o, si no se mira ninguno, la introducción.
+- **Salida**: al salir del cuadro se calla la voz, se cierra el globo y se olvida lo contado.
+- **Dónde se ve y se oye**: globo de Aris existente (`arisMessage`, `ui/ArisDialog.tsx`, que dura más con textos largos). Voz solo si el narrador está activo (`N`) y Aris no está silenciada; el estado de lo que dice Aris vive en `useGuideStore` (`line`), para que otro panel (VR) lo lea.
+- **Límites**: si un concepto no tiene texto, solo se nombra; el resumen de Wikipedia se usa únicamente si ya estaba en caché (la guía lo pide para la siguiente vez, nunca espera).

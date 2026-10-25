@@ -153,6 +153,7 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `T` | Hablar con Aris (abre el prompt) | `scene/actions.ts` |
 | `Q` | Salir del diorama | `scene/actions.ts` |
 | `N` | Narrador | `ui/Narrator.tsx` |
+| `G` | Dentro de un diorama: Aris repite lo que se mira (o la introducción) | `diorama/DioramaGuide.tsx` |
 | `R` / `Y` | En el examen: reintentar el dictado / escribir la respuesta | `ui/ExamCard.tsx` |
 | `Esc` | Pausa | Ayuda del HUD |
 
