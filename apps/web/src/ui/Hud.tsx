@@ -288,77 +288,82 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       {!locked && !open && (
         <div className="pause" onClick={(e) => e.target === e.currentTarget && pointerLock.lock()}>
           <div className="pause-panel">
-            <p className="pause-sub">{palace?.title}</p>
-            {buildSummary && <p className="pause-sub">{buildSummary}</p>}
-            <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu museo está levantado'}</h1>
-            <p className="muted">
-              {mode === 'exam'
-                ? reviewIds
-                  ? 'Solo se preguntan los conceptos que se están olvidando. Acércate a cada pedestal roto y di qué había.'
-                  : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
-                : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
-            </p>
-            {touch ? (
-              <p className="pause-keys">
-                Arrastra a la izquierda para moverte y desliza a la derecha para mirar · 👁️ examinar · ✓ memorizar · 🤖 Aris
-                {mode === 'exam' && (
-                  <>
-                    <br />
-                    Responde en voz alta o toca «Escribir»
-                  </>
-                )}
+            {/* En pantallas bajas y anchas (teléfono horizontal) van en dos columnas: texto y controles. */}
+            <div className="pause-info">
+              <p className="pause-sub">{palace?.title}</p>
+              {buildSummary && <p className="pause-sub">{buildSummary}</p>}
+              <h1>{examFinished ? `Resultado: ${score} de ${total}` : reviewIds ? 'Repaso' : mode === 'exam' ? 'Modo examen' : 'Tu museo está levantado'}</h1>
+              <p className="muted">
+                {mode === 'exam'
+                  ? reviewIds
+                    ? 'Solo se preguntan los conceptos que se están olvidando. Acércate a cada pedestal roto y di qué había.'
+                    : 'Los carteles están ocultos. Acércate a cada pedestal y di qué concepto había.'
+                  : 'Camina por las salas, examina cada pedestal y marca lo que ya recuerdas.'}
               </p>
-            ) : (
-              <p className="pause-keys">
-                <kbd>Enter</kbd> o clic fuera del panel para volver
-                <br />
-                <kbd>W A S D</kbd> moverte · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar
-                <br />
-                <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> Aris · <kbd>N</kbd> narrador
-                {mode === 'exam' && (
-                  <>
-                    <br />
-                    Responde en voz alta · <kbd>Y</kbd> para escribir
-                  </>
-                )}
-              </p>
-            )}
-            <div className="pause-actions">
-              <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
-                {mode === 'exam' ? 'Empezar examen' : 'Entrar al museo'}
-              </button>
-              <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
-                {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
-              </button>
-              {due > 0 && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    if (startReview()) pointerLock.lock()
-                  }}
-                >
-                  Repasar lo pendiente ({due})
-                </button>
+              {touch ? (
+                <p className="pause-keys">
+                  Arrastra a la izquierda para moverte y desliza a la derecha para mirar · 👁️ examinar · ✓ memorizar · 🤖 Aris
+                  {mode === 'exam' && (
+                    <>
+                      <br />
+                      Responde en voz alta o toca «Escribir»
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="pause-keys">
+                  <kbd>Enter</kbd> o clic fuera del panel para volver
+                  <br />
+                  <kbd>W A S D</kbd> moverte · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar
+                  <br />
+                  <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> Aris · <kbd>N</kbd> narrador
+                  {mode === 'exam' && (
+                    <>
+                      <br />
+                      Responde en voz alta · <kbd>Y</kbd> para escribir
+                    </>
+                  )}
+                </p>
               )}
-              <VrButton />
             </div>
-            {/* Lo secundario queda plegado: la pausa se lee de un vistazo. */}
-            <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
-              {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
-            </button>
-            {!moreOptions && <p className="muted pause-more-hint">Salir del museo · exploración libre</p>}
-            {moreOptions && (
-              <>
-                <div className="pause-actions pause-more-actions">
-                  <button className="btn btn-ghost" onClick={exitToLanding}>Salir del museo</button>
-                </div>
-                <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
+            <div className="pause-controls">
+              <div className="pause-actions">
+                <button className="btn btn-primary" onClick={() => pointerLock.lock()}>
+                  {mode === 'exam' ? 'Empezar examen' : 'Entrar al museo'}
+                </button>
+                <button className="btn btn-ghost" onClick={() => setMode(mode === 'exam' ? 'explore' : 'exam')}>
+                  {mode === 'exam' ? 'Volver a explorar' : 'Empezar modo examen'}
+                </button>
+                {due > 0 && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      if (startReview()) pointerLock.lock()
+                    }}
+                  >
+                    Repasar lo pendiente ({due})
+                  </button>
+                )}
+                <VrButton />
+              </div>
+              {/* Lo secundario queda plegado: la pausa se lee de un vistazo. */}
+              <button type="button" className="pause-more" aria-expanded={moreOptions} onClick={() => setMoreOptions((v) => !v)}>
+                {moreOptions ? 'Menos opciones ▴' : 'Más opciones ▾'}
+              </button>
+              {!moreOptions && <p className="muted pause-more-hint">Salir del museo · exploración libre</p>}
+              {moreOptions && (
+                <>
+                  <div className="pause-actions pause-more-actions">
+                    <button className="btn btn-ghost" onClick={exitToLanding}>Salir del museo</button>
+                  </div>
+                  <FreeExploreToggle checked={freeExplore} onChange={setFreeExplore} />
 
-                <div className="memory-panel">
-                  {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
-                </div>
-              </>
-            )}
+                  <div className="memory-panel">
+                    {due === 0 && <p className="muted memory-note">Nada que repasar por ahora. Marca conceptos con {touch ? '✓' : 'M'} para que el museo los recuerde.</p>}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
