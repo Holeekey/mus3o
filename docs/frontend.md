@@ -194,7 +194,7 @@ HUD responsive (sección "HUD responsive" al final de `index.css`):
 | Componente | Función |
 |---|---|
 | `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
-| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla vuelve la pausa |
+| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa |
 | `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
