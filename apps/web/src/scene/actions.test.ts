@@ -3,7 +3,7 @@ import type { Piece } from '@mus3o/shared'
 import { dioramaRequest, useDioramaStore } from '../diorama/dioramaStore'
 import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
-import { interact, leaveDiorama, openAris, toggleMemorize } from './actions'
+import { closeCard, interact, leaveDiorama, openAris, toggleMemorize } from './actions'
 import { pointerLock } from './pointerLock'
 
 vi.hoisted(() => {
@@ -44,6 +44,7 @@ beforeEach(() => {
   dioramaRequest.enter = null
   dioramaRequest.leave = false
   pointerLock.unlock = vi.fn()
+  pointerLock.lock = vi.fn()
 })
 
 describe('interact (E o botón 👁️)', () => {
@@ -123,5 +124,28 @@ describe('leaveDiorama (Q o botón Volver)', () => {
     useDioramaStore.setState({ phase: 'inside' })
     leaveDiorama()
     expect(dioramaRequest.leave).toBe(true)
+  })
+})
+
+describe('closeCard (E o ✕ con la ficha abierta)', () => {
+  it('returns to the palace when the pointer was released to read, instead of showing the pause menu', () => {
+    useStore.setState({ openId: 'p1', locked: false })
+    closeCard()
+    expect(useStore.getState().openId).toBeNull()
+    expect(pointerLock.lock).toHaveBeenCalled()
+  })
+
+  it('does not touch the pointer when it is already locked', () => {
+    useStore.setState({ openId: 'p1', locked: true })
+    closeCard()
+    expect(useStore.getState().openId).toBeNull()
+    expect(pointerLock.lock).not.toHaveBeenCalled()
+  })
+
+  it('E closes the card the same way', () => {
+    useStore.setState({ openId: 'p1', locked: false })
+    interact(layout)
+    expect(useStore.getState().openId).toBeNull()
+    expect(pointerLock.lock).toHaveBeenCalled()
   })
 })

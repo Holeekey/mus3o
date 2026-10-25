@@ -4,7 +4,7 @@ import type { PalaceLayout } from '../palace/layout'
 import { pieceKind } from '../palace/pieceKind'
 import type { Piece as Concept } from '@mus3o/shared'
 import { creditLine, prefetchPalaceImages, userImageAsResolved, useResolvedImage } from '../lib/images'
-import { interact, toggleMemorize } from '../scene/actions'
+import { closeCard, interact, toggleMemorize } from '../scene/actions'
 import { pointerLock } from '../scene/pointerLock'
 import { useDueCount, useRoomMemory } from '../memory/hooks'
 import { TIME_STEPS } from '../memory/model'
@@ -44,7 +44,6 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
   const userSrc = useStore((s) => (concept.image ? s.userImages[concept.image.imageId] : undefined))
   const resolved = useResolvedImage(userSrc ? undefined : concept.imageSearch)
   const image = userSrc ? userImageAsResolved(userSrc, concept.title) : resolved
-  const close = () => useStore.getState().set({ openId: null })
   const touch = useIsTouch()
   const inner = useRef<HTMLDivElement>(null)
   const more = useCardScroll(inner)
@@ -52,7 +51,7 @@ function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette
     <aside className="card" style={wallVars(palette)}>
       <div className="card-header-bar">
         <p className="card-tag">{roomName}</p>
-        <button type="button" className="card-close" onClick={close} aria-label="Cerrar ficha">
+        <button type="button" className="card-close" onClick={closeCard} aria-label="Cerrar ficha">
           ✕
         </button>
       </div>
