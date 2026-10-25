@@ -90,7 +90,7 @@ export function Landing() {
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el museo sin Aris con todo el texto.`)
+      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes usar «Construir offline» con todo el texto.`)
       return
     }
     setValidationError(null)
@@ -249,7 +249,7 @@ export function Landing() {
   const primaryActions = (
     <>
       <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
-        Construir museo
+        Construir offline
       </button>
       <button
         className={attachments.length > 0 ? 'btn btn-primary btn-lg' : 'btn'}
