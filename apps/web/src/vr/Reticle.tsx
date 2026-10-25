@@ -103,7 +103,7 @@ export function FloorMarker() {
     const f = gazeView.floor
     g.visible = vrRuntime.active && f.show
     if (!g.visible) return
-    g.position.set(f.x, 0.03, f.z)
+    g.position.set(f.x, f.y + 0.03, f.z)
     ring.current?.color.copy(f.valid ? good : bad)
     const s = 1 + gazeView.progress * 0.25
     g.scale.set(s, s, s)
