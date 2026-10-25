@@ -106,8 +106,8 @@ Resolver la sensación de lentitud y falta de respuesta en el recorrido del pala
 ---
 
 ## 🚀 Estado de Ejecución
-- [x] **Punto 2:** Implementado, testeado y verificado en `apps/web` (684 tests en verde).
-- [ ] **Punto 3:** Especificado y listo para implementación.
-- [ ] **Punto 4:** Especificado y listo para implementación.
-- [ ] **Punto 5:** Especificado y listo para implementación.
-- [ ] **Punto 6:** Especificado y listo para implementación.
+- [x] **Punto 2:** Persistencia de Fotos con F5 (IndexedDB) — Commit `447d478`
+- [x] **Punto 3:** Robustecimiento del Parser DSL ante variaciones de LLM — Commit `c2302ac`
+- [x] **Punto 4:** Límites y Cuotas Persistentes en Disco — Commit `463e85f`
+- [x] **Punto 5:** Integración Funcional de A* en Aris Companion — Commit `129e8f9`
+- [x] **Punto 6:** Locomoción e Interacción (Ergonomía de Tecla E y Movimiento) — Commit `2f1d102`
