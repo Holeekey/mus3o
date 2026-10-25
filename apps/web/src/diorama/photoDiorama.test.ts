@@ -109,10 +109,10 @@ describe('library dioramas vs generated ones', () => {
     expect(r.diorama?.title).toMatch(/carabobo/i)
   })
 
-  it('rooms without a library match get NO concept-composed diorama anymore', () => {
+  it('rooms without a library match get a composed diorama with no AI call', () => {
     const r = attachDioramasToArrivingRoom([], room('t', 'Teoría de conjuntos'))
-    expect(r.diorama).toBeUndefined()
+    expect(r.diorama).toBeDefined()
     const museum = attachDioramasToFinalMuseum({ ...historiaMuseum, rooms: [room('a', 'Álgebra'), room('b', 'Geometría')] })
-    expect(museum.rooms.every((x) => !x.diorama)).toBe(true)
+    expect(museum.rooms.every((x) => x.diorama)).toBe(true)
   })
 })

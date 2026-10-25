@@ -7,7 +7,9 @@ explorable. Con `E` se entra; con `Q` se vuelve a la sala.
 
 1. **Biblioteca** (`library.ts`, hecha a mano: Carabobo, corazón, célula, neurona): manda donde el tema coincide.
 2. **La foto real del cuadro** (`photoDiorama.ts`, `usePhotoDiorama.ts`, servidor `POST /api/diorama-from-image`, ver `servidor.md`): cuando la imagen del cuadro principal ya se resolvió, Claude (visión) clasifica si es una escena recreable (batalla, paisaje, lugar, interior, escena microscópica) y, si lo es, la describe con la biblioteca de props. **Si no es una escena (retrato, diagrama, mapa, texto, logo) o no hay IA, el cuadro queda normal, sin portal.** Nunca se arma un mundo con los conceptos de la sala.
-3. Nada más. El compositor por conceptos (`compose.ts`) ya no se usa por defecto; solo lo llama la demo `?demo=compuesto`.
+3. **Directivas de la IA y relleno compuesto** (`compose.ts`, sin llamadas extra): las salas históricas/geográficas/naturales traen `DIO`/`D_PROP` en la misma llamada del DSL y se componen **antes** que la biblioteca (`attachDirected`); a las salas que sigan sin diorama se les compone uno con su pigmento (`attachComposedDioramas`, 0 tokens) al llegar. **Toda sala nace con diorama, sin pasos adicionales.**
+
+> Como toda sala ya tiene diorama al llegar, el paso 2 (foto real) solo actúa en cuadros que quedaron sin diorama; hoy casi nunca. Se conserva por si se desactiva el relleno (`?dioramas=library`).
 
 Dentro del mundo de foto, la imagen original se ve como **panel curvo al fondo** (`Backdrop` en `DioramaScene.tsx`, campo `diorama.backdrop`) para reconocer la escena, los props siguen la composición de la imagen y la paleta sale de ella. Cada prop lleva un `label` en español (qué representa en la imagen), útil para la narración.
 

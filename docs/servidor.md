@@ -230,7 +230,7 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de mundos sale de la biblioteca hecha a mano o de `POST /api/diorama-from-image`. Ver [diorama.md](./diorama.md) §4 |
+| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de salas reciben un diorama de la biblioteca o compuesto en el cliente (sin IA); `POST /api/diorama-from-image` solo se usa si una sala queda sin diorama. Ver [diorama.md](./diorama.md) §4 |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`
