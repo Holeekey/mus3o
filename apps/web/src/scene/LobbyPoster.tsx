@@ -64,22 +64,11 @@ function useDioramaPointer(interactive: boolean) {
  * Marco de vitrina de cristal gris ahumado oscuro y opaco con ribetes dorados finos.
  */
 function TransparentVitrineFrame({ w, h, outerW, outerH }: { w: number; h: number; outerW: number; outerH: number }) {
-  const frameMat = (
-    <meshPhysicalMaterial
-      color={SMOKE_GLASS}
-      transparent
-      opacity={0.75}
-      roughness={0.14}
-      transmission={0.35}
-      thickness={0.1}
-      ior={1.55}
-      depthWrite={false}
-    />
-  )
+  const frameMat = <meshStandardMaterial color={SMOKE_GLASS} roughness={0.35} metalness={0.15} />
 
   return (
     <group>
-      {/* Molduras perimetrales de cristal gris ahumado opaco */}
+      {/* Molduras perimetrales */}
       <mesh position={[0, (h + FRAME) / 2, DEPTH / 2]}>
         <boxGeometry args={[outerW, FRAME, DEPTH]} />
         {frameMat}
@@ -115,17 +104,17 @@ function TransparentVitrineFrame({ w, h, outerW, outerH }: { w: number; h: numbe
         <meshStandardMaterial color={BRASS} roughness={0.3} metalness={0.8} />
       </mesh>
 
-      {/* Cristal frontal de la vitrina en gris ahumado más opaco */}
+      {/* Cristal frontal de la vitrina en gris ahumado translúcido */}
       <mesh position={[0, 0, DEPTH - 0.005]}>
         <planeGeometry args={[w, h]} />
         <meshPhysicalMaterial
           color={SMOKE_GLASS}
           transparent
-          opacity={0.48}
-          roughness={0.06}
-          transmission={0.55}
-          thickness={0.03}
-          ior={1.55}
+          opacity={0.4}
+          roughness={0.08}
+          transmission={0.6}
+          thickness={0.05}
+          ior={1.52}
           depthWrite={false}
         />
       </mesh>
@@ -167,17 +156,10 @@ function ParrotDioramaBox({ room, interactive }: { room: RoomLayout; interactive
       {/* Marco y caja vitrina de cristal gris transparente */}
       <TransparentVitrineFrame w={w} h={h} outerW={outerW} outerH={outerH} />
 
-      {/* Panel posterior de cristal gris ahumado más opaco */}
+      {/* Panel posterior oscuro de la vitrina */}
       <mesh position={[0, 0, 0.005]}>
         <planeGeometry args={[w, h]} />
-        <meshPhysicalMaterial
-          color={SMOKE_GLASS}
-          transparent
-          opacity={0.72}
-          roughness={0.16}
-          transmission={0.32}
-          depthWrite={false}
-        />
+        <meshStandardMaterial color={SMOKE_GLASS} roughness={0.6} />
       </mesh>
 
       {/* Tipografía flotante del hackathon en la parte superior */}
@@ -218,9 +200,9 @@ function ParrotDioramaBox({ room, interactive }: { room: RoomLayout; interactive
         penumbra={0.6}
       />
 
-      {/* Modelo 3D de la Guacamaya: contenido dentro de la vitrina profunda */}
+      {/* Modelo 3D de la Guacamaya: contenido dentro de la vitrina con paralaje suave */}
       <group position={[0, parrotY, 0.28]}>
-        <ParrotModel scale={parrotScale} interactive={interactive} />
+        <ParrotModel scale={parrotScale} lookAtPointer={true} />
       </group>
 
       {/* Créditos del asset en la esquina inferior derecha del marco */}
@@ -248,7 +230,7 @@ function ParrotDioramaBox({ room, interactive }: { room: RoomLayout; interactive
 }
 
 /** Cuadro diorama interactivo de la Guacamaya en el muro oeste del lobby. */
-export function LobbyPoster({ room, interactive = false }: { room: RoomLayout; src?: string; interactive?: boolean }) {
+export function LobbyPoster({ room, interactive = false }: { room: RoomLayout; interactive?: boolean }) {
   return (
     <Suspense fallback={null}>
       <ParrotDioramaBox room={room} interactive={interactive} />
