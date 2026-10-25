@@ -197,11 +197,12 @@ HUD responsive (sección "HUD responsive" al final de `index.css`):
 |---|---|
 | `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
 | `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa. Con el mouse suelto (Esc o alt+tab), un clic fuera de la ficha o Enter vuelven a caminar con la ficha abierta. La rueda desplaza la ficha también en Firefox, que la mide en líneas (`wheelPixels` en `ui/cardScroll.ts`) |
-| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), llaves, repaso y ayudas de teclado. HUD liviano: el progreso va en el cartel de la sala ("N de M memorizadas · X de Y en total" con barra); "Repasos pendientes" solo si hay; Aris se oculta con una ficha abierta. Pausa en dos niveles: arriba Entrar, Examen, Repasar (si hay pendientes) y VR; en "Más opciones" editar apuntes, exploración libre y simular el paso del tiempo. La pausa lista todas las teclas |
+| `legend.ts` | Píldora de controles abajo al centro (solo escritorio): se ve al entrar hasta el primer paso o 15 s (`INTRO_MS`) y vuelve tras 30 s quieto (`IDLE_MS`) |
+| `Narrator.tsx` | En escritorio, apagado no ocupa lugar: al cambiarlo con N se ve 2 s. En táctil es el interruptor y queda siempre |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |
-| `SourceBlock` | Muestra la cita de los apuntes de donde sale un concepto (`sourceView`) |
 | `Landing` | Pantalla de inicio (ver sección 2) |
 
 ## 7. Aris (`palace/arisBrain.ts`)
