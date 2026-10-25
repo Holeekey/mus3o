@@ -20,6 +20,7 @@ import {
 import { getClient } from "./claude";
 import { loadImageFile, parseAllowedUrl } from "./images";
 import { readCacheDiorama, readSeedDiorama, writeCacheDiorama, type StoredFile } from "./imageStore";
+import { resetBudgetForTesting, takeBudget } from "./budgetStore";
 
 /**
  * "Cuadros vivos" hechos desde la foto real: se le muestra a Claude (visión) la imagen que ya resolvió el servidor
@@ -233,13 +234,8 @@ export async function recreateFromImage(
 // Cupos: tope diario, concurrencia por proceso y peticiones iguales compartidas
 // ---------------------------------------------------------------------------------------------
 const MAX_DAILY = () => Number(process.env.MAX_DAILY_PHOTO_DIORAMAS) || 150;
-let budget = { day: "", used: 0 };
-function takeSlot(): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (budget.day !== day) budget = { day, used: 0 };
-  if (budget.used >= MAX_DAILY()) return false;
-  budget.used++;
-  return true;
+async function takeSlot(): Promise<boolean> {
+  return takeBudget("photo_dioramas", 1, MAX_DAILY());
 }
 
 /** Ajustes que las pruebas reducen. */
@@ -263,12 +259,12 @@ async function withSlot<T>(run: () => Promise<T>): Promise<T | null> {
 
 const memory = new Map<string, PhotoDioramaResponse>();
 const MAX_MEMORY = 300;
-const inFlight = new Map<string, Promise<PhotoDioramaResponse | "busy" | 502 | 413>>();
+const inFlight = new Map<string, Promise<PhotoDioramaResponse | "busy" | "quota" | 502 | 413>>();
 
 export const resetPhotoDioramaState = () => {
   memory.clear();
   inFlight.clear();
-  budget = { day: "", used: 0 };
+  void resetBudgetForTesting("photo_dioramas");
   active = 0;
   waiting.length = 0;
 };
@@ -330,12 +326,11 @@ photoRouter.post("/diorama-from-image", async (req, res) => {
     }
     let pending = inFlight.get(key);
     if (!pending) {
-      if (!takeSlot()) {
-        res.status(429).json({ error: "Se alcanzó el tope diario de dioramas" });
-        return;
-      }
       const context = { title: parsed.data.title, roomTitle: parsed.data.roomTitle, concepts: parsed.data.concepts };
+      // El cupo se toma dentro de la promesa compartida: así `inFlight` queda registrado antes de cualquier `await`
+      // y las peticiones simultáneas iguales siguen compartiendo una sola llamada (y un solo cupo).
       pending = (async () => {
+        if (!(await takeSlot())) return "quota" as const;
         const done = await withSlot(async () => {
           const file = await loadImageFile(url.toString());
           if (typeof file === "number") return file;
@@ -350,6 +345,10 @@ photoRouter.post("/diorama-from-image", async (req, res) => {
       inFlight.set(key, pending);
     }
     const out = await pending;
+    if (out === "quota") {
+      res.status(429).json({ error: "Se alcanzó el tope diario de dioramas" });
+      return;
+    }
     if (out === "busy") {
       res.status(503).json({ error: "Demasiados dioramas en cola" });
       return;

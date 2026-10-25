@@ -1,4 +1,5 @@
 import type { Museum } from '@mus3o/shared'
+import { PalaceGraphNavigator } from '@mus3o/dungeon-core'
 import { playArisVoice } from './arisAudio'
 
 export type ArisResponse = {
@@ -165,8 +166,15 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   if (namedRoom) {
     const idx = palace.rooms.findIndex((r) => r.id === namedRoom.id)
     const done = namedRoom.pieces.filter((p) => memorized[p.id]).length
+    let routeHint = ''
+    if (namedRoom.id !== currentRoom.id) {
+      const pathResult = PalaceGraphNavigator.findPath(palace, currentRoom.id, namedRoom.id)
+      if (pathResult) {
+        routeHint = ` ${PalaceGraphNavigator.describePath(pathResult, namedRoom.name)}`
+      }
+    }
     return {
-      text: `Aris: "${namedRoom.name}" es la Sala ${idx + 1} de ${palace.rooms.length}, con ${namedRoom.pieces.length} conceptos (${done} memorizados). ${brief(namedRoom.description || '', 110)}`.trim(),
+      text: `Aris: "${namedRoom.name}" es la Sala ${idx + 1} de ${palace.rooms.length}, con ${namedRoom.pieces.length} conceptos (${done} memorizados). ${brief(namedRoom.description || '', 110)}${routeHint}`.trim(),
     }
   }
 

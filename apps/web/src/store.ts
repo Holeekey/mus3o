@@ -14,6 +14,7 @@ import { resetDioramaState } from './diorama/dioramaStore'
 import { abortIntro, beginBuildIntro, introBuildDone, introRoomArrived } from './intro/store'
 import { dueIds, palaceKey, strengthOf } from './memory/model'
 import { nowMs, useMemory } from './memory/store'
+import { loadUserImages, replaceUserImages } from './lib/imageStorage'
 
 export type Screen = 'landing' | 'palace'
 export type Mode = 'explore' | 'exam'
@@ -162,6 +163,9 @@ export const useStore = create<State>()(
       build: IDLE_BUILD,
 
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
+        if (Object.keys(userImages).length > 0) {
+          void replaceUserImages(userImages)
+        }
         // Solo la biblioteca (hechos a mano). El resto de cuadros pide recrear su foto real (diorama/usePhotoDiorama):
         // nunca se compone un mundo con los conceptos de la sala, ni con las directivas DIO / D_PROP de la IA
         // (la composición queda solo para la demo `?demo=compuesto`).
@@ -195,6 +199,9 @@ export const useStore = create<State>()(
         resetMainImages()
       },
       beginBuildingPalace: ({ title, sourceText, userImages, reducedMotion }) => {
+        if (userImages && Object.keys(userImages).length > 0) {
+          void replaceUserImages(userImages)
+        }
         const before = get()
         // Si ya había una construcción abierta, se corta; el palacio "anterior" es el de antes de ella.
         if (before.build.status !== 'building') palaceBeforeBuild = before.palace
@@ -439,9 +446,31 @@ export const useStore = create<State>()(
         const roomKeys = { ...record(p?.roomKeys), ...earnedRoomKeys(palace.data, memorized, {}) }
         return { ...current, palace: palace.data, memorized, roomKeys, unlockedDoors: record(p?.unlockedDoors), freeExplore, arisMuted, sourceText: capSourceText(p?.sourceText) }
       },
+      onRehydrateStorage: () => () => {
+        void hydrateUserImages()
+      },
     },
   ),
 )
+
+/** Rehidrata las imágenes del usuario guardadas en IndexedDB si el palacio actual tiene referencias a ellas. */
+export async function hydrateUserImages(): Promise<void> {
+  try {
+    const palace = useStore.getState().palace
+    if (!palace) return
+    const imageIds = palace.rooms
+      .flatMap((r) => r.pieces)
+      .map((p) => p.image?.imageId)
+      .filter((id): id is string => typeof id === 'string')
+    if (imageIds.length === 0) return
+    const loaded = await loadUserImages(imageIds)
+    if (Object.keys(loaded).length > 0) {
+      useStore.setState((s) => ({ userImages: { ...s.userImages, ...loaded } }))
+    }
+  } catch {
+    // Silencioso ante fallos
+  }
+}
 
 export function allConcepts(palace: Museum | null) {
   return palace?.rooms.flatMap((r) => r.pieces) ?? []

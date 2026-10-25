@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { applyDemoCamera, applyDemoJump, applyDemoSeed } from './memory/demo'
 import { demoMuseum } from './mocks'
 import { dungeonDemoMuseum } from './mocks/dungeon'
@@ -8,7 +8,7 @@ import { compuestoMuseum } from './mocks/compuesto'
 import { attachComposedDioramas } from './diorama/compose'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
-import { useStore } from './store'
+import { hydrateUserImages, useStore } from './store'
 import { DEFAULT_THEME } from './theme'
 
 // La escena 3D (three, fiber, drei) se carga aparte para no inflar el bundle de la landing.
@@ -45,6 +45,10 @@ import { TeamPage } from './ui/TeamSection'
 import { TEAM_HASH, useHash } from './ui/useHash'
 
 export default function App() {
+  useEffect(() => {
+    void hydrateUserImages()
+  }, [])
+
   const screen = useStore((s) => s.screen)
   const layout = useStore((s) => s.layout)
   const hash = useHash()
