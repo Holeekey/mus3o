@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { Vector3 } from 'three'
 import { WALL_T, type PalaceLayout, type RoomLayout } from '../palace/layout'
 import { DEFAULT_THEME, type RoomPalette, type Theme } from '../theme'
+import type { FounderTag } from './founderAim'
 import { Founders } from './Founders'
 import { LogoSculpture } from './LogoSculpture'
 import { LobbyPoster } from './LobbyPoster'
@@ -164,6 +165,7 @@ export function RoomPeek({
   mode,
   onModeChange,
   onNearPanelChange,
+  onAimFounderChange,
   wallPanel,
   theme = DEFAULT_THEME,
 }: {
@@ -174,6 +176,8 @@ export function RoomPeek({
   mode: LobbyMode
   onModeChange: (mode: LobbyMode) => void
   onNearPanelChange: (near: boolean) => void
+  /** Retrato de Founders bajo la mira mientras se camina (null si ninguno). */
+  onAimFounderChange: (founder: FounderTag | null) => void
   /** Los componentes de "Crea tu palacio" (los mismos elementos que abajo) para colgar en la pared. */
   wallPanel: ReactNode
   theme?: Theme
@@ -217,7 +221,8 @@ export function RoomPeek({
       <Room room={room} palette={LOBBY} theme={theme} plainWalls bareWall={FOUNDERS_WALL} shellOnly />
       <LogoSculpture x={room.x} z={room.z} color={LOBBY.ink} pedestalColor={LOBBY.trim} />
       <LobbyCarpet room={room} />
-      <Founders room={room} side={FOUNDERS_WALL} />
+      {/* Con el puntero normal los retratos se clican; caminando se usa la mira (LobbyWalker). */}
+      <Founders room={room} side={FOUNDERS_WALL} interactive={mode === 'off'} />
       {/* A la derecha de Founders (mirándolos): el muro oeste. */}
       <LobbyPoster room={room} src="/lobby/platanus-hack-26.jpg" />
       {/* El lobby no tiene pasillos: sus puertas se tapian con muro liso. */}
@@ -251,6 +256,7 @@ export function RoomPeek({
         api={walkApi}
         onModeChange={handleMode}
         onNearPanelChange={onNearPanelChange}
+        onAimFounderChange={onAimFounderChange}
       />
     </Canvas>
   )

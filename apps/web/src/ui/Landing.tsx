@@ -17,6 +17,7 @@ import { useReveal } from './reveal'
 import { useScrollFade } from './scrollFade'
 import { useShowcaseScroll } from './showcase'
 import type { LobbyMode, WalkApi } from '../scene/LobbyWalker'
+import type { FounderTag } from '../scene/founderAim'
 import { touchInput } from '../scene/touchInput'
 
 // La sala 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
@@ -66,6 +67,8 @@ export function Landing() {
   const walkApi = useRef<WalkApi>({ lock: () => {}, exit: () => {} })
   const [lobbyMode, setLobbyMode] = useState<LobbyMode>('off')
   const [nearPanel, setNearPanel] = useState(false)
+  // Retrato de Founders bajo la mira: un clic abre su LinkedIn.
+  const [aimedFounder, setAimedFounder] = useState<FounderTag | null>(null)
   const walking = lobbyMode === 'walking'
   const canWalk = !touchInput.isTouchDevice
   useFreezeScroll(lobbyMode !== 'off')
@@ -328,6 +331,7 @@ export function Landing() {
                   mode={lobbyMode}
                   onModeChange={setLobbyMode}
                   onNearPanelChange={setNearPanel}
+                  onAimFounderChange={setAimedFounder}
                   wallPanel={wallPanel}
                 />
               </Suspense>
@@ -338,10 +342,17 @@ export function Landing() {
               </button>
             )}
             {walking && <span className="walk-crosshair" aria-hidden />}
-            {walking && nearPanel && (
+            {walking && aimedFounder ? (
               <p className="walk-use" role="status">
-                <kbd>E</kbd> para usar el panel
+                <kbd>Clic</kbd> para ver el perfil de {aimedFounder.name}
               </p>
+            ) : (
+              walking &&
+              nearPanel && (
+                <p className="walk-use" role="status">
+                  <kbd>E</kbd> para usar el panel
+                </p>
+              )
             )}
             {walking && (
               <p className="walk-hint" role="status">
