@@ -25,6 +25,7 @@ import { VrButton } from '../vr/VrButton'
 import { useIsTouch } from './useIsTouch'
 import { useResumeKeys } from './resume'
 import { useLegendShown } from './legend'
+import { nextStop, routeHintText } from '../palace/route'
 
 function wallVars(p: RoomPalette) {
   return { '--wall': p.wall, '--wall-ink': p.ink } as React.CSSProperties
@@ -32,11 +33,14 @@ function wallVars(p: RoomPalette) {
 
 function findConcept(layout: PalaceLayout, id: string | null) {
   for (const r of layout.rooms) {
-    const p = r.pedestals.find((x) => x.concept.id === id)
-    if (p) return { concept: p.concept, room: r }
+    const k = r.pedestals.findIndex((x) => x.concept.id === id)
+    if (k !== -1) return { concept: r.pedestals[k].concept, room: r, order: k + 1 }
   }
   return null
 }
+
+// Tiempo que se ve el aviso del recorrido al entrar a una sala o al cerrar una ficha.
+const ROUTE_HINT_MS = 5_000
 
 function ConceptCard({ concept, palette, roomName }: { concept: Concept; palette: RoomPalette; roomName: string }) {
   const memorized = useStore((s) => !!s.memorized[concept.id])
@@ -163,6 +167,30 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const due = useDueCount()
   const roomDone = roomIds.filter((id) => memorized[id]).length
   const legendShown = useLegendShown(locked && !open && !touch)
+
+  // Recorrido de estudio: al entrar a una sala o al cerrar una ficha, un aviso breve señala el siguiente tótem.
+  const nextIdx = nextStop(roomIds, memorized)
+  const [routeHint, setRouteHint] = useState(false)
+  const lastOpen = useRef(openId)
+  useEffect(() => {
+    const closed = lastOpen.current !== null && openId === null
+    lastOpen.current = openId
+    if (!closed) return
+    setRouteHint(true)
+  }, [openId])
+  // También al entrar (o volver de la pausa): si no, el aviso de la primera sala se perdería tras la pausa inicial.
+  useEffect(() => {
+    if (locked) setRouteHint(true)
+  }, [currentRoomId, locked])
+  useEffect(() => {
+    if (!routeHint) return
+    const timer = setTimeout(() => setRouteHint(false), ROUTE_HINT_MS)
+    return () => clearTimeout(timer)
+  }, [routeHint, currentRoomId, openId, locked])
+  const routeText =
+    routeHint && locked && mode === 'explore' && !open && !focusedId && !focusedDoorId && !lastKeyRoomId && nextIdx !== null
+      ? routeHintText(nextIdx, roomDone, room.pedestals[nextIdx].concept.title)
+      : null
   const [moreOptions, setMoreOptions] = useState(false)
 
   // Aviso de llave ganada: se muestra unos segundos.
@@ -196,9 +224,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
         </p>
         {/* El progreso vive en el cartel de la sala: una caja menos sobre la escena. */}
         <p className="plaque-progress">
-          {mode === 'explore'
-            ? `${roomDone} de ${roomIds.length} memorizadas · ${memorizedCount} de ${conceptCount} en total`
-            : `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`}
+          {mode === 'explore' ? (
+            <>
+              {roomDone} de {roomIds.length} memorizadas
+              {/* El total se oculta en teléfonos angostos: el cartel no debe comerse la escena. */}
+              <span className="plaque-total"> · {memorizedCount} de {conceptCount} en total</span>
+            </>
+          ) : (
+            `Examen: ${score} de ${answered.length} correctas · faltan ${total - answered.length}`
+          )}
         </p>
         <div className="plaque-bar" aria-hidden>
           <i style={{ width: `${mode === 'explore' ? (roomIds.length ? (roomDone / roomIds.length) * 100 : 0) : total ? (answered.length / total) * 100 : 0}%` }} />
@@ -217,6 +251,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
       </div>
 
       {locked && <div className="crosshair" />}
+      {routeText && <p className="hint hint-route">→ {routeText}</p>}
       {lastKeyRoomId && (
         <p className="hint hint-gold">🗝️ ¡Memorizaste toda la sala! Obtuviste la llave de {keyRoomName(lastKeyRoomId)}</p>
       )}
@@ -250,7 +285,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
 
       {reading && !locked && !touch && <div className="card-backdrop" onClick={() => pointerLock.lock()} aria-hidden />}
       {open && (reading ? (
-        <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={open.room.title} />
+        <ConceptCard concept={open.concept} palette={palettes[open.room.index]} roomName={`${open.room.title} · ${open.order} de ${open.room.pedestals.length}`} />
       ) : (
         <ExamCard key={open.concept.id} concept={open.concept} palette={palettes[open.room.index]} />
       ))}

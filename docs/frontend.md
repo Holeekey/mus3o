@@ -47,7 +47,7 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 | Botón | Qué hace |
 |---|---|
-| Construir museo | Usa el parser local (`parsePalace`), sin IA |
+| Construir offline | Último botón de la fila, discreto (`btn-ghost`): "Generar con Aris" es el principal. Usa el parser local (`parsePalace`), sin IA ni servidor de generación (las imágenes de Wikimedia sí necesitan internet) |
 | Generar con Aris | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
 | Entrar al museo | Aparece tras generar con Aris |
 
@@ -115,6 +115,7 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 - **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
+- **Recorrido de estudio** (`palace/route.ts`, método de loci): los tótems de cada sala van en anillo siguiendo el orden del contenido. `ringAngles` pone el tótem 1 junto a la entrada (el punto de aparición en la sala inicial; en las demás, la puerta del primer enlace que llega a la sala) y avanza en un mismo sentido, alejándolos de los cuatro lados donde puede haber puerta (así no se mueven cuando la sala gana puertas en la construcción en vivo). Cada cartel lleva su número ("1 · Bicapa lipídica") y la ficha dice "Sala · N de M". En teléfonos angostos (≤ 420 px) el cartel de la sala oculta el total del museo (`.plaque-total`). En exploración, un marcador flota sobre el próximo tótem sin memorizar (`nextStop`, solo en la sala actual) y un aviso de 5 s ("→ Empieza por el 1 · …" / "→ Siguiente: 2 · …") aparece al entrar a una sala, al volver de la pausa y al cerrar una ficha. No se bloquea nada: es una guía.
 - **Identidad de sala** (`palace/roomIdentity.ts`): cada `RoomLayout` trae `floorStyle` (`checker` mármol, `radial` rosetón, `hexRings` anillos) y `decor` (`columns`, `arches`, `niches` en las esquinas, o `kind: null` en ~25 % de las salas). Salen del título de la sala (hash) y difieren de la sala anterior; la decoración esquiva puertas (`doorOpenings`), cuadros (`slotZone`), pedestales, la pieza central y el punto de entrada, y sus cajas (`decorBox`) entran en `layout.colliders`. Al añadir una puerta solo desaparece lo que la tapa. Test: `roomIdentity.test.ts`.
 
 Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `sourceText.test.ts`, `pieceKind.test.ts`.
