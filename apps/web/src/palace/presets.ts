@@ -34,6 +34,8 @@ import {
   viaAppia,
 } from './assets/romanAssets'
 
+import { osteoarticularMuseum, osteoarticularNotes } from './osteoarticularPreset'
+
 export * from './assets'
 
 export interface PresetPalace {
@@ -45,6 +47,8 @@ export interface PresetPalace {
   roomCount: number
   conceptCount: number
   museum: Museum
+  /** Apuntes de origen: con ellos cada concepto muestra su cita y su línea. */
+  sourceText?: string
 }
 
 const computerArchitectureMuseum: Museum = MuseumSchema.parse({
@@ -422,6 +426,17 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
 })
 
 export const PRESET_PALACES: PresetPalace[] = [
+  {
+    id: 'osteoarticular-infections',
+    title: 'Infecciones osteoarticulares',
+    subtitle: 'Pediatría: osteomielitis, artritis séptica, diagnóstico y tratamiento',
+    icon: '🦴',
+    themeBadge: 'Desde apuntes reales',
+    roomCount: osteoarticularMuseum.rooms.length,
+    conceptCount: osteoarticularMuseum.rooms.reduce((n, r) => n + r.pieces.length, 0),
+    museum: osteoarticularMuseum,
+    sourceText: osteoarticularNotes,
+  },
   {
     id: 'computer-architecture',
     title: 'Arquitectura de Computadores',
