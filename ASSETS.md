@@ -36,3 +36,9 @@ Este documento registra los assets externos incorporados al proyecto, sus fuente
 ## Modelos dinámicos (Poly Pizza)
 
 Los modelos de los pedestales pueden venir de [Poly Pizza](https://poly.pizza) en tiempo de generación (no están en el repo): el servidor los busca por `searchKeyword`, solo con licencia **CC0** o **CC-BY** (se descartan NC/ND/SA), los guarda en `.cache/assets/` (ignorada por git) y los sirve en `/api/assets/<id>.glb`. Cada asignación (palabra clave, autor, licencia, enlace) queda en `.cache/assets/review.json` y se puede revisar con `GET /api/assets-review`. Los modelos CC-BY muestran su crédito en la ficha del concepto. Ver `docs/servidor.md`.
+
+---
+
+## Biblioteca propia
+
+Modelos creados por el equipo (`.glb`) y recetas procedurales aprobadas viven en `apps/server/seed/library/` (`index.json` + `<id>.glb`, los `.glb` por Git LFS) y se usan antes que Poly Pizza. Se sirven con licencia `own` (sin crédito en pantalla). Cómo añadirlos, revisarlos y su orden de prioridad: `docs/servidor.md` § «Biblioteca propia de modelos».
