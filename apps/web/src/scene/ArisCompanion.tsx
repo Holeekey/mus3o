@@ -3,8 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { Suspense, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useDioramaStore } from '../diorama/dioramaStore'
+import { isListeningNow, isSpeakingNow } from '../lib/voice'
+import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { ARIS_OFFSET, arisVisible } from './arisAnchor'
+import { computeArisPosition } from './arisAvoidance'
+import { arisActivity, isArisPending, profileFacing } from './arisPose'
 
 const MODEL_PATH = '/models/aris-v2/model.glb'
 
@@ -15,10 +19,20 @@ const _right = new THREE.Vector3()
 const _velocity = new THREE.Vector3()
 const _lookTarget = new THREE.Vector3()
 const _dummy = new THREE.Object3D()
+const _profile = { x: 0, z: 0 }
 
-function ArisModelInner() {
+const DOT_COUNT = 3
+
+function ArisModelInner({ layout }: { layout?: PalaceLayout }) {
   const { scene } = useGLTF(MODEL_PATH)
   const clonedScene = useMemo(() => scene.clone(), [scene])
+  // Altura del modelo (en sus unidades) para colocar el indicador de "pensando" sobre la cabeza
+  const size = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(clonedScene)
+    return { top: box.max.y, height: Math.max(0.1, box.max.y - box.min.y) }
+  }, [clonedScene])
+  const dotsRef = useRef<THREE.Group>(null)
+  const dotRefs = useRef<(THREE.Mesh | null)[]>([])
 
   const groupRef = useRef<THREE.Group>(null)
   const currentPos = useRef(new THREE.Vector3())
@@ -53,6 +67,7 @@ function ArisModelInner() {
     const t = state.clock.getElapsedTime()
     const camera = state.camera
     const currentRoom = useStore.getState().currentRoomId
+    const colliders = layout?.colliders ?? useStore.getState().layout?.colliders ?? []
 
     // 1. Inicialización en el primer frame en el campo de visión del jugador
     if (!initialized.current) {
@@ -61,12 +76,16 @@ function ArisModelInner() {
       _forward.normalize()
       _right.set(-_forward.z, 0, _forward.x)
 
-      currentPos.current
-        .copy(camera.position)
-        .addScaledVector(_forward, ARIS_OFFSET.forward)
-        .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side)
-      currentPos.current.y = camera.position.y - ARIS_OFFSET.down
+      const initPos = computeArisPosition(
+        camera.position,
+        _forward,
+        _right,
+        sideSign.current,
+        colliders,
+        ARIS_OFFSET,
+      )
 
+      currentPos.current.set(initPos.x, initPos.y, initPos.z)
       lastPos.current.copy(currentPos.current)
       group.position.copy(currentPos.current)
       lastRoomId.current = currentRoom
@@ -92,12 +111,16 @@ function ArisModelInner() {
         _forward.normalize()
         _right.set(-_forward.z, 0, _forward.x)
 
-        currentPos.current
-          .copy(camera.position)
-          .addScaledVector(_forward, ARIS_OFFSET.forward)
-          .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side)
-        currentPos.current.y = camera.position.y - ARIS_OFFSET.down
+        const transPos = computeArisPosition(
+          camera.position,
+          _forward,
+          _right,
+          sideSign.current,
+          colliders,
+          ARIS_OFFSET,
+        )
 
+        currentPos.current.set(transPos.x, transPos.y, transPos.z)
         lastPos.current.copy(currentPos.current)
         group.position.copy(currentPos.current)
         isTransitioning.current = false
@@ -114,27 +137,55 @@ function ArisModelInner() {
       sideTimer.current = 0
     }
 
-    // 4. Cálculo del punto de anclaje DENTRO de la pantalla (FOV 70°)
+    // 4. Cálculo del punto de anclaje DENTRO de la pantalla evitando obstáculos
     camera.getWorldDirection(_forward)
     _forward.y = 0
     _forward.normalize()
     _right.set(-_forward.z, 0, _forward.x)
 
-    _targetPos
-      .copy(camera.position)
-      .addScaledVector(_forward, ARIS_OFFSET.forward) // Adelante en el campo visual
-      .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side) // Al lateral visible de la pantalla
-    _targetPos.y = camera.position.y - ARIS_OFFSET.down
+    const placement = computeArisPosition(
+      camera.position,
+      _forward,
+      _right,
+      sideSign.current,
+      colliders,
+      ARIS_OFFSET,
+    )
+
+    _targetPos.set(placement.x, placement.y, placement.z)
 
     // 5. Seguimiento con Lerp elástico (framerate-independent exponential decay)
     const followFactor = 1 - Math.exp(-6.0 * dt)
     currentPos.current.lerp(_targetPos, followFactor)
 
     // 6. Micro-animaciones: Flotación (Bobbing), Respiración y animación de habla
-    const isSpeaking = !!useStore.getState().arisMessage
+    // Qué está haciendo: escucharte (micrófono abierto), pensar (pregunta enviada, aún sin voz) o hablar (suena la voz;
+    // silenciada, mientras el globo está visible).
+    const st = useStore.getState()
+    const activity = arisActivity({
+      listening: isListeningNow(),
+      pending: isArisPending(st.arisPendingSince, Date.now()),
+      speaking: isSpeakingNow() || (st.arisMuted && !!st.arisMessage && st.arisPendingSince === null),
+    })
     const bobbing = Math.sin(t * 2.4) * 0.07
     const breathing = Math.sin(t * 3.2) * 0.025
-    const talkBob = isSpeaking ? Math.sin(t * 9) * 0.035 : 0
+    const talkBob = activity === 'speaking' ? Math.sin(t * 9) * 0.035 : 0
+
+    // Indicador de carga: tres puntos que saltan en onda sobre la cabeza mientras procesa
+    const dots = dotsRef.current
+    if (dots) {
+      const thinking = activity === 'thinking'
+      dots.visible = thinking
+      if (thinking) {
+        for (let i = 0; i < DOT_COUNT; i++) {
+          const dot = dotRefs.current[i]
+          if (!dot) continue
+          const wave = 0.5 + 0.5 * Math.sin(t * 6 - i * 0.9)
+          dot.position.y = wave * size.height * 0.07
+          dot.scale.setScalar(0.65 + 0.55 * wave)
+        }
+      }
+    }
 
     group.position.x = currentPos.current.x
     group.position.y = currentPos.current.y + bobbing + talkBob
@@ -145,12 +196,32 @@ function ArisModelInner() {
     lastPos.current.copy(currentPos.current)
     const speed = _velocity.length()
 
-    // 8. Mirada y orientación: La mayoría de las veces enfocado en el usuario
-    // Si está hablando, mantiene 100% de atención fija en el usuario
+    // 8. Mirada y orientación según la actividad:
+    // - escuchándote o procesando tu pregunta: siempre de frente a ti
+    // - hablando o explicando un concepto: de perfil (~90°), ni de frente ni de espaldas
+    // - en reposo: casi siempre mirándote, con curioseo ocasional
     const cycleTime = t % 8.0
-    const looksAtUser = isSpeaking || cycleTime < 6.0
+    const looksAtUser = cycleTime < 6.0
 
-    if (speed > 0.8) {
+    if (activity === 'listening' || activity === 'thinking') {
+      _lookTarget.copy(camera.position)
+      _dummy.position.copy(group.position)
+      _dummy.lookAt(_lookTarget)
+      group.quaternion.slerp(_dummy.quaternion, 1 - Math.exp(-6 * dt))
+    } else if (activity === 'speaking') {
+      profileFacing(
+        camera.position.x - group.position.x,
+        camera.position.z - group.position.z,
+        _right.x,
+        _right.z,
+        sideSign.current,
+        _profile,
+      )
+      _lookTarget.set(group.position.x + _profile.x, group.position.y, group.position.z + _profile.z)
+      _dummy.position.copy(group.position)
+      _dummy.lookAt(_lookTarget)
+      group.quaternion.slerp(_dummy.quaternion, 1 - Math.exp(-4.5 * dt))
+    } else if (speed > 0.8) {
       // En desplazamiento rápido: se orienta hacia el vector de avance
       _lookTarget.copy(currentPos.current).add(_velocity)
       _lookTarget.y = group.position.y
@@ -184,14 +255,29 @@ function ArisModelInner() {
     <group ref={groupRef}>
       {/* Rotación 180° en Y para alinear los ojos (+Z en glTF) con el eje de visión (-Z en Three.js lookAt) */}
       <primitive object={clonedScene} rotation={[0, Math.PI, 0]} castShadow receiveShadow />
+      {/* Indicador de "pensando": tres puntos sobre la cabeza, solo visibles mientras procesa */}
+      <group ref={dotsRef} position={[0, size.top + size.height * 0.22, 0]} visible={false}>
+        {Array.from({ length: DOT_COUNT }, (_, i) => (
+          <mesh
+            key={i}
+            ref={(m) => {
+              dotRefs.current[i] = m
+            }}
+            position={[(i - 1) * size.height * 0.12, 0, 0]}
+          >
+            <sphereGeometry args={[size.height * 0.035, 12, 12]} />
+            <meshBasicMaterial color="#9fe8ff" toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 }
 
-export function ArisCompanion() {
+export function ArisCompanion({ layout }: { layout?: PalaceLayout } = {}) {
   return (
     <Suspense fallback={null}>
-      <ArisModelInner />
+      <ArisModelInner layout={layout} />
     </Suspense>
   )
 }

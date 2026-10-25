@@ -17,6 +17,7 @@ import { useReveal } from './reveal'
 import { useScrollFade } from './scrollFade'
 import { useShowcaseScroll } from './showcase'
 import type { LobbyMode, WalkApi } from '../scene/LobbyWalker'
+import type { FounderTag } from '../scene/founderAim'
 import { touchInput } from '../scene/touchInput'
 
 // La sala 3D se carga aparte para que three.js no bloquee la primera pintura de la landing.
@@ -66,6 +67,8 @@ export function Landing() {
   const walkApi = useRef<WalkApi>({ lock: () => {}, exit: () => {} })
   const [lobbyMode, setLobbyMode] = useState<LobbyMode>('off')
   const [nearPanel, setNearPanel] = useState(false)
+  // Retrato de Founders bajo la mira: un clic abre su LinkedIn.
+  const [aimedFounder, setAimedFounder] = useState<FounderTag | null>(null)
   const walking = lobbyMode === 'walking'
   const canWalk = !touchInput.isTouchDevice
   useFreezeScroll(lobbyMode !== 'off')
@@ -318,7 +321,15 @@ export function Landing() {
       {/* Al hacer scroll la maqueta se abre a pantalla completa y luego se vuelve a cerrar. */}
       <section ref={showcaseRef} className="showcase" aria-label="Vista previa del museo">
         <div className="showcase-sticky">
-          <div className="showcase-frame">
+          <div
+            className="showcase-frame"
+            onClick={() => {
+              if (canWalk && lobbyMode === 'off') {
+                walkApi.current.lock()
+              }
+            }}
+            style={{ cursor: canWalk && lobbyMode === 'off' ? 'pointer' : undefined }}
+          >
             {EXAMPLE_LAYOUT && (
               <Suspense fallback={null}>
                 <RoomPeek
@@ -328,20 +339,28 @@ export function Landing() {
                   mode={lobbyMode}
                   onModeChange={setLobbyMode}
                   onNearPanelChange={setNearPanel}
+                  onAimFounderChange={setAimedFounder}
                   wallPanel={wallPanel}
                 />
               </Suspense>
             )}
             {canWalk && full && lobbyMode === 'off' && (
               <button type="button" className="walk-cta" onClick={() => walkApi.current.lock()}>
-                Haz clic para recorrer el lobby
+                Haz click para recorrer el lobby
               </button>
             )}
             {walking && <span className="walk-crosshair" aria-hidden />}
-            {walking && nearPanel && (
+            {walking && aimedFounder ? (
               <p className="walk-use" role="status">
-                <kbd>E</kbd> para usar el panel
+                <kbd>Click</kbd> para ver {aimedFounder.profile.includes('linkedin') ? `el perfil de ${aimedFounder.name}` : aimedFounder.name}
               </p>
+            ) : (
+              walking &&
+              nearPanel && (
+                <p className="walk-use" role="status">
+                  <kbd>E</kbd> para usar el panel
+                </p>
+              )
             )}
             {walking && (
               <p className="walk-hint" role="status">
@@ -360,7 +379,7 @@ export function Landing() {
             )}
             <div className="plinth" hidden={lobbyMode !== 'off'}>
               <p className="plinth-title">Así se recorre por dentro</p>
-              <p className="plinth-sub">Sala de ejemplo: Biología celular, en primera persona.</p>
+              <p className="plinth-sub">Sala de proyecto, en primera persona.</p>
             </div>
           </div>
         </div>

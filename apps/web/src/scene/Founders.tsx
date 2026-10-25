@@ -1,8 +1,10 @@
 import { useTexture } from '@react-three/drei'
-import { Suspense, useMemo } from 'react'
-import { SRGBColorSpace, type Texture } from 'three'
+import { useThree, type ThreeEvent } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Raycaster, SRGBColorSpace, type Texture } from 'three'
 import type { RoomLayout, Side } from '../palace/layout'
-import { TEAM } from '../ui/team'
+import { TEAM, type TeamMember } from '../ui/team'
+import { aimedFounder, openProfile, type FounderTag } from './founderAim'
 import { LabelPlate } from './LabelPlate'
 
 const FONT = '/fonts/PublicSansVariable.ttf'
@@ -50,11 +52,20 @@ function coverCrop(texture: Texture, focus = 40) {
   texture.needsUpdate = true
 }
 
-function Portrait({ texture, name, x }: { texture: Texture; name: string; x: number }) {
+type PortraitEvents = {
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
+  onPointerOver?: (e: ThreeEvent<PointerEvent>) => void
+  onPointerOut?: (e: ThreeEvent<PointerEvent>) => void
+}
+
+function Portrait({ texture, member, x, events }: { texture: Texture; member: TeamMember; x: number; events: PortraitEvents }) {
   const outerW = PHOTO_W + MAT * 2 + FRAME * 2
   const outerH = PHOTO_H + MAT * 2 + FRAME * 2
+  const name = member.name
+  // La etiqueta permite al LobbyWalker saber a quién apunta la mira (raycast desde la cámara).
+  const founder = useMemo<FounderTag>(() => ({ name, profile: member.profile }), [name, member.profile])
   return (
-    <group position={[x, CENTER_Y, 0]}>
+    <group position={[x, CENTER_Y, 0]} userData={{ founder }} {...events}>
       <mesh position={[0, 0, DEPTH / 2]} castShadow>
         <boxGeometry args={[outerW, outerH, DEPTH]} />
         <meshStandardMaterial color={FRAME_COLOR} roughness={0.6} />
@@ -77,7 +88,49 @@ function Portrait({ texture, name, x }: { texture: Texture; name: string; x: num
   )
 }
 
-function FoundersWall({ room, side }: { room: RoomLayout; side: Side }) {
+/**
+ * Con el puntero normal (modo scroll) los retratos se pueden clicar. Los eventos de R3F solo ven objetos con
+ * handlers, así que se vuelve a lanzar el rayo contra toda la escena: un muro o el logo delante lo tapan.
+ */
+function usePortraitPointer(interactive: boolean) {
+  const scene = useThree((s) => s.scene)
+  const canvas = useThree((s) => s.gl.domElement)
+  const raycaster = useMemo(() => new Raycaster(), [])
+  const hovering = useRef(false)
+
+  const setHover = (on: boolean) => {
+    if (hovering.current === on) return
+    hovering.current = on
+    canvas.style.cursor = on ? 'pointer' : ''
+  }
+  // Al empezar a caminar (o al desmontar) el cursor vuelve a la normalidad.
+  useEffect(() => {
+    if (!interactive) setHover(false)
+  }, [interactive])
+  useEffect(() => () => setHover(false), [])
+
+  const visibleFounder = (e: ThreeEvent<MouseEvent | PointerEvent>) => {
+    raycaster.ray.copy(e.ray)
+    return aimedFounder(raycaster.intersectObjects(scene.children, true), Infinity)
+  }
+
+  if (!interactive) return {}
+  return {
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation()
+      const founder = visibleFounder(e)
+      if (founder) openProfile(founder.profile)
+    },
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation()
+      setHover(!!visibleFounder(e))
+    },
+    onPointerOut: () => setHover(false),
+  } satisfies PortraitEvents
+}
+
+function FoundersWall({ room, side, interactive }: { room: RoomLayout; side: Side; interactive: boolean }) {
+  const events = usePortraitPointer(interactive)
   const textures = useTexture(TEAM.map((m) => `/team/${m.photo}.jpg`))
   useMemo(() => textures.forEach((t, i) => coverCrop(t, TEAM[i].focus)), [textures])
   const { position, rotY } = wallAnchor(room, side)
@@ -92,17 +145,20 @@ function FoundersWall({ room, side }: { room: RoomLayout; side: Side }) {
         </LabelPlate>
       </group>
       {TEAM.map((m, i) => (
-        <Portrait key={m.photo} texture={textures[i]} name={m.name} x={first + i * step} />
+        <Portrait key={m.photo} texture={textures[i]} member={m} x={first + i * step} events={events} />
       ))}
     </group>
   )
 }
 
-/** Muro de los fundadores: cinco retratos enmarcados con su nombre, bajo el título "Founders". */
-export function Founders({ room, side }: { room: RoomLayout; side: Side }) {
+/**
+ * Muro de los fundadores: cinco retratos enmarcados con su nombre, bajo el título "Founders".
+ * Cada retrato abre el LinkedIn de la persona: con clic si `interactive` (modo scroll), o con la mira al caminar.
+ */
+export function Founders({ room, side, interactive = false }: { room: RoomLayout; side: Side; interactive?: boolean }) {
   return (
     <Suspense fallback={null}>
-      <FoundersWall room={room} side={side} />
+      <FoundersWall room={room} side={side} interactive={interactive} />
     </Suspense>
   )
 }

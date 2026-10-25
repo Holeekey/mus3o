@@ -37,6 +37,8 @@ La premisa central del sistema es:
 El palacio 3D y los dioramas combinan mallas Three.js, geometrías procedurales, iluminación dinámica con sombras (`castShadow`/`receiveShadow`), textos con `Troika` y modelos `.glb`. En dispositivos con GPUs integradas o al alternar entre pestañas en Chrome/Safari, el navegador puede forzar un evento `webglcontextlost` para liberar memoria de video.
 Actualmente, el componente `<Canvas>` de `@react-three/fiber` en `apps/web/src/App.tsx` no implementa un manejador explícito de restauración de contexto, lo que provoca que el canvas quede permanentemente congelado o en negro.
 
+> **Actualización:** con la clave de ElevenLabs configurada, el dictado usa Scribe en tiempo real (ver [voz.md](./voz.md)) y funciona también en Firefox y Safari; el dictado del navegador queda como respaldo.
+
 #### Solución Propuesta
 Implementar un hook y componente desacoplado `ContextLossHandler`:
 

@@ -1,8 +1,9 @@
 import { PointerLockControls } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ComponentRef } from 'react'
-import { Vector3 } from 'three'
+import { Raycaster, Vector2, Vector3 } from 'three'
 import type { PalaceLayout, RoomLayout } from '../palace/layout'
+import { AIM_MAX_DIST, aimedFounder, openProfile, type FounderTag } from './founderAim'
 import { EYE, lobbyColliders, stepWalk } from './walk'
 
 /** off: la cámara es del scroll · walking: primera persona · using: frente al panel, con el mouse libre. */
@@ -20,9 +21,13 @@ export type PanelSpot = {
   isNear: (x: number, z: number, forward: Vector3) => boolean
 }
 
+// Centro de la pantalla (la mira) en coordenadas normalizadas.
+const CENTER = new Vector2(0, 0)
+
 /**
  * Primera persona dentro del lobby, con la misma caminata que el museo (`stepWalk`).
- * No toca el store del palacio: solo avisa a la landing del modo y de si hay un panel al alcance.
+ * No toca el store del palacio: solo avisa a la landing del modo, de si hay un panel al alcance
+ * y de a qué retrato de Founders apunta la mira (un clic abre su perfil).
  */
 export function LobbyWalker({
   layout,
@@ -31,6 +36,7 @@ export function LobbyWalker({
   api,
   onModeChange,
   onNearPanelChange,
+  onAimFounderChange,
 }: {
   layout: PalaceLayout
   room: RoomLayout
@@ -38,8 +44,10 @@ export function LobbyWalker({
   api: { current: WalkApi }
   onModeChange: (mode: LobbyMode) => void
   onNearPanelChange: (near: boolean) => void
+  onAimFounderChange: (founder: FounderTag | null) => void
 }) {
   const camera = useThree((s) => s.camera)
+  const scene = useThree((s) => s.scene)
   const controls = useRef<ComponentRef<typeof PointerLockControls>>(null)
   const keys = useRef<Record<string, boolean>>({})
   const forward = useRef(new Vector3())
@@ -47,8 +55,20 @@ export function LobbyWalker({
   // E pide usar el panel: al soltarse el puntero se pasa a "using" en vez de salir del lobby.
   const wantsPanel = useRef(false)
   const near = useRef(false)
+  const aimed = useRef<FounderTag | null>(null)
+  const raycaster = useMemo(() => {
+    const r = new Raycaster()
+    r.far = AIM_MAX_DIST
+    return r
+  }, [])
   const colliders = useMemo(() => lobbyColliders(layout, room), [layout, room])
   const view = useMemo(() => ({ from: new Vector3(...panel.viewFrom), at: new Vector3(...panel.viewAt), look: new Vector3() }), [panel])
+
+  const setAimed = (founder: FounderTag | null) => {
+    if (founder?.profile === aimed.current?.profile) return
+    aimed.current = founder
+    onAimFounderChange(founder)
+  }
 
   const setMode = (next: LobbyMode) => {
     mode.current = next
@@ -57,6 +77,7 @@ export function LobbyWalker({
       near.current = false
       onNearPanelChange(false)
     }
+    if (next !== 'walking') setAimed(null)
     onModeChange(next)
   }
 
@@ -102,13 +123,22 @@ export function LobbyWalker({
     const clear = () => {
       keys.current = {}
     }
+    // Con el puntero bloqueado, un clic sobre un retrato abre su perfil. La pestaña nueva suelta el puntero
+    // y onUnlock devuelve el lobby al scroll; se suelta también a mano por si el navegador no lo hace.
+    const click = (e: MouseEvent) => {
+      if (mode.current !== 'walking' || e.button !== 0 || !aimed.current) return
+      openProfile(aimed.current.profile)
+      controls.current?.unlock()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clear)
+    window.addEventListener('click', click)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clear)
+      window.removeEventListener('click', click)
     }
   })
 
@@ -134,6 +164,9 @@ export function LobbyWalker({
       near.current = isNear
       onNearPanelChange(isNear)
     }
+    // Mira: el impacto más cercano decide, así los muros u otros objetos delante tapan el retrato.
+    raycaster.setFromCamera(CENTER, camera)
+    setAimed(aimedFounder(raycaster.intersectObjects(scene.children, true)))
   })
 
   const onUnlock = () => {

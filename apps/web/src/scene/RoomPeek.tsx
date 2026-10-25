@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { Vector3 } from 'three'
 import { WALL_T, type PalaceLayout, type RoomLayout } from '../palace/layout'
 import { DEFAULT_THEME, type RoomPalette, type Theme } from '../theme'
+import type { FounderTag } from './founderAim'
 import { Founders } from './Founders'
 import { LogoSculpture } from './LogoSculpture'
 import { LobbyPoster } from './LobbyPoster'
@@ -164,6 +165,7 @@ export function RoomPeek({
   mode,
   onModeChange,
   onNearPanelChange,
+  onAimFounderChange,
   wallPanel,
   theme = DEFAULT_THEME,
 }: {
@@ -174,6 +176,8 @@ export function RoomPeek({
   mode: LobbyMode
   onModeChange: (mode: LobbyMode) => void
   onNearPanelChange: (near: boolean) => void
+  /** Retrato de Founders bajo la mira mientras se camina (null si ninguno). */
+  onAimFounderChange: (founder: FounderTag | null) => void
   /** Los componentes de "Crea tu palacio" (los mismos elementos que abajo) para colgar en la pared. */
   wallPanel: ReactNode
   theme?: Theme
@@ -195,7 +199,19 @@ export function RoomPeek({
   )
   return (
     // isolation: los z-index de drei Html quedan dentro del canvas y no tapan los overlays de la landing.
-    <Canvas camera={{ fov: 70, near: 0.1, far: 300 }} dpr={[1, 2]} shadows={scene.shadows} flat gl={{ alpha: true }} style={{ isolation: 'isolate' }}>
+    <Canvas
+      camera={{ fov: 70, near: 0.1, far: 300 }}
+      dpr={[1, 2]}
+      shadows={scene.shadows}
+      flat
+      gl={{ alpha: true }}
+      style={{ isolation: 'isolate', cursor: mode === 'off' ? 'pointer' : undefined }}
+      onPointerDown={() => {
+        if (mode === 'off') {
+          walkApi.current.lock()
+        }
+      }}
+    >
       <color attach="background" args={[scene.background]} />
       <hemisphereLight args={[scene.ambient.sky, scene.ambient.ground, scene.ambient.intensity]} />
       <directionalLight
@@ -217,9 +233,10 @@ export function RoomPeek({
       <Room room={room} palette={LOBBY} theme={theme} plainWalls bareWall={FOUNDERS_WALL} shellOnly />
       <LogoSculpture x={room.x} z={room.z} color={LOBBY.ink} pedestalColor={LOBBY.trim} />
       <LobbyCarpet room={room} />
-      <Founders room={room} side={FOUNDERS_WALL} />
-      {/* A la derecha de Founders (mirándolos): el muro oeste. */}
-      <LobbyPoster room={room} src="/lobby/platanus-hack-26.jpg" />
+      {/* Retratos y diorama: desactivados en scroll para entrar al lobby en vez de abrir enlaces externos */}
+      <Founders room={room} side={FOUNDERS_WALL} interactive={false} />
+      {/* A la derecha de Founders (mirándolos): el muro oeste con el diorama interactivo de la guacamaya. */}
+      <LobbyPoster room={room} interactive={false} />
       {/* El lobby no tiene pasillos: sus puertas se tapian con muro liso. */}
       {fillers.map((b, i) => (
         <Wall key={i} box={b} color={LOBBY.wall} plain />
@@ -251,6 +268,7 @@ export function RoomPeek({
         api={walkApi}
         onModeChange={handleMode}
         onNearPanelChange={onNearPanelChange}
+        onAimFounderChange={onAimFounderChange}
       />
     </Canvas>
   )

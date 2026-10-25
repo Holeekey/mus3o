@@ -6,6 +6,11 @@
  * - Interfaz desacoplada (VoiceEngine) lista para soportar proveedores externos (ej. ElevenLabs) a futuro.
  */
 
+import { speak as speakVoice, stopSpeaking } from '../lib/voice'
+
+const ARIS_PITCH = 1.25 // Ligeramente agudo para carácter amigable
+const ARIS_RATE = 1.05
+
 export interface VoiceOptions {
   pitch?: number
   rate?: number
@@ -132,8 +137,8 @@ export class WebSpeechVoiceEngine implements IArisVoiceEngine {
 
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.lang = options?.lang || 'es-ES'
-      utterance.pitch = options?.pitch ?? 1.25 // Ligeramente agudo para carácter amigable
-      utterance.rate = options?.rate ?? 1.05
+      utterance.pitch = options?.pitch ?? ARIS_PITCH
+      utterance.rate = options?.rate ?? ARIS_RATE
 
       const voices = window.speechSynthesis.getVoices()
       const chosenVoice = selectBestSpanishVoice(voices)
@@ -157,8 +162,35 @@ export class WebSpeechVoiceEngine implements IArisVoiceEngine {
   }
 }
 
-// Instancia por defecto
-export const defaultVoiceEngine: IArisVoiceEngine = new WebSpeechVoiceEngine()
+/** Lo máximo que Aris dice en voz alta: el globo muestra el texto completo, la voz solo lo esencial. */
+const MAX_SPOKEN_CHARS = 180
+
+/** Primeras frases que caben en `max` caracteres (si la primera ya no cabe, se corta en una palabra). */
+export function shortenForSpeech(text: string, max = MAX_SPOKEN_CHARS): string {
+  const clean = text.trim()
+  if (clean.length <= max) return clean
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [clean]
+  let out = ''
+  for (const sentence of sentences) {
+    if (out && (out + sentence).length > max) break
+    out += sentence
+  }
+  out = out.trim()
+  if (out.length <= max) return out
+  const cut = out.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut).replace(/[,;:]$/, '')}.`
+}
+
+// Instancia por defecto: ElevenLabs con fallback al navegador (lógica en lib/voice).
+export const defaultVoiceEngine: IArisVoiceEngine = {
+  speak: (text, options) => {
+    const clean = shortenForSpeech(cleanTextForSpeech(text))
+    if (!clean) return
+    speakVoice(clean, { lang: options?.lang, pitch: options?.pitch ?? ARIS_PITCH, rate: options?.rate ?? ARIS_RATE })
+  },
+  cancel: stopSpeaking,
+}
 
 /**
  * Despacha la voz de Aris con feedback sonoro procedural y control de mute.

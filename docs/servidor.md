@@ -28,6 +28,8 @@ Archivos:
 | `GET /api/image?wiki=&commons=&lang=` | Pistas de imagen | `ResolvedImage` (`Cache-Control: 1 h`) | 404 `Sin imagen`; 502 `Wikimedia no disponible` |
 | `GET /api/tts/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
 | `POST /api/tts` | `{ text }` (1-500 car.) | `audio/mpeg` (ElevenLabs, sin caché) | 503 sin clave; 400 cuerpo inválido; 429 tope diario; 502 fallo del proveedor (`fallback: "browser"`) |
+| `GET /api/stt/status` | — | `{ enabled }` | `false` sin `ELEVENLABS_API_KEY` |
+| `POST /api/stt/token` | — | `{ token, modelId }` (token de un solo uso para Scribe en tiempo real, `no-store`) | 503 sin clave; 429 tope diario de sesiones o rate limit (20/min); 502 fallo del proveedor (`fallback: "browser"`). El audio no pasa por el servidor |
 | `POST /api/diorama-from-image` | `{ imageUrl, title, roomTitle, concepts[] }` (estricto) | `{ recreatable, reason?, diorama? }` | Ver sección «Dioramas desde la foto». 400 URL no permitida; 429 límite o tope diario; 502/503 (el cliente deja el cuadro normal) |
 | `GET /api/image/file?u=` | URL de Wikimedia | Bytes de la imagen | Proxy: **solo hosts de Wikimedia**; si no, 400 `URL no permitida` |
 | `GET /api/assets/:id.glb` | id alfanumérico (≤ 64) | `model/gltf-binary`, `Cache-Control: immutable` | Sirve la caché en disco (`.cache/assets`); 400 id inválido; 404 no cacheado |

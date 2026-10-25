@@ -102,6 +102,8 @@ function Inscription({ room, palette }: { room: RoomLayout; palette: RoomPalette
 // Modelos de la IA miden ~2 m; sobre el pedestal se escalan a ~0.9 m.
 const MODEL_SCALE = 0.45
 const PEDESTAL_TOP = 1.05
+const FLOAT_GAP = 0.12 // m: levitación sobre la tapa del pedestal (1.17 m) para no incrustarse
+const MODEL_ELEVATION = PEDESTAL_TOP + FLOAT_GAP
 const LABEL_CULL = 14 // m: más lejos la etiqueta del pedestal no se lee ni se ve (muros de por medio)
 // El modelo externo ya viene normalizado a ~0,7 m; se agranda un poco para leerse sobre el pedestal.
 const DYNAMIC_SCALE = 1.3
@@ -119,7 +121,7 @@ function Pedestal({ p, order, palette, theme }: { p: PedestalLayout; order: numb
   const level = useConceptLevel(p.concept.id)
   useFrame((_, dt) => {
     if (!ref.current) return
-    // Gira lento; sin flotación para que la sombra quede firme sobre el pedestal.
+    // Gira lento; centrado sobre el pedestal
     ref.current.rotation.y += dt * (focused ? 0.9 : 0.35)
     spinOf.set(p.concept.id, ref.current.rotation.y)
   })
@@ -127,13 +129,13 @@ function Pedestal({ p, order, palette, theme }: { p: PedestalLayout; order: numb
   const k = focused ? 1.1 : 1
   const dynamic = p.concept.dynamicAsset
   const fallback = model ? (
-    <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k}>
+    <group position={[0, MODEL_ELEVATION, 0]} scale={k}>
       <group scale={MODEL_SCALE}>
         <ProceduralModel parts={model.parts} />
       </group>
     </group>
   ) : (
-    <mesh position={[0, 1.55, 0]} scale={k} castShadow receiveShadow>
+    <mesh position={[0, MODEL_ELEVATION + 0.2, 0]} scale={k} castShadow receiveShadow>
       <ShapeGeometry shape={p.shape} size={0.3} />
       <Plaster theme={theme} color={focused ? '#FFFFFF' : undefined} />
     </mesh>
@@ -165,7 +167,7 @@ function Pedestal({ p, order, palette, theme }: { p: PedestalLayout; order: numb
       <DecayWrap id={p.concept.id}>
       <group ref={ref}>
         {dynamic ? (
-          <group position={[0, PEDESTAL_TOP + 0.05, 0]} scale={k * DYNAMIC_SCALE}>
+          <group position={[0, MODEL_ELEVATION, 0]} scale={k * DYNAMIC_SCALE}>
             <DynamicTotem url={dynamic.url} fallback={fallback} />
           </group>
         ) : (

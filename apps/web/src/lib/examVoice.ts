@@ -13,6 +13,16 @@ export type VoiceAction =
   | { type: 'error'; code: string }
   | { type: 'typing'; notice?: string | null }
 
+/**
+ * Títulos de los conceptos del museo para que el dictado remoto los reconozca bien: primero los de la sala del
+ * concepto y luego los demás. Incluye todos (no solo la respuesta) para no favorecer a la correcta.
+ */
+export function examKeyterms(rooms: { pieces: { id: string; title: string }[] }[], conceptId: string): string[] {
+  const own = rooms.find((r) => r.pieces.some((p) => p.id === conceptId))
+  const ordered = own ? [own, ...rooms.filter((r) => r !== own)] : rooms
+  return ordered.flatMap((r) => r.pieces.map((p) => p.title))
+}
+
 export const TYPING_NOTICE = 'Tu navegador no permite dictado; escribe la respuesta'
 export const DENIED_NOTICE = 'No hay acceso al micrófono; escribe la respuesta'
 
