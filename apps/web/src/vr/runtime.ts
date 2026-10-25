@@ -13,6 +13,10 @@ export const vrRuntime = {
   fade: 0,
   /** Pulsación instantánea pendiente (toque, Enter, mando): el frame siguiente la consume. */
   press: false,
+  /** Movimiento virtual del mando/teclado en VR (lateral y frontal, -1..1). Lo lee `moveAxes`, así Player y el cuadro caminan igual. */
+  move: { ax: 0, az: 0 },
+  /** Se está empujando el stick (con una cola corta): el teletransporte al suelo por mirada se suprime. */
+  moving: false,
 }
 
 export type Sensors = 'idle' | 'ok' | 'denied' | 'none'
