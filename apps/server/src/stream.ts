@@ -43,7 +43,7 @@ export type StreamDeps = { streamText: TextStreamer; signal: AbortSignal };
 
 /**
  * Genera el museo en streaming por el mismo camino que la generación sin streaming (mismos prompts, modo, ids de
- * imagen, enriquecimiento y cierre con modelos 3D y dioramas). Cada vez que el modelo termina una sala, la
+ * imagen, enriquecimiento y cierre con y modelos 3D). Cada vez que el modelo termina una sala, la
  * desinfecta, la enriquece (pistas de imágenes y fuentes de los apuntes) y la emite con sus aristas provisionales;
  * al final emite el museo completo, igual al que devolvería la generación sin streaming.
  * No lanza: un fallo del modelo se emite como evento `error` (las salas ya emitidas siguen siendo válidas).
@@ -113,10 +113,10 @@ export async function* streamNewMuseum(input: StreamInput, deps: StreamDeps): As
       yield* announce(museum);
     } else {
       // Mismo cierre que la generación sin streaming: desinfección, imágenes del request, enriquecimiento del
-      // museo completo (grafo definitivo incluido), modelos 3D y dioramas.
+      // museo completo (grafo definitivo incluido), y modelos 3D.
       const parsed = repairAndSanitizeMuseum(parser.finish());
       if (flow) checkFlowImages(parsed, flow);
-      museum = await completeMuseum(enrichMuseum(parsed, notes), flow ? parser.dioramaRooms : []);
+      museum = await completeMuseum(enrichMuseum(parsed, notes));
       if (rawRooms.length === 0) yield* announce(museum);
     }
     if (signal.aborted) return;

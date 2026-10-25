@@ -27,8 +27,15 @@ export const FONT_DISPLAY = '/fonts/Gloock.ttf'
 const CORNICE_H = 0.28
 const PLINTH_H = 0.35
 
-export function Wall({ box, color }: { box: Box; color: string }) {
-  return <AssetWall box={box} color={color} />
+// `plain`: muro de yeso liso del color de la paleta (el muro de piedra del pack ignora el color).
+export function Wall({ box, color, plain = false }: { box: Box; color: string; plain?: boolean }) {
+  if (!plain) return <AssetWall box={box} color={color} />
+  return (
+    <mesh position={[box.x, (box.y ?? 0) + box.h / 2, box.z]} castShadow receiveShadow>
+      <boxGeometry args={[box.w, box.h, box.d]} />
+      <meshStandardMaterial color={color} roughness={0.95} flatShading />
+    </mesh>
+  )
 }
 
 // Cornisa (arriba) y zócalo (abajo): dos molduras del color de "trim" que enmarcan el muro.
@@ -201,10 +208,30 @@ function Pedestal({ p, palette, theme }: { p: PedestalLayout; palette: RoomPalet
   )
 }
 
-export function Room({ room, palette, theme }: { room: RoomLayout; palette: RoomPalette; theme: Theme }) {
+export function Room({
+  room,
+  palette,
+  theme,
+  plainWalls = false,
+  bareWall,
+  shellOnly = false,
+}: {
+  room: RoomLayout
+  palette: RoomPalette
+  theme: Theme
+  /** Muros lisos pintados con `palette.wall` en vez del muro de piedra (p. ej. el lobby de la landing). */
+  plainWalls?: boolean
+  /** Pared sin cuadros de la sala: queda libre para otra obra (el muro de Founders del lobby). */
+  bareWall?: Side
+  /** Solo el cascarón (piso, muros, molduras): sin título, cuadros, monumento ni pedestales del tema (el lobby). */
+  shellOnly?: boolean
+}) {
   const { cornice, plinth } = theme.scene.architecture
   const userImages = useStore((s) => s.userImages)
-  const paintings = useMemo(() => assignPaintings(room, userImages), [room, userImages])
+  const paintings = useMemo(
+    () => (shellOnly ? [] : assignPaintings(room, userImages).filter((a) => a.slot.side !== bareWall)),
+    [room, userImages, bareWall, shellOnly],
+  )
   return (
     <group>
       <Reveal id={floorKey(room.id)} mode="pop" origin={[room.x, 0, room.z]}>
@@ -217,12 +244,12 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
         <StaticMerge>
           {room.walls.map((w, i) => (
             <group key={i}>
-              <Wall box={w} color={palette.wall} />
+              <Wall box={w} color={palette.wall} plain={plainWalls} />
               <Moldings box={w} color={palette.trim} cornice={cornice} plinth={plinth} />
             </group>
           ))}
         </StaticMerge>
-        <Inscription room={room} palette={palette} />
+        {!shellOnly && <Inscription room={room} palette={palette} />}
       </Reveal>
       {paintings.map((a) => (
         <Reveal key={a.key} id={paintingsKey(room.id)} mode="pop" origin={[a.slot.x, a.slot.y, a.slot.z]}>
@@ -238,17 +265,21 @@ export function Room({ room, palette, theme }: { room: RoomLayout; palette: Room
           />
         </Reveal>
       ))}
-      <Reveal id={monumentKey(room.id)} mode="sink">
-        <Centerpiece room={room} theme={theme} />
-      </Reveal>
+      {!shellOnly && (
+        <Reveal id={monumentKey(room.id)} mode="sink">
+          <Centerpiece room={room} theme={theme} />
+        </Reveal>
+      )}
       {/* Las bases de los pedestales son estáticas (el objeto que gira va en DecayWrap, que no se une). */}
-      <StaticMerge>
-        {room.pedestals.map((p) => (
-          <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
-            <Pedestal p={p} palette={palette} theme={theme} />
-          </Reveal>
-        ))}
-      </StaticMerge>
+      {!shellOnly && (
+        <StaticMerge>
+          {room.pedestals.map((p) => (
+            <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
+              <Pedestal p={p} palette={palette} theme={theme} />
+            </Reveal>
+          ))}
+        </StaticMerge>
+      )}
     </group>
   )
 }

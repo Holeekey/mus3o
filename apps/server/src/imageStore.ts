@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ResolvedImage, WikiInfo } from "@mus3o/shared";
+import type { PhotoDioramaResponse, ResolvedImage, WikiInfo } from "@mus3o/shared";
 
 /**
  * Almacenes de imágenes en disco:
@@ -225,6 +225,45 @@ export async function writeCacheInfo(key: string, info: WikiInfo | null): Promis
   try {
     const dir = cacheDir();
     const n = await atomicWrite(dir, infoName(key), JSON.stringify({ info }));
+    await afterWrite(dir, n);
+  } catch {
+    // la caché es opcional
+  }
+}
+
+// ---- Dioramas hechos desde una foto (POST /api/diorama-from-image) ----
+// Semilla propia (`apps/server/seed/dioramas`, en el repo, solo lectura) y la misma carpeta de caché que las imágenes.
+export const dioramaSeedDir = () => (process.env.DIORAMA_SEED_DIR ? resolve(process.env.DIORAMA_SEED_DIR) : resolve(here, "../seed/dioramas"));
+const dioramaName = (key: string) => `${sha("diorama|" + key)}.json`;
+
+async function readDioramaFrom(dir: string, key: string, refresh: boolean): Promise<PhotoDioramaResponse | undefined> {
+  const path = join(dir, dioramaName(key));
+  const raw = await readIf(path);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw.toString("utf8"));
+    if (parsed && typeof parsed === "object" && typeof parsed.result?.recreatable === "boolean") {
+      if (refresh) touch(path);
+      return parsed.result as PhotoDioramaResponse;
+    }
+  } catch {
+    // corrupto: se vuelve a consultar
+  }
+  return undefined;
+}
+
+export const readSeedDiorama = (key: string) => readDioramaFrom(dioramaSeedDir(), key, false);
+export const readCacheDiorama = (key: string) => readDioramaFrom(cacheDir(), key, true);
+
+export async function writeSeedDiorama(key: string, result: PhotoDioramaResponse): Promise<void> {
+  await atomicWrite(dioramaSeedDir(), dioramaName(key), JSON.stringify({ result }, null, 1));
+}
+
+/** Solo resultados definitivos (también "no recreable"); un fallo de la IA nunca se guarda. */
+export async function writeCacheDiorama(key: string, result: PhotoDioramaResponse): Promise<void> {
+  try {
+    const dir = cacheDir();
+    const n = await atomicWrite(dir, dioramaName(key), JSON.stringify({ result }));
     await afterWrite(dir, n);
   } catch {
     // la caché es opcional

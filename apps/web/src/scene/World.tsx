@@ -15,6 +15,7 @@ import { AssetDoorway, AssetFloor, AssetWall } from './DungeonAssets'
 import { ArisCompanion } from './ArisCompanion'
 import { AtmosphereController } from './AtmosphereController'
 import { DecayField } from './Decay'
+import { usePhotoDioramaStore } from '../diorama/photoDiorama'
 import { PerfOverlay, perfEnabled } from './PerfOverlay'
 import { Player } from './Player'
 import { Room } from './Room'
@@ -116,7 +117,9 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
     () => roomPalettes(theme, layout.rooms.map((r) => r.title)),
     [theme, layout],
   )
-  const hasDiorama = useMemo(() => layout.rooms.some((r) => r.diorama), [layout])
+  // Los dioramas hechos desde la foto llegan después de armar el palacio: en cuanto hay uno, se carga el runtime.
+  const photoReady = usePhotoDioramaStore((s) => s.ready > 0)
+  const hasDiorama = useMemo(() => photoReady || layout.rooms.some((r) => r.diorama), [layout, photoReady])
   const vrOn = useVr((s) => s.kind !== null) // en VR la resolución la fija el modo VR, no AdaptiveQuality
   const vrAvailable = useVr((s) => s.available === 'xr' || s.available === 'cardboard')
   return (

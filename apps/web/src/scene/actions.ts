@@ -21,6 +21,16 @@ function focusedPiece(layout: PalaceLayout, id: string) {
   return null
 }
 
+/**
+ * Cierra la ficha. Si el puntero se había soltado para leerla (Esc), vuelve al palacio en vez de dejar
+ * el menú de pausa: cerrar con E o ✕ es un gesto del usuario, así que el navegador permite bloquearlo.
+ */
+export function closeCard() {
+  const s = useStore.getState()
+  s.set({ openId: null })
+  if (!s.locked) pointerLock.lock()
+}
+
 /** E sin el atajo del cuadro: abre la compuerta, recoge la llave o abre y cierra la ficha. */
 export function examine(layout: PalaceLayout) {
   const s = useStore.getState()
@@ -30,7 +40,7 @@ export function examine(layout: PalaceLayout) {
     return
   }
   if (s.openId) {
-    s.set({ openId: null })
+    closeCard()
     return
   }
   if (!s.focusedId) return

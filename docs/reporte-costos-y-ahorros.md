@@ -14,6 +14,7 @@ Precios de lista de la API de Anthropic (tabla de modelos consultada el 2026-10-
 
 - La escritura de caché no figura en la tabla de precios; se calculó con el multiplicador habitual (1,25× entrada, 0,1× lectura). Confírmalo en la consola de facturación.
 - Haiku 5.5 razona por defecto; el servidor lo apaga (`noThinking`), si no gastaba ~3.200 tokens de salida pensando.
+- La recreación de una foto como diorama (`POST /api/diorama-from-image`, Sonnet 5.5 con visión) es un costo aparte por cuadro abierto; no está medido aquí.
 - Elementos sin costo de tokens: búsqueda Poly Pizza, citas y retratos Wikimedia. ElevenLabs (voz) se factura aparte, por caracteres.
 
 ## 2. Qué cuesta un museo
@@ -23,7 +24,7 @@ Tokens medidos con el log `tokens` del servidor. Cuenta: `entrada × tarifa + sa
 | Caso | Salida | Costo |
 |---|---|---|
 | **A. JSON monolítico** (formato antiguo, `FLOW_FORMAT=json`) | 10.925 | **~$0,117** |
-| **B. DSL + diorama en llamada aparte** | 6.166 | **~$0,063** |
+| **B. DSL + diorama en llamada aparte** (referencia histórica) | 6.166 | **~$0,063** |
 | **C. DSL + micro-DSL fusionado (actual), caché leída** | 3.514 | **~$0,036** |
 | C con caché fría (primera generación de la ventana de 5 min) | 3.514 | ~$0,039 |
 | Tema simple sin diorama (DSL ~1.850 tokens de salida) | ~1.850 | ~$0,019 |
@@ -64,7 +65,7 @@ Supuestos: caso C a ~$0,036 por museo generado y el resto de gastos despreciable
 ## 4. De dónde vienen los ahorros
 
 1. **DSL compacto en vez de JSON con geometría:** el modelo elige y ordena, y el servidor construye el resto. Es la mayor palanca, de 10.925 a ~1.850 tokens.
-2. **Diorama fusionado (micro-DSL `DIO`/`D_PROP`):** quita la llamada aparte, que gastó 2.825 tokens en la medición. Cuesta +173 tokens en la llamada principal. Los dioramas científicos (`organic`/`cellular`/`vessel`) siguen en llamada aparte.
+2. **Diorama fusionado (micro-DSL `DIO`/`D_PROP`):** quita la llamada aparte, que gastó 2.825 tokens en la medición. Cuesta +173 tokens en la llamada principal. Esa llamada aparte ya no existe en `dev`: los dioramas científicos se quedaron sin generación por IA (usan la biblioteca o la foto).
 3. **Prompt del sistema cacheado:** ~1.400 tokens leídos a $0,20 en vez de pagarlos a $2.
 4. **Caché de disco/LRU y deduplicación en vuelo:** una solicitud repetida o simultánea cuesta $0.
 5. **Haiku para tareas secundarias:** unas 20 veces más barato que Sonnet en entrada y salida.

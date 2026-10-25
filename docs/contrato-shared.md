@@ -136,6 +136,8 @@ DioramaProp = {
 ```
 
 Cada campo tiene `.catch(valor por defecto)`: una salida rara se degrada y no tira la escena.
+`backdrop?` (opcional, solo dioramas de foto) debe ser la ruta del proxy `/api/image/file?u=` hacia Wikimedia (`BACKDROP_RE`); cualquier otro valor se descarta. `PhotoDioramaRequestSchema` y `PhotoDioramaResponseSchema` son el cuerpo y la respuesta de `POST /api/diorama-from-image`.
+
 Detalle en [diorama.md](./diorama.md).
 
 ## 5. Fuentes (`SourceSchema`) y request de generación
