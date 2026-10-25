@@ -233,7 +233,7 @@ export function Landing() {
             key={preset.id}
             type="button"
             className="preset-card"
-            onClick={() => enterPalace(preset.museum)}
+            onClick={() => enterPalace(preset.museum, preset.sourceText)}
             title={`Entrar a ${preset.title}`}
           >
             <div className="preset-card-top">

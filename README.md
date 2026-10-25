@@ -14,6 +14,21 @@
 
 ---
 
+## 📸 Así se ve
+
+| | |
+|:---:|:---:|
+| ![Portada de mus3o](./docs/screenshots/01-portada.jpg) | ![Un PDF de pediatría convertido en un museo de 8 salas](./docs/screenshots/02-museo-desde-tus-apuntes.jpg) |
+| **Portada.** Pegas tus apuntes o adjuntas un PDF. | **Tus apuntes se vuelven un museo.** Un PDF de pediatría, 8 salas. |
+| ![Una sala por dentro](./docs/screenshots/03-sala-por-dentro.jpg) | ![Ficha de un concepto con su cita](./docs/screenshots/04-ficha-con-cita.jpg) |
+| **Cada concepto es un objeto** sobre su pedestal. | **Cada ficha cita la línea de tus apuntes** de donde sale. |
+| ![Mundo vivo recreado desde una pintura real](./docs/screenshots/05-mundo-vivo.jpg) | ![Curva del olvido](./docs/screenshots/06-curva-del-olvido.jpg) |
+| **Mundo vivo:** entras a la pintura real del tema, recreada en 3D, y Aris te cuenta lo que ves. | **Curva del olvido:** lo que no repasas se agrieta y se rompe. |
+| ![Modo VR](./docs/screenshots/07-modo-vr.jpg) | |
+| **Modo VR** con un visor de cartón y el celular. | |
+
+---
+
 ## 🏛️ Qué es mus3o
 
 **mus3o** revoluciona el aprendizaje activo convirtiendo texto plano en una experiencia tridimensional inmersiva:
@@ -77,6 +92,8 @@ Puedes probar de inmediato palacios precargados y mecánicas avanzadas agregando
 | `?demo=medicina` | Recorrido anatómico y farmacológico |
 | `?demo=dungeon` | Integración del generador procedural de mazmorras medievales |
 | `?demo=compuesto` | Composición modular de dioramas por biblioteca |
+
+En la portada también hay **museos listos** que se abren al instante, sin IA. Entre ellos, **Infecciones osteoarticulares**: 8 salas y 49 conceptos generados desde un PDF real de pediatría, con la cita de cada concepto.
 
 ---
 

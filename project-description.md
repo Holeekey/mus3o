@@ -1,5 +1,9 @@
 # mus3o · Palacios de la Memoria 3D con IA y citas verificadas
 
+<p align="center">
+  <img src="./project-logo.png" alt="Logo de mus3o" width="200" />
+</p>
+
 > **Platanus Hack 26 — Caracas (46 horas)**  
 > **Track:** 🧊 Three-Dimensional  
 > **Despliegue:** [mus3o.onrender.com](https://mus3o.onrender.com/) · **Código:** [Repositorio GitHub](https://github.com/platanus-hack/platanus-hack-26-ve-team-5)  
@@ -9,11 +13,26 @@
 ## ▶️ Pruébalo en 60 segundos
 
 1. Entra a [mus3o.onrender.com](https://mus3o.onrender.com/) desde un navegador de escritorio (Chrome o Edge).
-2. **Sin esperar a la IA:** elige uno de los museos listos (Biología Celular, Imperio Romano o Arquitectura de Computadores) y entra con un clic.
+2. **Sin esperar a la IA:** elige uno de los museos listos (Infecciones osteoarticulares, Biología Celular, Imperio Romano o Arquitectura de Computadores) y entra con un clic.
 3. Muévete con **WASD** y el mouse. Acércate a un pedestal y pulsa **E** para examinar la pieza, **M** para marcarla como memorizada, **T** para hablar con Aris y **N** para el narrador.
 4. Busca el cuadro principal de la sala y pulsa **E** frente a él: entras al diorama 3D.
 5. **Con tus apuntes:** vuelve al inicio, pega tu texto o adjunta un PDF, Word, Excel o CSV y pulsa **Generar con Aris**. Verás el museo construirse en vivo; cada concepto trae la cita de tus apuntes y una marca si no se encontró en ellos. Si prefieres no usar IA, **Construir offline** arma el museo con un parser local.
 6. Opcional, en el teléfono: el modo VR funciona con WebXR o con un Cardboard.
+
+---
+
+## 📸 Así se ve
+
+| | |
+|:---:|:---:|
+| ![Portada de mus3o](./docs/screenshots/01-portada.jpg) | ![Un PDF de pediatría convertido en un museo de 8 salas](./docs/screenshots/02-museo-desde-tus-apuntes.jpg) |
+| **Portada.** Pegas tus apuntes o adjuntas un PDF. | **Tus apuntes se vuelven un museo.** Un PDF de pediatría, 8 salas. |
+| ![Una sala por dentro](./docs/screenshots/03-sala-por-dentro.jpg) | ![Ficha de un concepto con su cita](./docs/screenshots/04-ficha-con-cita.jpg) |
+| **Cada concepto es un objeto** sobre su pedestal. | **Cada ficha cita la línea de tus apuntes** de donde sale. |
+| ![Mundo vivo recreado desde una pintura real](./docs/screenshots/05-mundo-vivo.jpg) | ![Curva del olvido](./docs/screenshots/06-curva-del-olvido.jpg) |
+| **Mundo vivo:** entras a la pintura real del tema, recreada en 3D, y Aris te cuenta lo que ves. | **Curva del olvido:** lo que no repasas se agrieta y se rompe. |
+| ![Modo VR](./docs/screenshots/07-modo-vr.jpg) | |
+| **Modo VR** con un visor de cartón y el celular. | |
 
 ---
 
@@ -116,7 +135,7 @@ La IA solo elige conceptos, metáforas y citas. Todo lo demás es código nuestr
 | 3 | **Portales a Dioramas 3D ("Entrar al Cuadro")** | `web/diorama` | Ventana con `MeshPortalMaterial`. Al pulsar `E` el jugador entra a una maqueta 3D con viento en GPU (`aWind`) y terreno facetado. |
 | 4 | **Verificación de citas (`verifySources`)** | `shared/sources` | Busca cada cita en los apuntes (coincidencia exacta o subcadena común ≥ 60 %). Lo que no aparece se marca `unverified`: la alucinación no se oculta, se señala. |
 | 5 | **Curva de olvido + decaimiento 3D** | `web/memory` | Modelo de Ebbinghaus desacoplado del render. Fragmentación de esculturas (20 fragmentos de yeso) y desvanecimiento del suelo según la fuerza del recuerdo. |
-| 6 | **Modo VR híbrido (WebXR + Cardboard)** | `web/vr` | WebXR en Chromium Android; Cardboard con fusión de giroscopio y acelerómetro, shader de lente de barril y panel de calibración. |
+| 6 | **Modo VR híbrido (WebXR + Cardboard)** | `web/vr` | WebXR en Chromium Android; Cardboard con fusión de giroscopio y acelerómetro, proyección fuera de eje para ajustar la separación y un panel de ajuste en pantalla. |
 | 7 | **Dos modelos, cada uno en lo suyo** | `server/claude` | Sonnet 5.5 para la estructura del museo y la visión de los cuadros; Haiku 5.5 sin razonamiento extendido para resumir fuentes largas y ayudar a Aris. |
 | 8 | **Biblioteca curada de modelos 3D (80 ítems)** | `seed/library` | 80 objetos sembrados una sola vez con Sonnet y versionados en Git LFS. Se reutilizan a costo $0 en todos los museos. |
 | 9 | **Ingesta en el navegador** | `web/lib/files` | PDF, Word, Excel, CSV y Markdown se extraen en el cliente (`pdfjs-dist`, `mammoth`, `read-excel-file`). Al servidor solo viaja texto; nada se guarda. |
@@ -188,7 +207,7 @@ El proyecto cuenta con un catálogo exhaustivo de **18 optimizaciones de producc
 |---|---|
 | **Frontend & UI** | React 18, Vite, TypeScript, Zustand (con persistencia separada), Tailwind CSS, Lucide Icons |
 | **Motor 3D & WebGL** | Three.js, React Three Fiber (`@react-three/fiber`), `@react-three/drei`, shaders GLSL procedurales |
-| **Realidad Virtual (XR)** | WebXR (`@react-three/xr`), Cardboard dual stereo camera, sensor fusion (`devicemotion`), lens distortion shader |
+| **Realidad Virtual (XR)** | WebXR (`@react-three/xr`), Cardboard dual stereo camera, sensor fusion (`devicemotion`), off-axis stereo projection |
 | **Backend & APIs** | Node.js 22, Express, `@anthropic-ai/sdk`, `express-rate-limit`, Zod, Vitest |
 | **Modelos de IA** | Claude Sonnet 5.5 (`claude-sonnet-5-5`) y Claude Haiku 5.5 (`claude-haiku-5-5`) |
 | **Procesamiento de Archivos** | `pdfjs-dist` (PDF), `mammoth` (Word .docx), `read-excel-file` (Excel .xlsx), parsers nativos CSV/JSON |
