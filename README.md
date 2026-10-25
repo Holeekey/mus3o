@@ -36,6 +36,10 @@ Diseñado bajo el principio de que **la IA razona y el código ensambla**, mus3o
 
 > 📊 Al construir mus3o con un agente de código, la caché de prompts ahorró **~USD 246 en 7 días** (99 % de aciertos; gasto real USD 29 frente a ~USD 275). Consulta el desglose completo en el [Catálogo de Optimizaciones](./docs/catalogo-optimizaciones.md) y el [Reporte de Costos y Ahorro](./docs/reporte-costos-y-ahorros.md).
 
+<p align="center">
+  <img src="./assets/cost-optimization-proof.jpg" alt="Métricas reales de optimización de costos y ahorro de tokens en Anthropic" width="100%" />
+</p>
+
 ---
 
 ## 🚀 Inicio Rápido

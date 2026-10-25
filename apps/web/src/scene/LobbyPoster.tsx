@@ -124,14 +124,6 @@ function TransparentVitrineFrame({ w, h, outerW, outerH }: { w: number; h: numbe
 
 function ParrotDioramaBox({ room, interactive }: { room: RoomLayout; interactive: boolean }) {
   const events = useDioramaPointer(interactive)
-  const spotLightRef = useRef<THREE.SpotLight>(null)
-  const targetRef = useRef<THREE.Object3D>(null)
-
-  useEffect(() => {
-    if (spotLightRef.current && targetRef.current) {
-      spotLightRef.current.target = targetRef.current
-    }
-  }, [])
 
   const [z0, z1] = freeSpan(room)
   const top = room.height - CORNICE_CLEAR
@@ -196,15 +188,14 @@ function ParrotDioramaBox({ room, interactive }: { room: RoomLayout; interactive
         </Text>
       </group>
 
-      {/* Iluminación propia de diorama: foco superior orientado y luz puntual cálida interna */}
-      <object3D ref={targetRef} position={[0, parrotY + 0.25, 0.28]} />
-      <pointLight position={[0, h * 0.25, DEPTH * 0.7]} color="#FFF1D0" intensity={22} distance={4} />
+      {/* Iluminación propia de diorama: foco superior y luz puntual cálida */}
+      <ambientLight intensity={1.3} />
+      <pointLight position={[0, h * 0.3, DEPTH + 0.5]} color="#FFF1D0" intensity={20} distance={5} />
       <spotLight
-        ref={spotLightRef}
-        position={[0, h * 0.55, DEPTH + 0.8]}
+        position={[0, h * 0.55, DEPTH + 1.2]}
+        target-position={[0, 0, 0.28]}
         color="#FFF6DE"
-        intensity={32}
-        distance={6}
+        intensity={26}
         angle={Math.PI / 3}
         penumbra={0.6}
       />
