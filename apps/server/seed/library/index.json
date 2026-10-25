@@ -1,0 +1,8648 @@
+[
+  {
+    "id": "lib-mvn9hnwh4e15f0",
+    "kind": "recipe",
+    "keywords": [
+      "blowtorch"
+    ],
+    "title": "blowtorch",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          1,
+          16
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c62828"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.08,
+          0.3,
+          12
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8860b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.06,
+          0.7,
+          12
+        ],
+        "pos": [
+          0.35,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.2
+        ],
+        "color": "#555555"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.1,
+          0.35,
+          12
+        ],
+        "pos": [
+          0.85,
+          0.85,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -1.57
+        ],
+        "color": "#ff9800"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.12,
+          0.3
+        ],
+        "pos": [
+          0,
+          0.06,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#333333"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwi0eb0da",
+    "kind": "recipe",
+    "keywords": [
+      "beating heart"
+    ],
+    "title": "beating heart",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.5,
+          16,
+          16
+        ],
+        "pos": [
+          -0.3,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d32f2f"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.5,
+          16,
+          16
+        ],
+        "pos": [
+          0.3,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d32f2f"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.7,
+          1,
+          16
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          3.14159
+        ],
+        "color": "#c62828"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.12,
+          0.4,
+          12
+        ],
+        "pos": [
+          -0.15,
+          1.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.2
+        ],
+        "color": "#ef5350"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.09,
+          0.1,
+          0.35,
+          12
+        ],
+        "pos": [
+          0.25,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.3
+        ],
+        "color": "#1565c0"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwi6d2644",
+    "kind": "recipe",
+    "keywords": [
+      "soda bottle"
+    ],
+    "title": "soda bottle",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          1,
+          20
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#43a047"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.3,
+          0.4,
+          20
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#43a047"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.12,
+          0.35,
+          16
+        ],
+        "pos": [
+          0,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#43a047"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.14,
+          0.14,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          1.78,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e53935"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.31,
+          0.31,
+          0.4,
+          20
+        ],
+        "pos": [
+          0,
+          0.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fafafa"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwk1e2770",
+    "kind": "recipe",
+    "keywords": [
+      "slide"
+    ],
+    "title": "slide",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.08,
+          1.8
+        ],
+        "pos": [
+          0,
+          0.9,
+          0
+        ],
+        "rot": [
+          0.7,
+          0,
+          0
+        ],
+        "color": "#fbc02d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.05,
+          0.3,
+          1.8
+        ],
+        "pos": [
+          0.27,
+          1,
+          0
+        ],
+        "rot": [
+          0.7,
+          0,
+          0
+        ],
+        "color": "#e53935"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.05,
+          0.3,
+          1.8
+        ],
+        "pos": [
+          -0.27,
+          1,
+          0
+        ],
+        "rot": [
+          0.7,
+          0,
+          0
+        ],
+        "color": "#e53935"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.08,
+          0.5
+        ],
+        "pos": [
+          0,
+          1.55,
+          -0.75
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1e88e5"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          1.6,
+          8
+        ],
+        "pos": [
+          0.3,
+          0.8,
+          -0.75
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#757575"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwked8a8e",
+    "kind": "recipe",
+    "keywords": [
+      "stone slab"
+    ],
+    "title": "stone slab",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.3,
+          1
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d8d8d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.1,
+          0.8
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0.1,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.05,
+          0.2
+        ],
+        "pos": [
+          0.3,
+          0.42,
+          0.1
+        ],
+        "rot": [
+          0,
+          0.4,
+          0
+        ],
+        "color": "#6d6d6d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwkdfa721",
+    "kind": "recipe",
+    "keywords": [
+      "anvil"
+    ],
+    "title": "anvil",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1,
+          0.3,
+          0.7
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#37474f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.5,
+          0.45
+        ],
+        "pos": [
+          0,
+          0.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#455a64"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.5,
+          0.3,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#263238"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.3,
+          0.6,
+          12
+        ],
+        "pos": [
+          1,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -1.57
+        ],
+        "color": "#263238"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwk2e0be2",
+    "kind": "recipe",
+    "keywords": [
+      "water mill"
+    ],
+    "title": "water mill",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          1,
+          1
+        ],
+        "pos": [
+          -0.5,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a1887f"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.95,
+          0.6,
+          4
+        ],
+        "pos": [
+          -0.5,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0.785,
+          0
+        ],
+        "color": "#6d4c41"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.7,
+          0.7,
+          0.15,
+          16
+        ],
+        "pos": [
+          0.4,
+          0.85,
+          0.55
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#795548"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.08,
+          0.12
+        ],
+        "pos": [
+          0.4,
+          0.85,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          1.4,
+          0.12
+        ],
+        "pos": [
+          0.4,
+          0.85,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwl5e0848",
+    "kind": "recipe",
+    "keywords": [
+      "glove"
+    ],
+    "title": "glove",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.7,
+          0.7,
+          0.25
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.55,
+          0.2
+        ],
+        "pos": [
+          -0.27,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.65,
+          0.2
+        ],
+        "pos": [
+          -0.09,
+          1.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.6,
+          0.2
+        ],
+        "pos": [
+          0.09,
+          1.22,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.45,
+          0.2
+        ],
+        "pos": [
+          0.27,
+          1.12,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.25,
+          0.3
+        ],
+        "pos": [
+          0,
+          0.12,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwl0c341d",
+    "kind": "recipe",
+    "keywords": [
+      "octopus"
+    ],
+    "title": "octopus",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.55,
+          16,
+          16
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e57373"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.08,
+          8,
+          8
+        ],
+        "pos": [
+          -0.2,
+          1.3,
+          0.48
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.08,
+          8,
+          8
+        ],
+        "pos": [
+          0.2,
+          1.3,
+          0.48
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.14,
+          0.8,
+          8
+        ],
+        "pos": [
+          -0.4,
+          0.4,
+          0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0.3
+        ],
+        "color": "#ef5350"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.14,
+          0.8,
+          8
+        ],
+        "pos": [
+          0.4,
+          0.4,
+          0.2
+        ],
+        "rot": [
+          0,
+          0,
+          -0.3
+        ],
+        "color": "#ef5350"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.14,
+          0.8,
+          8
+        ],
+        "pos": [
+          0,
+          0.4,
+          -0.4
+        ],
+        "rot": [
+          0.3,
+          0,
+          0
+        ],
+        "color": "#ef5350"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwm33ac9d",
+    "kind": "recipe",
+    "keywords": [
+      "carousel"
+    ],
+    "title": "carousel",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.9,
+          0.9,
+          0.12,
+          24
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6d4c41"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.08,
+          1.4,
+          12
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fdd835"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          1,
+          0.5,
+          24
+        ],
+        "pos": [
+          0,
+          1.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e53935"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          1,
+          8
+        ],
+        "pos": [
+          0.6,
+          0.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffd54f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.25,
+          0.15
+        ],
+        "pos": [
+          0.6,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1e88e5"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwmf41f3a",
+    "kind": "recipe",
+    "keywords": [
+      "hourglass"
+    ],
+    "title": "hourglass",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.55,
+          0.55,
+          0.1,
+          20
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.45,
+          0.85,
+          20
+        ],
+        "pos": [
+          0,
+          0.52,
+          0
+        ],
+        "rot": [
+          3.14159,
+          0,
+          0
+        ],
+        "color": "#b3e5fc"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.45,
+          0.85,
+          20
+        ],
+        "pos": [
+          0,
+          1.38,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b3e5fc"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.3,
+          0.5,
+          16
+        ],
+        "pos": [
+          0,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffcc80"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.55,
+          0.55,
+          0.1,
+          20
+        ],
+        "pos": [
+          0,
+          1.85,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwn30e1b0",
+    "kind": "recipe",
+    "keywords": [
+      "bowling ball"
+    ],
+    "title": "bowling ball",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.5,
+          20,
+          16
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a2e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.06,
+          0.05,
+          12
+        ],
+        "pos": [
+          -0.12,
+          0.88,
+          0.3
+        ],
+        "rot": [
+          0.6,
+          0,
+          0
+        ],
+        "color": "#050505"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.06,
+          0.05,
+          12
+        ],
+        "pos": [
+          0.12,
+          0.88,
+          0.3
+        ],
+        "rot": [
+          0.6,
+          0,
+          0
+        ],
+        "color": "#050505"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.06,
+          0.05,
+          12
+        ],
+        "pos": [
+          0,
+          0.72,
+          0.42
+        ],
+        "rot": [
+          1.2,
+          0,
+          0
+        ],
+        "color": "#050505"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwn40a58b",
+    "kind": "recipe",
+    "keywords": [
+      "cannon"
+    ],
+    "title": "cannon",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.3,
+          1.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.75,
+          0
+        ],
+        "rot": [
+          1.2,
+          0,
+          0
+        ],
+        "color": "#2f2f35"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.3,
+          16,
+          12
+        ],
+        "pos": [
+          0,
+          0.4,
+          -0.38
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2f2f35"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.4,
+          0.1,
+          16
+        ],
+        "pos": [
+          -0.45,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#6b4423"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.4,
+          0.1,
+          16
+        ],
+        "pos": [
+          0.45,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#6b4423"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.8,
+          0.1,
+          0.5
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a2f17"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwo0bb45e",
+    "kind": "recipe",
+    "keywords": [
+      "cement mixer"
+    ],
+    "title": "cement mixer",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.7,
+          0.5,
+          16
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#e8a317"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.7,
+          0.5,
+          0.6,
+          16
+        ],
+        "pos": [
+          -0.2,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#e8a317"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.4,
+          0.35,
+          16
+        ],
+        "pos": [
+          -0.43,
+          0.38,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#c98a10"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.15,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#444444"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.18,
+          0.18,
+          0.1,
+          12
+        ],
+        "pos": [
+          0.5,
+          0.18,
+          0.35
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#111111"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwq289e22",
+    "kind": "recipe",
+    "keywords": [
+      "chimney"
+    ],
+    "title": "chimney",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.7,
+          1.5,
+          0.7
+        ],
+        "pos": [
+          0,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a64b3a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.85,
+          0.15,
+          0.85
+        ],
+        "pos": [
+          0,
+          1.58,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a3326"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.05,
+          0.5
+        ],
+        "pos": [
+          0,
+          1.67,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a1a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.2,
+          0.9
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8c8c8c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwqb25783",
+    "kind": "recipe",
+    "keywords": [
+      "faucet"
+    ],
+    "title": "faucet",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.3,
+          0.15,
+          16
+        ],
+        "pos": [
+          0,
+          0.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8bcc2"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          0.9,
+          16
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c9ced4"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.09,
+          0.09,
+          0.6,
+          16
+        ],
+        "pos": [
+          0.25,
+          1.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#c9ced4"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.07,
+          0.15,
+          16
+        ],
+        "pos": [
+          0.55,
+          0.97,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8bcc2"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          12,
+          10
+        ],
+        "pos": [
+          0,
+          1.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3b82f6"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwr737f0e",
+    "kind": "recipe",
+    "keywords": [
+      "gas mask"
+    ],
+    "title": "gas mask",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.7,
+          16,
+          12
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3d4a3a"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.22,
+          12,
+          10
+        ],
+        "pos": [
+          -0.28,
+          1.15,
+          0.55
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9fd3e6"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.22,
+          12,
+          10
+        ],
+        "pos": [
+          0.28,
+          1.15,
+          0.55
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9fd3e6"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.3,
+          0.45,
+          14
+        ],
+        "pos": [
+          0,
+          0.65,
+          0.7
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#2b2b2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.12,
+          0.1
+        ],
+        "pos": [
+          0,
+          1,
+          0.6
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwr3a0062",
+    "kind": "recipe",
+    "keywords": [
+      "layer cake"
+    ],
+    "title": "layer cake",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.4,
+          24
+        ],
+        "pos": [
+          0,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a3c"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.82,
+          0.82,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fdf3e1"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.4,
+          24
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f4a6b8"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.82,
+          0.82,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fdf3e1"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          12,
+          10
+        ],
+        "pos": [
+          0,
+          1.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d6203a"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnws659d75",
+    "kind": "recipe",
+    "keywords": [
+      "snowflake"
+    ],
+    "title": "snowflake",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.08,
+          0.08
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#bfe6ff"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.08,
+          0.08
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.0472
+        ],
+        "color": "#bfe6ff"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.08,
+          0.08
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          2.0944
+        ],
+        "color": "#bfe6ff"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.15,
+          10,
+          8
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffffff"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.1,
+          0.3,
+          6
+        ],
+        "pos": [
+          0,
+          1.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e8f6ff"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnws96ecaa",
+    "kind": "recipe",
+    "keywords": [
+      "soup bowl"
+    ],
+    "title": "soup bowl",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.45,
+          0.5,
+          24
+        ],
+        "pos": [
+          0,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f2efe6"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.7,
+          0.7,
+          0.04,
+          24
+        ],
+        "pos": [
+          0,
+          0.66,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d98a2b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.4,
+          0.08,
+          20
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e0dcd0"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.1,
+          8,
+          6
+        ],
+        "pos": [
+          0.2,
+          0.7,
+          0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6aa84f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwsf9719d",
+    "kind": "recipe",
+    "keywords": [
+      "warrior shield"
+    ],
+    "title": "warrior shield",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#8b2e2e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.12,
+          24
+        ],
+        "pos": [
+          0,
+          1,
+          -0.02
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#c9a227"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.22,
+          12,
+          10
+        ],
+        "pos": [
+          0,
+          1,
+          0.06
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.1,
+          0.04
+        ],
+        "pos": [
+          0,
+          1,
+          0.07
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          1.4,
+          0.04
+        ],
+        "pos": [
+          0,
+          1,
+          0.07
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnws7ccdca",
+    "kind": "recipe",
+    "keywords": [
+      "battery"
+    ],
+    "title": "battery",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.35,
+          1.2,
+          20
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2d6a4f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.15,
+          16
+        ],
+        "pos": [
+          0,
+          1.27,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0c0c0"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.36,
+          0.36,
+          0.25,
+          20
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e0b01a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.3,
+          0.04
+        ],
+        "pos": [
+          0,
+          0.55,
+          0.35
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f5f5"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwsbe3df6",
+    "kind": "recipe",
+    "keywords": [
+      "coin stack"
+    ],
+    "title": "coin stack",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          24
+        ],
+        "pos": [
+          0.03,
+          0.15,
+          0.02
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e6c04a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          24
+        ],
+        "pos": [
+          -0.02,
+          0.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          24
+        ],
+        "pos": [
+          0.02,
+          0.35,
+          -0.02
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e6c04a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.1,
+          24
+        ],
+        "pos": [
+          0,
+          0.45,
+          0.02
+        ],
+        "rot": [
+          0,
+          0,
+          0.1
+        ],
+        "color": "#f0d060"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwt17046b",
+    "kind": "recipe",
+    "keywords": [
+      "double door"
+    ],
+    "title": "double door",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          2,
+          0.12
+        ],
+        "pos": [
+          -0.46,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          2,
+          0.12
+        ],
+        "pos": [
+          0.46,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          1.5,
+          0.14
+        ],
+        "pos": [
+          -0.46,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a0693a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          1.5,
+          0.14
+        ],
+        "pos": [
+          0.46,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a0693a"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.06,
+          8,
+          8
+        ],
+        "pos": [
+          -0.08,
+          1,
+          0.12
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwt0e92d5",
+    "kind": "recipe",
+    "keywords": [
+      "paint bucket"
+    ],
+    "title": "paint bucket",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.5,
+          0.4,
+          0.9,
+          16
+        ],
+        "pos": [
+          0,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0c0c0"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.46,
+          0.46,
+          0.04,
+          16
+        ],
+        "pos": [
+          0,
+          0.88,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.52,
+          0.52,
+          0.06,
+          16
+        ],
+        "pos": [
+          0,
+          0.92,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9a9a9a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.05,
+          0.05
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#555555"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.51,
+          0.51,
+          0.3,
+          16
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e63946"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwub729fc",
+    "kind": "recipe",
+    "keywords": [
+      "poker chip"
+    ],
+    "title": "poker chip",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.9,
+          0.9,
+          0.2,
+          24
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c1121f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.22,
+          24
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f8f9fa"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.45,
+          0.24,
+          24
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c1121f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          0.25,
+          0.26
+        ],
+        "pos": [
+          0.75,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0.8,
+          0
+        ],
+        "color": "#f8f9fa"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          0.25,
+          0.26
+        ],
+        "pos": [
+          -0.75,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0.8,
+          0
+        ],
+        "color": "#f8f9fa"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwvc65760",
+    "kind": "recipe",
+    "keywords": [
+      "solar panel"
+    ],
+    "title": "solar panel",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.8,
+          0.08,
+          1.1
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          -0.5,
+          0,
+          0
+        ],
+        "color": "#1d3557"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.1,
+          0.35
+        ],
+        "pos": [
+          -0.55,
+          1.02,
+          0.03
+        ],
+        "rot": [
+          -0.5,
+          0,
+          0
+        ],
+        "color": "#2a5db0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.1,
+          0.35
+        ],
+        "pos": [
+          0.55,
+          1.02,
+          0.03
+        ],
+        "rot": [
+          -0.5,
+          0,
+          0
+        ],
+        "color": "#2a5db0"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.06,
+          0.9,
+          8
+        ],
+        "pos": [
+          0,
+          0.45,
+          -0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#888888"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.8,
+          0.06,
+          0.5
+        ],
+        "pos": [
+          0,
+          0.03,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#555555"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwv9e5c07",
+    "kind": "recipe",
+    "keywords": [
+      "submarine"
+    ],
+    "title": "submarine",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.5,
+          16,
+          12
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#f4c430"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.5,
+          0.5,
+          1.4,
+          16
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#f4c430"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.25,
+          0.4,
+          12
+        ],
+        "pos": [
+          0.1,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e0a800"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.4,
+          8
+        ],
+        "pos": [
+          0.15,
+          1.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#333333"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          8,
+          8
+        ],
+        "pos": [
+          0.5,
+          0.75,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8ecae6"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwv27b2b8",
+    "kind": "recipe",
+    "keywords": [
+      "sugar cube"
+    ],
+    "title": "sugar cube",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1,
+          1,
+          1
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0.4,
+          0
+        ],
+        "color": "#fdfdfd"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.02,
+          0.04,
+          1.02
+        ],
+        "pos": [
+          0,
+          0.98,
+          0
+        ],
+        "rot": [
+          0,
+          0.4,
+          0
+        ],
+        "color": "#e8e8e8"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.02,
+          0.04,
+          1.02
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0.4,
+          0
+        ],
+        "color": "#f0f0f0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.15,
+          0.15,
+          0.15
+        ],
+        "pos": [
+          0.4,
+          0.08,
+          0.6
+        ],
+        "rot": [
+          0.3,
+          0.5,
+          0
+        ],
+        "color": "#ffffff"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwv77181c",
+    "kind": "recipe",
+    "keywords": [
+      "sun"
+    ],
+    "title": "sun",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.6,
+          16,
+          16
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffd60a"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.2,
+          0.5,
+          8
+        ],
+        "pos": [
+          0,
+          1.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ff9f1c"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.2,
+          0.5,
+          8
+        ],
+        "pos": [
+          0,
+          0.2,
+          0
+        ],
+        "rot": [
+          3.1416,
+          0,
+          0
+        ],
+        "color": "#ff9f1c"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.2,
+          0.5,
+          8
+        ],
+        "pos": [
+          0.8,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -1.5708
+        ],
+        "color": "#ff9f1c"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.2,
+          0.5,
+          8
+        ],
+        "pos": [
+          -0.8,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#ff9f1c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwv422441",
+    "kind": "recipe",
+    "keywords": [
+      "watering can"
+    ],
+    "title": "watering can",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.5,
+          0.5,
+          0.8,
+          16
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2a9d8f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.08,
+          0.1,
+          1,
+          8
+        ],
+        "pos": [
+          0.65,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.9
+        ],
+        "color": "#2a9d8f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.16,
+          0.1,
+          0.15,
+          12
+        ],
+        "pos": [
+          1.1,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.9
+        ],
+        "color": "#1f7a70"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.7,
+          0.12
+        ],
+        "pos": [
+          -0.55,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.3
+        ],
+        "color": "#1f7a70"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.08,
+          0.1
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1f7a70"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnww508fbe",
+    "kind": "recipe",
+    "keywords": [
+      "key"
+    ],
+    "title": "key",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          0.08,
+          16
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.12,
+          0.12,
+          0.1,
+          12
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#8b6b12"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          1.1,
+          0.08
+        ],
+        "pos": [
+          0,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.12,
+          0.08
+        ],
+        "pos": [
+          0.2,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.22,
+          0.12,
+          0.08
+        ],
+        "pos": [
+          0.16,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwya73781",
+    "kind": "recipe",
+    "keywords": [
+      "padlock"
+    ],
+    "title": "padlock",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.9,
+          0.5
+        ],
+        "pos": [
+          0,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.4,
+          0.2,
+          16
+        ],
+        "pos": [
+          0.35,
+          1.2,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#9a9a9a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.14,
+          0.5,
+          0.2
+        ],
+        "pos": [
+          -0.35,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9a9a9a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.14,
+          0.7,
+          0.2
+        ],
+        "pos": [
+          0.35,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9a9a9a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          0.06,
+          12
+        ],
+        "pos": [
+          0,
+          0.5,
+          0.27
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#222222"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwy889753",
+    "kind": "recipe",
+    "keywords": [
+      "lantern"
+    ],
+    "title": "lantern",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.4,
+          0.15,
+          12
+        ],
+        "pos": [
+          0,
+          0.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3a3a3a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          0.9,
+          6
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffcf5a"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.45,
+          0.35,
+          6
+        ],
+        "pos": [
+          0,
+          1.22,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3a3a3a"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.1,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ff7b00"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          0.35,
+          8
+        ],
+        "pos": [
+          0,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#3a3a3a"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwy30f9a8",
+    "kind": "recipe",
+    "keywords": [
+      "candle"
+    ],
+    "title": "candle",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.55,
+          0.6,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b08d57"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          1.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f0e1"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.02,
+          0.02,
+          0.15,
+          6
+        ],
+        "pos": [
+          0,
+          1.37,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.1,
+          0.3,
+          8
+        ],
+        "pos": [
+          0,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ff9f1c"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.07,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          1.48,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffd60a"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwyf22e5a",
+    "kind": "recipe",
+    "keywords": [
+      "book"
+    ],
+    "title": "book",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.1,
+          0.3,
+          0.8
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5ecd0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.06,
+          0.9
+        ],
+        "pos": [
+          0,
+          0.03,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a2e1f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.06,
+          0.9
+        ],
+        "pos": [
+          0,
+          0.33,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7a2e1f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          0.36,
+          0.9
+        ],
+        "pos": [
+          -0.6,
+          0.18,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c2015"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwy75bb32",
+    "kind": "recipe",
+    "keywords": [
+      "scroll"
+    ],
+    "title": "scroll",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.25,
+          1.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#e8d9a8"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.12,
+          0.12,
+          1.6,
+          10
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#6b4423"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.02,
+          0.7
+        ],
+        "pos": [
+          0,
+          0.12,
+          0.5
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f0e2b6"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.15,
+          10,
+          8
+        ],
+        "pos": [
+          -0.85,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a67c3d"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.15,
+          10,
+          8
+        ],
+        "pos": [
+          0.85,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a67c3d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwz5382e7",
+    "kind": "recipe",
+    "keywords": [
+      "telescope"
+    ],
+    "title": "telescope",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.07,
+          1,
+          8
+        ],
+        "pos": [
+          -0.35,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.35
+        ],
+        "color": "#4a3a2a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.07,
+          1,
+          8
+        ],
+        "pos": [
+          0.35,
+          0.5,
+          0.2
+        ],
+        "rot": [
+          0.3,
+          0,
+          -0.35
+        ],
+        "color": "#4a3a2a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.07,
+          1,
+          8
+        ],
+        "pos": [
+          0,
+          0.5,
+          -0.3
+        ],
+        "rot": [
+          -0.35,
+          0,
+          0
+        ],
+        "color": "#4a3a2a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.14,
+          0.14,
+          1.4,
+          16
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.9
+        ],
+        "color": "#b08d3c"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.2,
+          0.12,
+          16
+        ],
+        "pos": [
+          0.55,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.9
+        ],
+        "color": "#2f6f9f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwz3f0f81",
+    "kind": "recipe",
+    "keywords": [
+      "microscope"
+    ],
+    "title": "microscope",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.5,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2b2b2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.18,
+          1,
+          0.18
+        ],
+        "pos": [
+          -0.2,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#3a3a3a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.12,
+          0.12,
+          0.8,
+          12
+        ],
+        "pos": [
+          0.05,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.4
+        ],
+        "color": "#c9a227"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.3,
+          10
+        ],
+        "pos": [
+          0.35,
+          0.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.4
+        ],
+        "color": "#888888"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.05,
+          0.4
+        ],
+        "pos": [
+          0.2,
+          0.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#555555"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwzcaa5af",
+    "kind": "recipe",
+    "keywords": [
+      "compass"
+    ],
+    "title": "compass",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.15,
+          24
+        ],
+        "pos": [
+          0,
+          0.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b08d3c"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.7,
+          0.7,
+          0.17,
+          24
+        ],
+        "pos": [
+          0,
+          0.09,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f4efe0"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.1,
+          0.65,
+          4
+        ],
+        "pos": [
+          0,
+          0.2,
+          0.3
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.1,
+          0.65,
+          4
+        ],
+        "pos": [
+          0,
+          0.2,
+          -0.3
+        ],
+        "rot": [
+          -1.5708,
+          0,
+          0
+        ],
+        "color": "#2c3e50"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.08,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          0.22,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b08d3c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnwzbe58d3",
+    "kind": "recipe",
+    "keywords": [
+      "globe"
+    ],
+    "title": "globe",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.4,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c3a1e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.5,
+          8
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b08d3c"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.65,
+          20,
+          16
+        ],
+        "pos": [
+          0,
+          1.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.4
+        ],
+        "color": "#2f7fb8"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.3,
+          10,
+          8
+        ],
+        "pos": [
+          0.3,
+          1.2,
+          0.35
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4f9f4a"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.25,
+          10,
+          8
+        ],
+        "pos": [
+          -0.35,
+          0.9,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4f9f4a"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx4e0ad95",
+    "kind": "recipe",
+    "keywords": [
+      "magnet"
+    ],
+    "title": "magnet",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.9,
+          0.3
+        ],
+        "pos": [
+          -0.4,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.9,
+          0.3
+        ],
+        "pos": [
+          0.4,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.1,
+          0.3,
+          0.3
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.25,
+          0.31
+        ],
+        "pos": [
+          -0.4,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d8d8d8"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.25,
+          0.31
+        ],
+        "pos": [
+          0.4,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d8d8d8"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx45ab877",
+    "kind": "recipe",
+    "keywords": [
+      "light bulb"
+    ],
+    "title": "light bulb",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.2,
+          0.3,
+          12
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7f8c8d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.2,
+          0.2,
+          12
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#95a5a6"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.55,
+          16,
+          14
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fff3a8"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.02,
+          0.02,
+          0.4,
+          6
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e67e22"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.1,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f1c40f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx46b0db8",
+    "kind": "recipe",
+    "keywords": [
+      "gear"
+    ],
+    "title": "gear",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.25,
+          16
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#8a8f98"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.2,
+          0.25,
+          0.25
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a8f98"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.2,
+          0.25,
+          0.25
+        ],
+        "pos": [
+          0,
+          -0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a8f98"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          0.2,
+          0.25
+        ],
+        "pos": [
+          0.7,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a8f98"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.25,
+          0.2,
+          0.25
+        ],
+        "pos": [
+          -0.7,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8a8f98"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx46231d9",
+    "kind": "recipe",
+    "keywords": [
+      "clock"
+    ],
+    "title": "clock",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.25,
+          24
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#7a4a21"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.68,
+          0.68,
+          0.27,
+          24
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#f8f4e6"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.06,
+          0.5,
+          0.04
+        ],
+        "pos": [
+          0,
+          1.2,
+          0.15
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.06,
+          0.38,
+          0.04
+        ],
+        "pos": [
+          0.15,
+          1,
+          0.15
+        ],
+        "rot": [
+          0,
+          0,
+          -1.57
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.2,
+          0.4
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c3a1e"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx435b6f5",
+    "kind": "recipe",
+    "keywords": [
+      "bell"
+    ],
+    "title": "bell",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.8,
+          0.9,
+          20
+        ],
+        "pos": [
+          0,
+          0.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4a017"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.85,
+          0.85,
+          0.08,
+          20
+        ],
+        "pos": [
+          0,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8860b"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.2,
+          10,
+          8
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c3a1e"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.15,
+          10,
+          8
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4a017"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.3,
+          0.12
+        ],
+        "pos": [
+          0,
+          1.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5c3a1e"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx442c81e",
+    "kind": "recipe",
+    "keywords": [
+      "ladder"
+    ],
+    "title": "ladder",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          1.9,
+          0.08
+        ],
+        "pos": [
+          -0.3,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.08
+        ],
+        "color": "#9c6b30"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          1.9,
+          0.08
+        ],
+        "pos": [
+          0.3,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.08
+        ],
+        "color": "#9c6b30"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.06,
+          0.06
+        ],
+        "pos": [
+          0,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8843f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.06,
+          0.06
+        ],
+        "pos": [
+          0,
+          0.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8843f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.4,
+          0.06,
+          0.06
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b8843f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx487d0d4",
+    "kind": "recipe",
+    "keywords": [
+      "bridge"
+    ],
+    "title": "bridge",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          2,
+          0.15,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.6,
+          0.5
+        ],
+        "pos": [
+          -0.8,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#78909c"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.6,
+          0.5
+        ],
+        "pos": [
+          0.8,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#78909c"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.9,
+          0.08,
+          0.05
+        ],
+        "pos": [
+          0,
+          0.9,
+          0.28
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.9,
+          0.08,
+          0.05
+        ],
+        "pos": [
+          0,
+          0.9,
+          -0.28
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx44fd518",
+    "kind": "recipe",
+    "keywords": [
+      "tower"
+    ],
+    "title": "tower",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.4,
+          0.5,
+          1.4,
+          12
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.55,
+          0.45,
+          0.25,
+          12
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#757575"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.55,
+          0.4,
+          12
+        ],
+        "pos": [
+          0,
+          1.82,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c62828"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.2,
+          0.05
+        ],
+        "pos": [
+          0,
+          1,
+          0.42
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#37474f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx4981954",
+    "kind": "recipe",
+    "keywords": [
+      "castle"
+    ],
+    "title": "castle",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.8,
+          1
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#bdbdbd"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.25,
+          1.2,
+          12
+        ],
+        "pos": [
+          -0.75,
+          0.6,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.25,
+          1.2,
+          12
+        ],
+        "pos": [
+          0.75,
+          0.6,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9e9e9e"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.32,
+          0.4,
+          12
+        ],
+        "pos": [
+          -0.75,
+          1.4,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b71c1c"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.32,
+          0.4,
+          12
+        ],
+        "pos": [
+          0.75,
+          1.4,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b71c1c"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.4,
+          0.05
+        ],
+        "pos": [
+          0,
+          0.2,
+          0.52
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4e342e"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx4491f7e",
+    "kind": "recipe",
+    "keywords": [
+      "sword"
+    ],
+    "title": "sword",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.14,
+          1.3,
+          0.04
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#cfd8dc"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.07,
+          0.2,
+          4
+        ],
+        "pos": [
+          0,
+          1.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#cfd8dc"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.08,
+          0.1
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fbc02d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          0.4,
+          8
+        ],
+        "pos": [
+          0,
+          0.28,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.08,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          0.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fbc02d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx5fa8927",
+    "kind": "recipe",
+    "keywords": [
+      "trophy"
+    ],
+    "title": "trophy",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.5,
+          0.3,
+          0.7,
+          16
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fbc02d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          0.4,
+          12
+        ],
+        "pos": [
+          0,
+          0.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f9a825"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.4,
+          0.15,
+          16
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.2,
+          8,
+          8
+        ],
+        "pos": [
+          0.6,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fdd835"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.2,
+          8,
+          8
+        ],
+        "pos": [
+          -0.6,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#fdd835"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx5ca1861",
+    "kind": "recipe",
+    "keywords": [
+      "chess piece"
+    ],
+    "title": "chess piece",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.45,
+          0.55,
+          0.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4e342e"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.35,
+          0.9,
+          16
+        ],
+        "pos": [
+          0,
+          0.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.2,
+          0.12,
+          16
+        ],
+        "pos": [
+          0,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4e342e"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.28,
+          12,
+          12
+        ],
+        "pos": [
+          0,
+          1.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5d4037"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.1,
+          0.1
+        ],
+        "pos": [
+          0,
+          1.78,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.78
+        ],
+        "color": "#fbc02d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx502598c",
+    "kind": "recipe",
+    "keywords": [
+      "dice"
+    ],
+    "title": "dice",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          1.2,
+          1.2
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0.4,
+          0
+        ],
+        "color": "#f5f5f5"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          8,
+          8
+        ],
+        "pos": [
+          0.05,
+          1.2,
+          0.05
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          8,
+          8
+        ],
+        "pos": [
+          0.4,
+          1.2,
+          0.4
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          8,
+          8
+        ],
+        "pos": [
+          -0.3,
+          1.2,
+          -0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          8,
+          8
+        ],
+        "pos": [
+          0.62,
+          0.6,
+          -0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#212121"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7f77cad",
+    "kind": "recipe",
+    "keywords": [
+      "hammer"
+    ],
+    "title": "hammer",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.06,
+          0.07,
+          1.5,
+          10
+        ],
+        "pos": [
+          0,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8d6e63"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.9,
+          0.35,
+          0.35
+        ],
+        "pos": [
+          0,
+          1.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#607d8b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.4,
+          0.4
+        ],
+        "pos": [
+          0.5,
+          1.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#455a64"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.4,
+          0.4
+        ],
+        "pos": [
+          -0.5,
+          1.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#455a64"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7a38cf1",
+    "kind": "recipe",
+    "keywords": [
+      "wrench"
+    ],
+    "title": "wrench",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.2,
+          1.5,
+          0.08
+        ],
+        "pos": [
+          0,
+          0.85,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#90a4ae"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          0.1,
+          6
+        ],
+        "pos": [
+          0,
+          1.7,
+          0
+        ],
+        "rot": [
+          1.57,
+          0,
+          0
+        ],
+        "color": "#78909c"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.2,
+          0.25,
+          0.12
+        ],
+        "pos": [
+          0.15,
+          1.85,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#eceff1"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.1,
+          6
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          1.57,
+          0,
+          0
+        ],
+        "color": "#78909c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7afc52c",
+    "kind": "recipe",
+    "keywords": [
+      "scissors"
+    ],
+    "title": "scissors",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          1.1,
+          0.04
+        ],
+        "pos": [
+          0.12,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.15
+        ],
+        "color": "#b0bec5"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          1.1,
+          0.04
+        ],
+        "pos": [
+          -0.12,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.15
+        ],
+        "color": "#cfd8dc"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.07,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#455a64"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.18,
+          0.18,
+          0.06,
+          12
+        ],
+        "pos": [
+          0.25,
+          0.35,
+          0
+        ],
+        "rot": [
+          1.57,
+          0,
+          0
+        ],
+        "color": "#d32f2f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.18,
+          0.18,
+          0.06,
+          12
+        ],
+        "pos": [
+          -0.25,
+          0.35,
+          0
+        ],
+        "rot": [
+          1.57,
+          0,
+          0
+        ],
+        "color": "#d32f2f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7ee514e",
+    "kind": "recipe",
+    "keywords": [
+      "umbrella"
+    ],
+    "title": "umbrella",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          1.5,
+          8
+        ],
+        "pos": [
+          0,
+          0.75,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5b3a1e"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          1,
+          0.6,
+          16
+        ],
+        "pos": [
+          0,
+          1.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.06,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f4c430"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.18,
+          0.06,
+          0.06
+        ],
+        "pos": [
+          0.08,
+          0.03,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5b3a1e"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7be5134",
+    "kind": "recipe",
+    "keywords": [
+      "balloon"
+    ],
+    "title": "balloon",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.6,
+          16,
+          16
+        ],
+        "pos": [
+          0,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e63946"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.12,
+          0.2,
+          8
+        ],
+        "pos": [
+          0,
+          0.65,
+          0
+        ],
+        "rot": [
+          3.14159,
+          0,
+          0
+        ],
+        "color": "#c1121f"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.2,
+          0.3
+        ],
+        "pos": [
+          0,
+          0.1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.01,
+          0.01,
+          0.4,
+          6
+        ],
+        "pos": [
+          0.12,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.3
+        ],
+        "color": "#444444"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.01,
+          0.01,
+          0.4,
+          6
+        ],
+        "pos": [
+          -0.12,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.3
+        ],
+        "color": "#444444"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7d185f2",
+    "kind": "recipe",
+    "keywords": [
+      "rocket"
+    ],
+    "title": "rocket",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.25,
+          1.2,
+          16
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e8e8e8"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.25,
+          0.5,
+          16
+        ],
+        "pos": [
+          0,
+          1.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.1,
+          12,
+          12
+        ],
+        "pos": [
+          0,
+          1,
+          0.22
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4cc9f0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.4,
+          0.05
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.05,
+          0.4,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx7ca00aa",
+    "kind": "recipe",
+    "keywords": [
+      "lighthouse"
+    ],
+    "title": "lighthouse",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.35,
+          0.55,
+          1.4,
+          16
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f1f1f1"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.36,
+          0.4,
+          0.25,
+          16
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          0.25,
+          16
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f4d35e"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.38,
+          0.3,
+          16
+        ],
+        "pos": [
+          0,
+          1.78,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d62828"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx742c1f1",
+    "kind": "recipe",
+    "keywords": [
+      "windmill"
+    ],
+    "title": "windmill",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.5,
+          1.2,
+          12
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d9c6a5"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.4,
+          0.4,
+          12
+        ],
+        "pos": [
+          0,
+          1.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b3a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.12,
+          0.15
+        ],
+        "pos": [
+          0,
+          1.15,
+          0.35
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#444444"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.12,
+          0.03
+        ],
+        "pos": [
+          0,
+          1.15,
+          0.42
+        ],
+        "rot": [
+          0,
+          0,
+          0.785
+        ],
+        "color": "#a0522d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.12,
+          0.03
+        ],
+        "pos": [
+          0,
+          1.15,
+          0.42
+        ],
+        "rot": [
+          0,
+          0,
+          -0.785
+        ],
+        "color": "#a0522d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx8920a3e",
+    "kind": "recipe",
+    "keywords": [
+      "tree"
+    ],
+    "title": "tree",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.2,
+          0.8,
+          10
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6b4423"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.6,
+          12,
+          12
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2d6a4f"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.4,
+          12,
+          12
+        ],
+        "pos": [
+          0.3,
+          1,
+          0.2
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#40916c"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.35,
+          12,
+          12
+        ],
+        "pos": [
+          -0.3,
+          1.5,
+          -0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#52b788"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx9e78520",
+    "kind": "recipe",
+    "keywords": [
+      "volcano"
+    ],
+    "title": "volcano",
+    "parts": [
+      {
+        "shape": "cone",
+        "args": [
+          1,
+          1.3,
+          16
+        ],
+        "pos": [
+          0,
+          0.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6b4f3a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.3,
+          0.3,
+          0.1,
+          16
+        ],
+        "pos": [
+          0,
+          1.25,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ff4800"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.2,
+          10,
+          10
+        ],
+        "pos": [
+          0,
+          1.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ff9500"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.12,
+          0.4,
+          8
+        ],
+        "pos": [
+          0.08,
+          1.65,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#ffd60a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.12,
+          0.7,
+          0.12
+        ],
+        "pos": [
+          0.35,
+          0.55,
+          0.5
+        ],
+        "rot": [
+          0.5,
+          0,
+          0.4
+        ],
+        "color": "#ff6b00"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnx908f632",
+    "kind": "recipe",
+    "keywords": [
+      "temple"
+    ],
+    "title": "temple",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.8,
+          0.15,
+          1.2
+        ],
+        "pos": [
+          0,
+          0.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c8c0b0"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          1,
+          12
+        ],
+        "pos": [
+          -0.7,
+          0.65,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#efe9dc"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          1,
+          12
+        ],
+        "pos": [
+          0.7,
+          0.65,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#efe9dc"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          1,
+          12
+        ],
+        "pos": [
+          0,
+          0.65,
+          0.45
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#efe9dc"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.8,
+          0.15,
+          1.2
+        ],
+        "pos": [
+          0,
+          1.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c8c0b0"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          1.1,
+          0.5,
+          4
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0.785,
+          0
+        ],
+        "color": "#b5651d"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxa4706aa",
+    "kind": "recipe",
+    "keywords": [
+      "boat"
+    ],
+    "title": "boat",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.35,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.3,
+          0.35,
+          4
+        ],
+        "pos": [
+          0.95,
+          0.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -1.5708
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          1.2,
+          8
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a3520"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.04,
+          0.8,
+          0.7
+        ],
+        "pos": [
+          0.15,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f8f9fa"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.15,
+          0.4
+        ],
+        "pos": [
+          -0.5,
+          0.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a67c52"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxa04101d",
+    "kind": "recipe",
+    "keywords": [
+      "anchor"
+    ],
+    "title": "anchor",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          1.4,
+          8
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#37474f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.5,
+          8
+        ],
+        "pos": [
+          0,
+          1.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          1.5708
+        ],
+        "color": "#37474f"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.12,
+          10,
+          10
+        ],
+        "pos": [
+          0,
+          1.55,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#546e7a"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.9,
+          8
+        ],
+        "pos": [
+          -0.35,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.9
+        ],
+        "color": "#37474f"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.05,
+          0.05,
+          0.9,
+          8
+        ],
+        "pos": [
+          0.35,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.9
+        ],
+        "color": "#37474f"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxa7dbf8c",
+    "kind": "recipe",
+    "keywords": [
+      "train"
+    ],
+    "title": "train",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.6,
+          0.7
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.2,
+          0.2,
+          0.5,
+          12
+        ],
+        "pos": [
+          0.55,
+          1.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2c3e50"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.5,
+          0.75
+        ],
+        "pos": [
+          -0.5,
+          1.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7f8c8d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.8,
+          12
+        ],
+        "pos": [
+          0.4,
+          0.22,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#2c3e50"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          0.8,
+          12
+        ],
+        "pos": [
+          -0.4,
+          0.22,
+          0
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#2c3e50"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxa258bbf",
+    "kind": "recipe",
+    "keywords": [
+      "camera"
+    ],
+    "title": "camera",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.8,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#333333"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.28,
+          0.28,
+          0.4,
+          16
+        ],
+        "pos": [
+          0,
+          0.6,
+          0.5
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#111111"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.18,
+          0.18,
+          0.05,
+          16
+        ],
+        "pos": [
+          0,
+          0.6,
+          0.73
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#3498db"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.15,
+          0.2
+        ],
+        "pos": [
+          -0.3,
+          1.08,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#555555"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxab773af",
+    "kind": "recipe",
+    "keywords": [
+      "piano"
+    ],
+    "title": "piano",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.8,
+          0.7,
+          0.8
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a1a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.8,
+          1,
+          0.2
+        ],
+        "pos": [
+          0,
+          1.2,
+          -0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#1a1a1a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.08,
+          0.3
+        ],
+        "pos": [
+          0,
+          0.74,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f5f5"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          0.05,
+          0.2
+        ],
+        "pos": [
+          -0.5,
+          0.8,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#000000"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          0.05,
+          0.2
+        ],
+        "pos": [
+          0.3,
+          0.8,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#000000"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxa1fd184",
+    "kind": "recipe",
+    "keywords": [
+      "violin"
+    ],
+    "title": "violin",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.4,
+          12,
+          12
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a0522d"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.3,
+          12,
+          12
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a0522d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.9,
+          0.05
+        ],
+        "pos": [
+          0,
+          1.45,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2b1b0e"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.1,
+          8,
+          8
+        ],
+        "pos": [
+          0,
+          1.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a3a1a"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.04,
+          1.3,
+          0.04
+        ],
+        "pos": [
+          0.35,
+          0.9,
+          0.1
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#d2b48c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxac51cf0",
+    "kind": "recipe",
+    "keywords": [
+      "drum"
+    ],
+    "title": "drum",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.6,
+          0.6,
+          0.8,
+          24
+        ],
+        "pos": [
+          0,
+          0.6,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#c0392b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.62,
+          0.62,
+          0.05,
+          24
+        ],
+        "pos": [
+          0,
+          1.02,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f5dc"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.62,
+          0.62,
+          0.05,
+          24
+        ],
+        "pos": [
+          0,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#bdc3c7"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.7,
+          8
+        ],
+        "pos": [
+          0.2,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0.5
+        ],
+        "color": "#d2b48c"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.03,
+          0.03,
+          0.7,
+          8
+        ],
+        "pos": [
+          -0.2,
+          1.3,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -0.5
+        ],
+        "color": "#d2b48c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxaec93ff",
+    "kind": "recipe",
+    "keywords": [
+      "computer"
+    ],
+    "title": "computer",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          0.9,
+          0.1
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2c3e50"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.7,
+          0.02
+        ],
+        "pos": [
+          0,
+          1,
+          0.06
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5dade2"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.15,
+          0.4,
+          0.15
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7f8c8d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.6,
+          0.06,
+          0.4
+        ],
+        "pos": [
+          0,
+          0.03,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#7f8c8d"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.2,
+          0.05,
+          0.4
+        ],
+        "pos": [
+          0,
+          0.05,
+          0.7
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#95a5a6"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxb5526b7",
+    "kind": "recipe",
+    "keywords": [
+      "piggy bank"
+    ],
+    "title": "piggy bank",
+    "parts": [
+      {
+        "shape": "sphere",
+        "args": [
+          0.7,
+          16,
+          16
+        ],
+        "pos": [
+          0,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f1a7b5"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.25,
+          10,
+          10
+        ],
+        "pos": [
+          0.7,
+          0.8,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e88fa0"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.15,
+          0.3,
+          8
+        ],
+        "pos": [
+          0.3,
+          1.5,
+          0.25
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e88fa0"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.15,
+          0.3,
+          8
+        ],
+        "pos": [
+          0.3,
+          1.5,
+          -0.25
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e88fa0"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          0.4,
+          8
+        ],
+        "pos": [
+          -0.4,
+          0.2,
+          0.3
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e88fa0"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.5,
+          0.04,
+          0.08
+        ],
+        "pos": [
+          0,
+          1.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#333333"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxb350cc5",
+    "kind": "recipe",
+    "keywords": [
+      "safe"
+    ],
+    "title": "safe",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.4,
+          1.4,
+          1.2
+        ],
+        "pos": [
+          0,
+          0.7,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#4a4f55"
+      },
+      {
+        "shape": "box",
+        "args": [
+          1.1,
+          1.1,
+          0.05
+        ],
+        "pos": [
+          0,
+          0.7,
+          0.62
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6c757d"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.25,
+          0.25,
+          0.08,
+          16
+        ],
+        "pos": [
+          0,
+          0.8,
+          0.68
+        ],
+        "rot": [
+          1.5708,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.3,
+          0.06,
+          0.06
+        ],
+        "pos": [
+          0,
+          0.8,
+          0.74
+        ],
+        "rot": [
+          0,
+          0,
+          0.8
+        ],
+        "color": "#222222"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.08,
+          0.3,
+          0.08
+        ],
+        "pos": [
+          0.5,
+          0.4,
+          0.66
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d4af37"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxbc82881",
+    "kind": "recipe",
+    "keywords": [
+      "mirror"
+    ],
+    "title": "mirror",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1,
+          1.4,
+          0.1
+        ],
+        "pos": [
+          0,
+          1,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.8,
+          1.2,
+          0.02
+        ],
+        "pos": [
+          0,
+          1,
+          0.06
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#d6eaf8"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.1,
+          0.3,
+          0.1
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6e4a22"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.7,
+          0.06,
+          0.4
+        ],
+        "pos": [
+          0,
+          0.03,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#6e4a22"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxb91a3a7",
+    "kind": "recipe",
+    "keywords": [
+      "funnel"
+    ],
+    "title": "funnel",
+    "parts": [
+      {
+        "shape": "cone",
+        "args": [
+          0.8,
+          0.9,
+          24
+        ],
+        "pos": [
+          0,
+          1.4,
+          0
+        ],
+        "rot": [
+          3.1416,
+          0,
+          0
+        ],
+        "color": "#b0b7bd"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.1,
+          0.1,
+          0.7,
+          12
+        ],
+        "pos": [
+          0,
+          0.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#b0b7bd"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.8,
+          0.8,
+          0.05,
+          24
+        ],
+        "pos": [
+          0,
+          1.85,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8e959b"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxb1e881a",
+    "kind": "recipe",
+    "keywords": [
+      "flask"
+    ],
+    "title": "flask",
+    "parts": [
+      {
+        "shape": "cone",
+        "args": [
+          0.7,
+          1,
+          24
+        ],
+        "pos": [
+          0,
+          0.5,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a9dff5"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.15,
+          0.15,
+          0.7,
+          16
+        ],
+        "pos": [
+          0,
+          1.35,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#a9dff5"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.19,
+          0.19,
+          0.08,
+          16
+        ],
+        "pos": [
+          0,
+          1.74,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8ac6e0"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.55,
+          0.45,
+          24
+        ],
+        "pos": [
+          0,
+          0.23,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#2ecc71"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxbe4f69f",
+    "kind": "recipe",
+    "keywords": [
+      "test tube"
+    ],
+    "title": "test tube",
+    "parts": [
+      {
+        "shape": "cylinder",
+        "args": [
+          0.22,
+          0.22,
+          1.6,
+          20
+        ],
+        "pos": [
+          0,
+          0.95,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#bfe6f5"
+      },
+      {
+        "shape": "sphere",
+        "args": [
+          0.22,
+          20,
+          12
+        ],
+        "pos": [
+          0,
+          0.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#bfe6f5"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.26,
+          0.26,
+          0.08,
+          20
+        ],
+        "pos": [
+          0,
+          1.78,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9ccfe3"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.19,
+          0.19,
+          0.6,
+          20
+        ],
+        "pos": [
+          0,
+          0.4,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9b59b6"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  },
+  {
+    "id": "lib-mvn9hnxb602593",
+    "kind": "recipe",
+    "keywords": [
+      "sailboat"
+    ],
+    "title": "sailboat",
+    "parts": [
+      {
+        "shape": "box",
+        "args": [
+          1.6,
+          0.25,
+          0.6
+        ],
+        "pos": [
+          0,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "cone",
+        "args": [
+          0.3,
+          0.3,
+          4
+        ],
+        "pos": [
+          0.95,
+          0.2,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          -1.5708
+        ],
+        "color": "#8b5a2b"
+      },
+      {
+        "shape": "cylinder",
+        "args": [
+          0.04,
+          0.04,
+          1.6,
+          8
+        ],
+        "pos": [
+          0,
+          1.05,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#5a3b1c"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.04,
+          1.2,
+          0.9
+        ],
+        "pos": [
+          -0.3,
+          1.15,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#f5f5f5"
+      },
+      {
+        "shape": "box",
+        "args": [
+          0.04,
+          0.8,
+          0.5
+        ],
+        "pos": [
+          0.3,
+          0.9,
+          0
+        ],
+        "rot": [
+          0,
+          0,
+          0
+        ],
+        "color": "#e74c3c"
+      }
+    ],
+    "origin": "ai",
+    "status": "approved",
+    "uses": 0,
+    "createdAt": "2026-10-25T03:22:05.244Z",
+    "updatedAt": "2026-10-25T03:22:05.244Z"
+  }
+]

@@ -201,6 +201,8 @@ Para que cada museo salga mejor que el anterior: lo que tú creas, y lo que la I
 2. Tú revisas: aprobar (gana prioridad), corregir las partes o palabras clave (queda `manual` y aprobada) o rechazar.
 3. Lo que subes tú (`.glb` o receta) entra ya aprobado.
 
+**Semilla:** `seed/library/index.json` trae 80 objetos dibujados con Sonnet (lista en `keywords.txt`). Sembrar más: `npm run library:draw -w @mus3o/server -- --keywords "a,b" --out dibujos.json` (Sonnet, ~$0,0034 por objeto, avisa el costo) y `library import dibujos.json`. Haiku cuesta ~$0,00014 por pieza pero dibuja peor; Sonnet es ~25× más caro por pieza, así que solo se usa para sembrar, no por museo. Plan y mediciones: [plan-biblioteca-modelos.md](./plan-biblioteca-modelos.md).
+
 **Curaduría**
 - Terminal, sin servidor: `npm run library -w @mus3o/server -- list [pending|approved|rejected] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b | approve|reject|reset|remove <id>`.
 - API (solo con `ENABLE_DEBUG_ROUTES=true`, si no 404): `GET /api/library?status=`, `POST /api/library/recipe` (`{keywords, title, parts}`), `POST /api/library/glb?keywords=a,b&title=T` (cuerpo `model/gltf-binary`, ≤ 4 MB, firma `glTF`), `PATCH /api/library/:id`, `POST /api/library/:id/(approve|reject|reset)`, `DELETE /api/library/:id`.
