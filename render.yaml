@@ -12,8 +12,8 @@ services:
     plan: starter # $7/month (Active 24/7, No cold starts, 512MB RAM, 0.5 vCPU)
     region: oregon
     branch: main
-    # El repo es npm workspaces (package-lock.json); pnpm no resuelve los paquetes internos.
-    buildCommand: npm ci --include=dev && npm run build
+    # El repo usa pnpm (pnpm-lock.yaml + .npmrc con link-workspace-packages); ya no hay package-lock.json.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @mus3o/shared build && pnpm --filter @mus3o/server build && pnpm --filter @mus3o/web build
     startCommand: node apps/server/dist/index.js
     healthCheckPath: /api/health
     envVars:
@@ -35,7 +35,7 @@ services:
     name: mus3o
     runtime: static
     branch: main
-    buildCommand: npm ci --include=dev && npm run build -w @mus3o/shared && npm run build -w @mus3o/web
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @mus3o/shared build && pnpm --filter @mus3o/web build
     staticPublishPath: apps/web/dist
     envVars:
       - key: NODE_VERSION
