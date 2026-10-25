@@ -15,7 +15,12 @@ const PartsSchema = z.array(PartSchema).min(1).max(8);
 
 export type Complete = (prompt: string, maxTokens: number) => Promise<string>;
 
-const needsModel = (p: Piece) => !p.dynamicAsset && (!p.model || p.model.type === "glyph");
+/**
+ * Una pieza sin modelo creado necesita respaldo aunque tenga un asset de Poly Pizza asignado: el .glb se descarga después,
+ * bajo demanda, y si falla (bloqueo, red) el cliente muestra este modelo en vez del glifo plano. Las que ya resolvió la
+ * biblioteca propia (`skip`) no lo necesitan.
+ */
+const needsModel = (p: Piece, skip: ReadonlySet<string>) => !skip.has(p.id) && (!p.model || p.model.type === "glyph");
 
 /** JSON de la IA; si la salida se cortó a medias, recupera las piezas completas anteriores al corte. */
 function parseLenient(raw: string): Record<string, unknown> {
@@ -45,8 +50,8 @@ export function parseFallbackModels(raw: string, ids: string[]): Map<string, z.i
   return out;
 }
 
-export async function fillMissingModels(museum: Museum, complete: Complete): Promise<Museum> {
-  const targets = museum.rooms.flatMap((r) => r.pieces).filter(needsModel).slice(0, MAX_PIECES);
+export async function fillMissingModels(museum: Museum, complete: Complete, skip: ReadonlySet<string> = new Set()): Promise<Museum> {
+  const targets = museum.rooms.flatMap((r) => r.pieces).filter((p) => needsModel(p, skip)).slice(0, MAX_PIECES);
   if (targets.length === 0) return museum;
   const batches: Piece[][] = [];
   for (let i = 0; i < targets.length; i += BATCH_SIZE) batches.push(targets.slice(i, i + BATCH_SIZE));

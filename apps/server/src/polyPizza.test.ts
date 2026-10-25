@@ -157,7 +157,7 @@ describe("cortacircuito de descargas", () => {
     resetPolyFound();
   });
 
-  it("tras un bloqueo 403 deja de buscar y descargar", async () => {
+  it("asigna sin descargar y, tras un bloqueo 403 al calentar en segundo plano, deja de buscar y descargar", async () => {
     resetPolyBreaker();
     vi.stubEnv("POLY_PIZZA_API_KEY", "k");
     let searches = 0;
@@ -170,7 +170,9 @@ describe("cortacircuito de descargas", () => {
     });
     const m = { ...sampleMuseum, rooms: [{ ...sampleMuseum.rooms[0], pieces: [{ ...sampleMuseum.rooms[0].pieces[0], id: "p0", searchKeyword: "key" }] }] };
     const out = await hydrateMuseumAssets(m);
-    expect(out.rooms[0].pieces[0].dynamicAsset).toBeUndefined();
+    // La generación no espera la descarga: el modelo queda asignado y el calentamiento en segundo plano descubre el bloqueo.
+    expect(out.rooms[0].pieces[0].dynamicAsset?.assetId).toBe("blk1");
+    for (let i = 0; i < 50 && !polyBlocked(); i++) await new Promise((r) => setTimeout(r, 10));
     expect(polyBlocked()).toBe(true);
     const before = searches;
     await hydrateMuseumAssets(m);

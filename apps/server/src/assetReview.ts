@@ -17,6 +17,8 @@ export type ReviewEntry = {
   license: "CC0" | "CC-BY" | "own";
   score: number;
   sourceUrl: string;
+  /** URL de descarga registrada al asignar el modelo: la ruta de assets lo baja la primera vez que alguien lo pide. */
+  downloadUrl?: string;
   status: ReviewStatus;
   uses: number;
   updatedAt: string;
@@ -78,6 +80,11 @@ export async function recordAssignment(a: Omit<ReviewEntry, "status" | "uses" | 
     updatedAt: new Date().toISOString(),
   });
   await queueSave(map);
+}
+
+/** URL de descarga registrada para un modelo asignado (undefined si no se conoce). */
+export async function downloadUrlOf(assetId: string): Promise<string | undefined> {
+  return (await load()).get(assetId)?.downloadUrl;
 }
 
 export async function listReview(status?: ReviewStatus): Promise<ReviewEntry[]> {
