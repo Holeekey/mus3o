@@ -71,7 +71,35 @@ Supuestos: caso C a ~$0,036 por museo generado y el resto de gastos despreciable
 5. **Haiku para tareas secundarias:** unas 20 veces más barato que Sonnet en entrada y salida.
 6. **Modelos 3D por Poly Pizza (0 tokens):** hoy bloqueado por Cloudflare, así que todas las piezas usan el respaldo de Haiku. El costo del respaldo es despreciable, pero no hay ahorro de tokens en esa parte.
 
-## 5. Límites de la medición
+## 5. Ahorro real medido: caché de prompts en la API de jrgil20
+
+Datos de la consola de Anthropic de la cuenta de **jrgil20** (la API con la que se desarrolla el proyecto), no estimaciones de este reporte. El ahorro viene de la **caché de prompts** (`cache_control`): los bloques largos y repetidos (instrucciones de sistema, código, archivos adjuntos, historial) se leen de la caché a **−90 %** frente a procesarlos como entrada normal.
+
+| Métrica | Valor |
+|---|---|
+| Ahorro estimado por caché (últimos 7 días) | **~USD 246** |
+| Tasa de aciertos de caché | **99 %** |
+| Gasto real del mes en curso | **USD 29,17** |
+| Gasto equivalente sin caché | **~USD 275+** |
+| Tokens procesados (últimos 7 días) | 94,9 millones |
+
+```
+Sin caché   ████████████████████████████████████████  ~$275
+Con caché   ████▎                                       $29,17
+            └─ pagamos ~11 % de lo que habría costado: ahorro ≈ 89 %
+```
+
+```mermaid
+pie showData title Gasto equivalente sin caché (USD)
+    "Pagado (con caché)" : 29.17
+    "Ahorrado por la caché" : 246
+```
+
+- **Menor latencia:** al no reprocesar millones de tokens repetidos, las respuestas son más rápidas.
+- **Lectura honesta de las cifras:** el ahorro (246) se mide en 7 días y el gasto (29,17) en el mes en curso; el "~275+" es la suma de ambos, así que es orientativo, no un contable exacto. El porcentaje (~89 %) sale de esa suma.
+- **No es el costo del producto:** esto es el gasto de desarrollo en esa cuenta. El costo por museo y los escenarios de las secciones 2 y 3 siguen siendo los del servidor en producción (donde la caché del prompt de sistema aporta el punto 3 de la sección 4).
+
+## 6. Límites de la medición
 
 - Muestra pequeña: 2 museos nuevos, 1 pareado. Sirve para el orden de magnitud, no para fijar porcentajes.
 - Latencia sin concluir: 45,0 s antes y 40,9 s ahora, ambas dominadas por el bloqueo de Poly Pizza. Repetir con red normal.
