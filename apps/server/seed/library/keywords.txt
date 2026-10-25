@@ -1,0 +1,8 @@
+zipper, blowtorch, beating heart, soda bottle, slide, stone slab, anvil, water mill, glove, octopus, carousel, hourglass
+bowling ball, cannon, cement mixer, chimney, faucet, gas mask, layer cake, snowflake, soup bowl, warrior shield, battery, coin stack
+double door, paint bucket, poker chip, solar panel, submarine, sugar cube, sun, watering can
+key, padlock, lantern, candle, book, scroll, telescope, microscope, compass, globe, magnet, light bulb
+gear, clock, bell, ladder, bridge, tower, castle, crown, sword, bow, trophy, chess piece
+dice, hammer, wrench, scissors, umbrella, balloon, rocket, lighthouse, windmill, tree, mushroom, volcano
+pyramid, temple, boat, anchor, train, bicycle, camera, piano, violin, drum, telephone, computer
+piggy bank, safe, mirror, funnel, balance scale, pendulum, spring, pulley, prism, flask, test tube, sailboat

@@ -40,16 +40,21 @@ describe("deterministicParts", () => {
 });
 
 describe("applyDeterministicModels", () => {
-  it("da modelo solo a piezas sin asset ni modelo creado y deja el museo válido", () => {
+  it("da modelo a toda pieza sin modelo creado (también las de asset por descargar), salta las resueltas y deja el museo válido", () => {
     const asset: DynamicAsset = { assetId: "a", url: "/api/assets/a.glb", title: "", author: "", license: "CC0", sourceUrl: "" };
     const made = { type: "procedural" as const, parts: [{ shape: "box" as const, args: [1, 1, 1], pos: [0, 0.5, 0] as [number, number, number], rot: [0, 0, 0] as [number, number, number], color: "#aabbcc" }] };
-    const out = applyDeterministicModels(museum([
-      { ...base, id: "hit", model: glyph("box"), dynamicAsset: asset },
-      { ...base, id: "made", model: made },
-      { ...base, id: "miss", model: glyph("sphere") },
-    ]));
-    const [hit, kept, miss] = out.rooms[0].pieces;
-    expect(hit.model?.type).toBe("glyph");
+    const out = applyDeterministicModels(
+      museum([
+        { ...base, id: "hit", model: glyph("box"), dynamicAsset: asset },
+        { ...base, id: "made", model: made },
+        { ...base, id: "miss", model: glyph("sphere") },
+        { ...base, id: "own", model: glyph("box") },
+      ]),
+      new Set(["own"]),
+    );
+    const [hit, kept, miss, own] = out.rooms[0].pieces;
+    expect(hit.model?.type).toBe("procedural");
+    expect(own.model?.type).toBe("glyph");
     expect(kept.model).toBe(made);
     expect(miss.model?.type).toBe("procedural");
     expect(MuseumSchema.safeParse(out).success).toBe(true);

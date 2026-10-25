@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { countSources, MuseumSchema, parseMus3oDSL } from "@mus3o/shared";
 import { enrichMuseum } from "./claude";
-import { detectLang } from "./enrich";
+import { attachImageSearches, cleanRoomName, detectLang } from "./enrich";
 import { clearImageCaches, genericKind, resolveImage } from "./images";
 
 const NOTES = [
@@ -177,5 +177,27 @@ describe("resolver retrieval", () => {
       return json({}, 404);
     };
     expect(await resolveImage({ wiki: "Batallón Rifles", context: "Batalla de Carabobo", lang: "es" })).toBeNull();
+  });
+});
+
+describe("cleanRoomName", () => {
+  it("quita el envoltorio «Sala de … del museo» que impide encontrar la imagen", () => {
+    expect(cleanRoomName("Sala de la Asamblea del museo")).toBe("La Asamblea");
+    expect(cleanRoomName("Sala del Antiguo Régimen del museo")).toBe("Antiguo Régimen");
+    expect(cleanRoomName("Sala de la República y el Terror del museo")).toBe("La República y el Terror");
+    expect(cleanRoomName("La sala de la Monarquía Constitucional")).toBe("La Monarquía Constitucional");
+  });
+
+  it("deja intactos los nombres normales", () => {
+    expect(cleanRoomName("Batalla de Carabobo (1821)")).toBe("Batalla de Carabobo (1821)");
+    expect(cleanRoomName("Museo del Prado")).toBe("Museo del Prado");
+    expect(cleanRoomName("Sala 3")).toBe("Sala 3");
+  });
+
+  it("la búsqueda de imagen de la sala usa el nombre limpio", () => {
+    const museum = { title: "La Revolución Francesa", rooms: [{ id: "a", name: "Sala de la Asamblea del museo", pieces: [] }] } as unknown as Parameters<typeof attachImageSearches>[0];
+    const out = attachImageSearches(museum, "La Revolución Francesa");
+    expect(out.rooms[0].name).toBe("La Asamblea");
+    expect(out.rooms[0].imageSearch?.wikiTitle).toBe("La Asamblea");
   });
 });

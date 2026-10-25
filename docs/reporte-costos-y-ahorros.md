@@ -71,7 +71,75 @@ Supuestos: caso C a ~$0,036 por museo generado y el resto de gastos despreciable
 5. **Haiku para tareas secundarias:** unas 20 veces más barato que Sonnet en entrada y salida.
 6. **Modelos 3D por Poly Pizza (0 tokens):** hoy bloqueado por Cloudflare, así que todas las piezas usan el respaldo de Haiku. El costo del respaldo es despreciable, pero no hay ahorro de tokens en esa parte.
 
-## 5. Límites de la medición
+## 5. Ahorro real medido: caché de prompts al construir mus3o
+
+Todo este ahorro sale de **construir mus3o** con un agente de código sobre la API de jrgil20: no es el costo de operar el producto (ese es el de las secciones 2 y 3). Viene de la **caché de prompts** (`cache_control`): los bloques largos y repetidos (instrucciones de sistema, `CLAUDE.md`, código leído, historial) se leen de la caché a **−90 %** frente a procesarlos como entrada normal.
+
+### 5.1 Lo que dice la consola de Anthropic
+
+| Métrica | Valor |
+|---|---|
+| Ahorro estimado por caché (últimos 7 días) | **~USD 246** |
+| Tasa de aciertos de caché | **99 %** |
+| Gasto real del mes en curso | **USD 29,17** |
+| Gasto equivalente sin caché | **~USD 275+** |
+| Tokens procesados (últimos 7 días) | 94,9 millones |
+
+```
+Sin caché   ████████████████████████████████████████  ~$275
+Con caché   ████▎                                       $29,17
+            └─ pagamos ~11 % de lo que habría costado: ahorro ≈ 89 %
+```
+
+```mermaid
+pie showData title Gasto equivalente sin caché (USD, consola)
+    "Pagado (con caché)" : 29.17
+    "Ahorrado por la caché" : 246
+```
+
+### 5.2 Verificación con los registros de sesión de este repositorio
+
+Para no depender solo de la consola, se sumó el uso (`usage`) de los 16 registros de sesión del agente guardados en este entorno, sin duplicados por mensaje (1.042 respuestas, del 24-oct 04:29 UTC al 25-oct 05:38 UTC, unas 25 h) y se valoró con las tarifas de la sección 1.
+
+| Modelo | Respuestas | Entrada nueva | Escritura de caché | **Lectura de caché** | Salida | Costo real | Sin caché | **Ahorro** |
+|---|---|---|---|---|---|---|---|---|
+| Sonnet 5.5 | 734 | 1.500 | 2,05 M | **129,8 M** | 0,59 M | $37,02 | $269,67 | **$232,66** |
+| Haiku 5.5 | 306 | 612 | 1,09 M | **31,5 M** | 0,26 M | $0,58 | $3,38 | **$2,81** |
+| **Total** | 1.040 | ~2,1 mil | 3,14 M | **161,3 M** | 0,85 M | **$37,60** | **$273,06** | **$235,47** |
+
+```
+Tokens de entrada del agente (164,4 M)
+Leídos de caché   ███████████████████████████████████████▎  98,1 %  (a −90 %)
+Escritos a caché  ▊                                          1,9 %
+Entrada nueva     ▏                                         ~0 %
+```
+
+```mermaid
+pie showData title Tokens de entrada por tipo (millones)
+    "Leídos de caché (−90 %)" : 161.3
+    "Escritos a caché" : 3.14
+    "Entrada nueva" : 0.002
+```
+
+- **Coincide con la consola:** ~$235 ahorrados y ~$273 sin caché en los registros, frente a ~$246 y ~$275+ en la consola; el 98 % de lecturas se parece al 99 % de aciertos. El gasto de los registros ($37,60) queda algo por encima de los $29,17 de la consola, lo esperable al valorar con tarifas de lista y una escritura de caché derivada (1,25×).
+- **Dónde fue el gasto real ($37,60):** lecturas de caché ~$26,3 (70 %), salida ~$6,1 (16 %), escrituras de caché ~$5,3 (14 %), entrada nueva casi $0. Aun al −90 %, el volumen de lecturas domina.
+- **Haiku casi gratis:** el 29 % de las respuestas salió de Haiku y costó $0,58 (1,5 % del gasto), siguiendo la regla de usar Haiku para todo lo que no sea lógica difícil.
+
+### 5.3 Cómo se logró
+
+1. **Prefijo estable que se reutiliza en cada turno:** el agente reenvía todo el contexto en cada paso; instrucciones, `CLAUDE.md` y lo ya leído se pagan una vez (escritura) y después se leen al 10 %.
+2. **Contexto acotado:** leer por rango y con grep, no archivos enteros; assets binarios fuera del contexto (`.claudeignore`); ver `.claude/skills/token-budget`.
+3. **Tareas ruidosas a un subagente barato:** tests y logs largos van al agente `test-runner` (Haiku), que devuelve un resumen y no llena el contexto principal.
+4. **Modelo por tarea:** Sonnet solo para layout, servidor y bugs difíciles; Haiku para UI, docs, commits y tests simples (~20× más barato).
+5. **Sesiones seguidas:** la caché dura 5 minutos; agrupar el trabajo evita reconstruirla (cada reconstrucción es una escritura de caché).
+
+### 5.4 Cómo leer estas cifras
+
+- La consola mide ahorro en 7 días y gasto en el mes en curso: el "~275+" es la suma de ambos, así que es orientativo.
+- Los registros cubren solo las sesiones guardadas en este entorno; no incluyen un modelo Opus con 6 mil tokens de escritura y 15 mil de lectura (despreciable, tarifa no listada aquí).
+- Las tarifas son las de lista de la sección 1; la escritura de caché es derivada. Si la consola difiere, manda la consola.
+
+## 6. Límites de la medición
 
 - Muestra pequeña: 2 museos nuevos, 1 pareado. Sirve para el orden de magnitud, no para fijar porcentajes.
 - Latencia sin concluir: 45,0 s antes y 40,9 s ahora, ambas dominadas por el bloqueo de Poly Pizza. Repetir con red normal.
