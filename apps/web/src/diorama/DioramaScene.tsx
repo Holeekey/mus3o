@@ -285,7 +285,10 @@ const LABEL_SURFACE = DEFAULT_THEME.ui.tokens.surface
 const LABEL_INK = DEFAULT_THEME.ui.tokens.ink
 
 // --- Enlaces con conceptos: anillo en el suelo y etiqueta flotante ---
-function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][number]; focused: boolean }) {
+// Los props con nombre pero sin concepto de los apuntes (`ring` falso) llevan solo una placa más discreta:
+// así nunca hay un objeto en el cuadro sin que se sepa qué es.
+type MarkLink = { x: number; y: number; z: number; labelY: number; label: string }
+function LinkedMark({ link, focused, ring = true }: { link: MarkLink; focused: boolean; ring?: boolean }) {
   const group = useRef<THREE.Group>(null)
   const tag = useRef<THREE.Group>(null)
   const camera = useThree((s) => s.camera)
@@ -304,10 +307,12 @@ function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][
   })
   return (
     <group ref={group}>
-      <mesh position={[link.x, link.y + 0.05, link.z]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[focused ? 0.95 : 0.8, focused ? 1.18 : 0.96, 32]} />
-        <meshBasicMaterial color="#f2f1ee" side={THREE.DoubleSide} fog={false} toneMapped={false} />
-      </mesh>
+      {ring && (
+        <mesh position={[link.x, link.y + 0.05, link.z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[focused ? 0.95 : 0.8, focused ? 1.18 : 0.96, 32]} />
+          <meshBasicMaterial color="#f2f1ee" side={THREE.DoubleSide} fog={false} toneMapped={false} />
+        </mesh>
+      )}
       {link.label && (
         <Suspense fallback={null}>
           <Billboard ref={tag} position={[link.x, link.labelY, link.z]}>
@@ -315,7 +320,7 @@ function LinkedMark({ link, focused }: { link: DioramaModel['layout']['linked'][
             <group position={[0, focused ? 0.62 : 0.55, 0]}>
               <LabelPlate
                 font={FONT_BODY}
-                fontSize={focused ? 0.42 : 0.34}
+                fontSize={focused ? 0.42 : ring ? 0.34 : 0.28}
                 maxWidth={5.5}
                 surface={LABEL_SURFACE}
                 ink={LABEL_INK}
@@ -438,6 +443,7 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
           </Fragment>
         ))}
         {labels && model.layout.linked.map((l) => <LinkedMark key={l.pieceId} link={l} focused={focusedPieceId === l.pieceId} />)}
+        {labels && (model.layout.labelled ?? []).map((l) => <LinkedMark key={`prop-${l.propIndex}`} link={l} focused={false} ring={false} />)}
         {fires.map((f) => (
           <pointLight
             key={f.key}
