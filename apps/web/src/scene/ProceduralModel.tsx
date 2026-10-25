@@ -1,4 +1,7 @@
+import { useMemo } from "react";
 import type { Part } from "@mus3o/shared";
+import { fitParts } from "./fitModel";
+import { liftColor } from "./liftColor";
 
 // El modelo lo diseña la IA: se acotan medidas y segmentos para que ninguna receta
 // pueda generar geometría gigante o demasiado pesada.
@@ -20,13 +23,15 @@ function Geometry({ part }: { part: Part }) {
 }
 
 // Conserva los colores de cada parte, pero mates y sin brillo propio: la forma la dibuja la luz.
+// Se normaliza el tamaño: centrado, apoyado en y = 0 y de ~2 m en su dimensión mayor, sea cual sea la escala que dibujó la IA.
 export default function ProceduralModel({ parts }: { parts: Part[] }) {
+  const fit = useMemo(() => fitParts(parts), [parts]);
   return (
-    <group>
+    <group position={fit.offset} scale={fit.scale}>
       {parts.map((p, i) => (
         <mesh key={i} position={p.pos} rotation={p.rot} castShadow receiveShadow>
           <Geometry part={p} />
-          <meshStandardMaterial color={p.color} roughness={0.9} flatShading />
+          <meshStandardMaterial color={liftColor(p.color)} roughness={0.9} flatShading />
         </mesh>
       ))}
     </group>

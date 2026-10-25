@@ -14,7 +14,7 @@ import { applyTouchLook } from './moveInput'
 import { touchInput } from './touchInput'
 import { EYE, stepWalk } from './walk'
 
-const REACH = 3.2
+const REACH = 4.2
 
 const onLock = () => useStore.getState().set({ locked: true })
 const onUnlock = () => useStore.getState().set({ locked: false })
@@ -125,13 +125,13 @@ export function Player({ layout }: { layout: PalaceLayout }) {
 
     // Puerta a la que se está mirando y que está al alcance
     let bestDoor: string | null = null
-    let bestDoorDist = 3.8
+    let bestDoorDist = 4.5
     for (const d of layout.doors ?? []) {
       const vx = d.x - camera.position.x
       const vz = d.z - camera.position.z
       const dist = Math.hypot(vx, vz)
       if (dist > bestDoorDist) continue
-      if ((vx * f.x + vz * f.z) / dist < 0.5) continue
+      if ((vx * f.x + vz * f.z) / dist < 0.45) continue
       bestDoor = d.id
       bestDoorDist = dist
     }
@@ -147,7 +147,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       const vz = p.z - camera.position.z
       const dist = Math.hypot(vx, vz)
       if (dist > bestDist || dist < 0.01) continue
-      if ((vx * f.x + vz * f.z) / dist < 0.8) continue
+      if ((vx * f.x + vz * f.z) / dist < 0.65) continue
       best = p.concept.id
       bestDist = dist
     }

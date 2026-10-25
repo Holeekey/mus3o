@@ -323,9 +323,10 @@ describe('caminar con el mando respeta las colisiones', () => {
     vrRuntime.move.az = 1
     const cam = fakeCam(room.x, room.z)
     const p = (cam as unknown as { position: { x: number; z: number } }).position
-    // Hacia +X desde el centro hasta salir de la sala: no puede sobrepasar su borde.
-    walk(cam, -Math.PI / 2, 10)
-    expect(p.x).toBeLessThan(room.x + room.w / 2)
+    // Hacia -X desde el centro (la pared oeste no tiene puerta): no puede sobrepasar su borde.
+    expect(room.doors).not.toContain('w')
+    walk(cam, Math.PI / 2, 10)
+    expect(p.x).toBeGreaterThan(room.x - room.w / 2)
   })
 
   it('una compuerta cerrada bloquea; abierta, deja pasar', () => {

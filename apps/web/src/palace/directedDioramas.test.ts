@@ -3,7 +3,7 @@ import { MuseumSchema, parseMus3oDSL } from '@mus3o/shared'
 import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum } from './liveDioramas'
 
 const DSL = [
-  'ROOM: carabobo | Batalla de Carabobo | ancient | #a8322d | #1c1203 | torus | | diorama |',
+  'ROOM: junin | Batalla de Junín | ancient | #a8322d | #1c1203 | torus | | diorama |',
   'PIECE: Bolívar | box | Un jinete | horse | Líder patriota.',
   'PIECE: Páez | box | Una carga | horse | Jefe de caballería.',
   'DIO: battle | night',
@@ -15,13 +15,10 @@ const DSL = [
 describe('del micro-DSL al diorama', () => {
   const museum = MuseumSchema.parse(parseMus3oDSL(DSL))
 
-  it('la sala que llega en vivo se compone con las directivas de la IA', () => {
+  it('las directivas de la IA ya no componen un mundo con los conceptos: la sala espera su foto real', () => {
+    expect(museum.rooms[0].dioramaDirectives).toBeTruthy()
     const room = attachDioramasToArrivingRoom([], museum.rooms[0], museum.title)
-    expect(room.diorama?.time).toBe('night')
-    const kinds = room.diorama!.props.map((p) => p.kind)
-    expect(kinds).toContain('rider')
-    expect(kinds).toContain('cannon')
-    expect(room.diorama!.props.filter((p) => p.pieceId).map((p) => p.label)).toContain('Carga de Páez')
+    expect(room.diorama).toBeUndefined()
   })
 
   it('el museo final produce el mismo diorama que la sala en vivo', () => {

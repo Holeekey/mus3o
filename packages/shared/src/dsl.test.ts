@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Mus3oDslStream, parseMus3oDSL } from "./dsl";
+import { Mus3oDslStream, classifyDslLine, parseMus3oDSL } from "./dsl";
 import { LIMITS } from "./schema";
 
 describe("parseMus3oDSL", () => {
@@ -445,5 +445,86 @@ describe("micro-DSL de dioramas (DIO / D_PROP)", () => {
     s.end();
     const streamed = s.finish();
     expect(streamed.rooms.map((r) => r.dioramaDirectives)).toEqual(whole.rooms.map((r) => r.dioramaDirectives));
+  });
+
+  describe("resiliencia ante variaciones de sintaxis de LLMs", () => {
+    it("soporta dos puntos asiáticos (full-width) y barras full-width", () => {
+      const raw = `
+ROOM：sala-asia ｜ Sala Asia ｜ ancient ｜ #ffaa00 ｜ #111111 ｜ crystal
+PIECE：Concepto Asia ｜ sphere ｜ Anclaje de memoria asiático
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("Sala Asia");
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto Asia");
+    });
+
+    it("soporta viñetas Markdown complejas, numeradas y con negrita", () => {
+      const raw = `
+- **ROOM**: r-markdown | Sala Markdown | cyberpunk | #00ff00 | #001100 | torus
+1.1. **PIECE**: Token A | box | Mnemotecnia uno
+* [x] PIECE: Token B | tetrahedron | Mnemotecnia dos
+> PIECE: Token C | cone | Mnemotecnia tres
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].pieces).toHaveLength(3);
+      expect(museum.rooms[0].pieces[0].title).toBe("Token A");
+      expect(museum.rooms[0].pieces[1].title).toBe("Token B");
+      expect(museum.rooms[0].pieces[2].title).toBe("Token C");
+    });
+
+    it("soporta separadores alternativos con guion o pipe directo", () => {
+      const raw = `
+ROOM | r-pipe | Sala Pipe | cathedral | #333333 | #000000 | dodecahedron
+PIECE - Concepto Guion | octahedron | Anclaje de prueba
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("Sala Pipe");
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto Guion");
+    });
+
+    it("asigna valores seguros ante líneas con campos mínimos", () => {
+      const raw = `
+ROOM: r-min | SoloNombre
+PIECE: SoloConcepto
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms).toHaveLength(1);
+      expect(museum.rooms[0].name).toBe("SoloNombre");
+      expect(museum.rooms[0].theme).toBe("cathedral");
+      const piece = museum.rooms[0]?.pieces[0];
+      expect(piece?.title).toBe("SoloConcepto");
+      expect(piece?.model?.type).toBe("glyph");
+      if (piece?.model && piece.model.type === "glyph") {
+        expect(piece.model.shape).toBe("box");
+      }
+    });
+
+    it("respeta los dos puntos de ancho completo del contenido (solo normaliza la etiqueta)", () => {
+      const raw = `
+ROOM：r-fw | Sala Ancha | cathedral
+PIECE：Hora | box | Abre a las 10：30 en punto
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms[0].name).toBe("Sala Ancha");
+      expect(JSON.stringify(museum.rooms[0].pieces[0])).toContain("10：30");
+    });
+
+    it("no toma como etiqueta la prosa con guion pegado a la palabra", () => {
+      expect(classifyDslLine("Room-based learning es útil").kind).toBeUndefined();
+      expect(classifyDslLine("- [x] PIECE: CPU | box | desc").kind).toBe("PIECE");
+    });
+
+    it("no descarta una pieza con pipes consecutivos o campos vacíos", () => {
+      const raw = `
+ROOM: r-gap | Sala Hueco | cathedral
+PIECE: Concepto || | 
+`;
+      const museum = parseMus3oDSL(raw);
+      expect(museum.rooms[0].pieces).toHaveLength(1);
+      expect(museum.rooms[0].pieces[0].title).toBe("Concepto");
+    });
   });
 });

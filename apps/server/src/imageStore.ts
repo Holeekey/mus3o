@@ -53,14 +53,20 @@ async function readIf(path: string): Promise<Buffer | null> {
 
 const touch = (path: string) => void utimes(path, new Date(), new Date()).catch(() => {});
 
+/**
+ * Versión del resolvedor guardada junto a cada resultado. La caché en disco ignora lo escrito por versiones anteriores
+ * (antes del filtro de relevancia podía guardar la imagen de otro tema); la semilla del repo no se versiona.
+ */
+export const RESOLVER_VERSION = 2;
+
 /** Metadatos guardados: `undefined` = no se sabe; `null` = sin imagen (definitivo). */
-async function readMetaFrom(dir: string, key: string, refresh: boolean): Promise<ResolvedImage | null | undefined> {
+async function readMetaFrom(dir: string, key: string, refresh: boolean, minVersion = 0): Promise<ResolvedImage | null | undefined> {
   const path = join(dir, metaName(key));
   const raw = await readIf(path);
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw.toString("utf8"));
-    if (parsed && typeof parsed === "object" && "image" in parsed) {
+    if (parsed && typeof parsed === "object" && "image" in parsed && (parsed.v ?? 1) >= minVersion) {
       if (refresh) touch(path);
       return parsed.image ?? null;
     }
@@ -85,7 +91,7 @@ async function readFileFrom(dir: string, url: string, refresh: boolean): Promise
 
 export const readSeedMeta = (key: string) => readMetaFrom(seedDir(), key, false);
 export const readSeedFile = (url: string) => readFileFrom(seedDir(), url, false);
-export const readCacheMeta = (key: string) => readMetaFrom(cacheDir(), key, true);
+export const readCacheMeta = (key: string) => readMetaFrom(cacheDir(), key, true, RESOLVER_VERSION);
 export const readCacheFile = (url: string) => readFileFrom(cacheDir(), url, true);
 
 /** Escritura atómica: archivo temporal en la misma carpeta + rename. Un corte nunca deja un archivo a medias. */
@@ -102,7 +108,7 @@ export async function atomicWrite(dir: string, name: string, data: Buffer | stri
   return Buffer.byteLength(data);
 }
 
-const metaBody = (image: ResolvedImage | null) => JSON.stringify({ image });
+const metaBody = (image: ResolvedImage | null) => JSON.stringify({ image, v: RESOLVER_VERSION });
 const fileName = (url: string, type: string) => {
   const ext = EXT_BY_TYPE[baseType(type)];
   return ext ? `${fileBase(url)}.${ext}` : null;

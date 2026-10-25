@@ -2,6 +2,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { sanitizeDisplayText } from "@mus3o/shared";
+import { takeBudget } from "./budgetStore";
 
 // Soporte opcional de ElevenLabs. Sin ELEVENLABS_API_KEY queda desactivado y el cliente
 // usa la síntesis del navegador. La clave vive solo aquí: el navegador nunca la ve.
@@ -10,13 +11,8 @@ const DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL";
 const VOICE_ID_RE = /^[A-Za-z0-9]{10,40}$/;
 
 const MAX_DAILY_CHARS = () => Number(process.env.MAX_DAILY_TTS_CHARS) || 30_000;
-let budget = { day: "", used: 0 };
-function takeChars(n: number): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (budget.day !== day) budget = { day, used: 0 };
-  if (budget.used + n > MAX_DAILY_CHARS()) return false;
-  budget.used += n;
-  return true;
+async function takeChars(n: number): Promise<boolean> {
+  return takeBudget("tts_chars", n, MAX_DAILY_CHARS());
 }
 
 export const ttsEnabled = () => Boolean(process.env.ELEVENLABS_API_KEY);
@@ -54,7 +50,7 @@ ttsRouter.post("/tts", async (req, res) => {
     res.status(400).json({ error: "Texto vacío" });
     return;
   }
-  if (!takeChars(text.length)) {
+  if (!(await takeChars(text.length))) {
     res.status(429).json({ error: "Se alcanzó el tope diario de voz", fallback: "browser" });
     return;
   }

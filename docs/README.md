@@ -48,7 +48,7 @@ Documentos previos (decisiones de producto y de seguridad, no cambian con el có
 4. **Solo se agregan campos opcionales** a `Museum`. Un palacio guardado en `localStorage` debe seguir validando.
 5. **La IA nunca escribe código ni HTML.** Elige de catálogos cerrados (formas, props, terrenos). El cliente valida y repara.
 6. **Los apuntes no se persisten en el servidor.** Se procesan en memoria; el navegador guarda lo que necesita en `localStorage`.
-7. **Los archivos (docx, xlsx, csv, txt) se extraen en el navegador.** Solo viaja el texto.
+7. **Los archivos (pdf, docx, xlsx, csv, txt) se extraen en el navegador.** Solo viaja el texto.
 
 ## Glosario
 

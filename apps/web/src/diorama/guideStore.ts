@@ -5,7 +5,7 @@ import { readNarratorOn } from '../lib/narratorPref'
 import { canSpeak, speak, stopSpeaking } from '../lib/voice'
 import { useStore } from '../store'
 import { useDioramaStore } from './dioramaStore'
-import { peekResolvedImage } from '../lib/images'
+import { peekMainImage } from '../lib/images'
 import { buildIntro, buildPhotoIntro, buildPieceNarration, buildPropNarration, createVisitTracker, DIORAMA_SPAWN, matchConcept, relativeDirection, speechMs, type IntroItem, type PhotoItem } from './guide'
 import { getDioramaModel } from './model'
 
@@ -65,7 +65,7 @@ export function composeIntro(): GuideLine | null {
   const from = { x: DIORAMA_SPAWN.x, z: DIORAMA_SPAWN.z }
   if (portal.diorama.backdrop) {
     // Mundo recreado desde la foto real: se dice de qué imagen sale y qué se ve (rótulos de los props).
-    const image = room?.imageSearch ? peekResolvedImage(room.imageSearch) : undefined
+    const image = room?.imageSearch ? peekMainImage(room.id, room.imageSearch) : undefined
     const seen: PhotoItem[] = (model.layout.labelled ?? []).map((l) => ({
       label: l.label,
       direction: relativeDirection(DIORAMA_SPAWN.yaw, from, l),

@@ -3,7 +3,6 @@ import { LIMITS, type Source } from '@mus3o/shared'
 import { startLiveBuild } from '../build/liveBuild'
 import { sourceSummary } from '../palace/sourceSummary'
 import { fileKindOf, readImageAttachment, readTextAttachment } from '../lib/files'
-import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { PRESET_PALACES } from '../palace/presets'
 import { buildLayout } from '../palace/layout'
@@ -15,6 +14,7 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { SiteHeader } from './SiteHeader'
 import { SourcesPanel, type Attachment } from './SourcesPanel'
 import { useReveal } from './reveal'
+import { useScrollFade } from './scrollFade'
 import { useShowcaseScroll } from './showcase'
 import type { LobbyMode, WalkApi } from '../scene/LobbyWalker'
 import { touchInput } from '../scene/touchInput'
@@ -53,6 +53,7 @@ export function Landing() {
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  const [sourcesFocus, setSourcesFocus] = useState<'page' | 'wall'>('page')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [validationError, setValidationError] = useState<string | null>(null)
   // Si la IA falló antes de la primera sala, el store nos devuelve aquí con el motivo.
@@ -70,6 +71,13 @@ export function Landing() {
   useFreezeScroll(lobbyMode !== 'off')
   const workbenchRef = useRef<HTMLElement>(null)
   useReveal(workbenchRef)
+  const introRef = useRef<HTMLElement>(null)
+  useScrollFade(introRef)
+  // Solo la copia de abajo: la de la pared del lobby no se mueve con el scroll de la página.
+  const workbenchHeadRef = useRef<HTMLDivElement>(null)
+  useScrollFade(workbenchHeadRef)
+  const heroTitleRef = useRef<HTMLHeadingElement>(null)
+  useScrollFade(heroTitleRef)
   // Al volver desde #equipo con un ancla (#crear, #como-funciona) la sección recién se montó: se baja a mano.
   useEffect(() => {
     const id = window.location.hash.slice(1)
@@ -82,7 +90,7 @@ export function Landing() {
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setValidationError(`Para generar con IA usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el palacio sin IA con todo el texto.`)
+      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes usar «Construir offline» con todo el texto.`)
       return
     }
     setValidationError(null)
@@ -164,8 +172,11 @@ export function Landing() {
         <span className="tab active">Tus apuntes</span>
         <button
           className="tab tab-file"
-          onClick={() => setSourcesOpen((open) => !open)}
-          title="Word, Excel, CSV, texto, JSON o imágenes"
+          onClick={(e) => {
+            setSourcesFocus(e.currentTarget.closest('.lobby-wall') ? 'wall' : 'page')
+            setSourcesOpen((open) => !open)
+          }}
+          title="PDF, Word, Excel, CSV, texto, JSON o imágenes"
           aria-expanded={sourcesOpen}
           aria-controls="sources-panel"
         >
@@ -188,6 +199,7 @@ export function Landing() {
           onAdd={onFiles}
           onRemove={removeAttachment}
           error={fileError}
+          focusIn={sourcesFocus}
         />
       </div>
       <div className="editor-status">
@@ -196,7 +208,7 @@ export function Landing() {
         ) : attachments.length > 0 ? (
           <span>
             {attachments.length} {attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} · se usan con
-            «Generar con IA»
+            «Generar con Aris»
           </span>
         ) : result.ok ? (
           <span>
@@ -211,7 +223,7 @@ export function Landing() {
   )
   const presetsList = (
     <div className="presets-section">
-      <p className="presets-label">Entrada directa a palacios destacados</p>
+      <p className="presets-label">Entrada directa a museos destacados</p>
       <div className="presets-list">
         {PRESET_PALACES.map((preset) => (
           <button
@@ -234,25 +246,22 @@ export function Landing() {
       </div>
     </div>
   )
+  // Aris es la experiencia principal; construir offline (parser local, sin Aris) queda como alternativa discreta.
   const primaryActions = (
-    <>
-      <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
-        Construir palacio
-      </button>
-      <button
-        className={attachments.length > 0 ? 'btn btn-primary btn-lg' : 'btn'}
-        disabled={!input.trim() && attachments.length === 0}
-        onClick={generateWithAi}
-      >
-        Generar con IA
-      </button>
-    </>
+    <button className="btn btn-primary btn-lg" disabled={!input.trim() && attachments.length === 0} onClick={generateWithAi}>
+      Generar con Aris
+    </button>
+  )
+  const offlineAction = (
+    <button className="btn btn-ghost" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
+      Construir offline
+    </button>
   )
 
   const workbenchHead = (
     <header className="workbench-head">
-      <h2 data-reveal>Ahora, <i>el tuyo</i></h2>
-      <p data-reveal>Pega tus apuntes o entra directo a uno de los palacios destacados.</p>
+      <h2>Ahora, <i>el tuyo</i></h2>
+      <p>Pega tus apuntes o entra directo a uno de los museos destacados.</p>
     </header>
   )
   const actionButtons = (
@@ -261,15 +270,13 @@ export function Landing() {
       <button className="btn btn-ghost" onClick={() => setInput(EXAMPLE_TEXT)}>
         Usar ejemplo: Biología celular
       </button>
-      <button className="btn btn-ghost" onClick={() => enterPalace(dungeonDemoMuseum)}>
-        Explorar Mazmorra
-      </button>
       {saved && (
         <button className="btn btn-ghost" onClick={resume}>
           Continuar “{saved.title}”
           {dueText && <span className="due-chip"> · {dueText}</span>}
         </button>
       )}
+      {offlineAction}
     </>
   )
   // En la pared del lobby va "Crea tu palacio" tal cual: texto guía, apuntes | palacios destacados y acciones.
@@ -288,7 +295,7 @@ export function Landing() {
     <main id="top" className="landing">
       <SiteHeader />
       <section className="landing-hero">
-        <h1>Un lugar para cada <i>idea</i></h1>
+        <h1 ref={heroTitleRef} className="scroll-fade">Un lugar para cada <i>idea</i></h1>
         <p className="lead">
           Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y <span className="inline-logo" role="img" aria-label="mus3o" /> levanta uno:
           cada tema es una sala de un solo color, cada concepto un objeto de yeso sobre su pedestal.
@@ -298,8 +305,18 @@ export function Landing() {
         </a>
       </section>
 
+      <section id="como-funciona" ref={introRef} className="landing-intro scroll-fade" aria-labelledby="como-funciona-title">
+        <header className="workbench-head">
+          <h2 id="como-funciona-title">¿Cómo <i>funciona</i>?</h2>
+          <p>
+            Cada tema de tus apuntes se vuelve una sala y cada concepto, un objeto sobre su pedestal. Baja y entra al
+            lobby: recórrelo en primera persona como un museo de verdad.
+          </p>
+        </header>
+      </section>
+
       {/* Al hacer scroll la maqueta se abre a pantalla completa y luego se vuelve a cerrar. */}
-      <section id="como-funciona" ref={showcaseRef} className="showcase" aria-label="Vista previa del palacio">
+      <section ref={showcaseRef} className="showcase" aria-label="Vista previa del museo">
         <div className="showcase-sticky">
           <div className="showcase-frame">
             {EXAMPLE_LAYOUT && (
@@ -350,7 +367,7 @@ export function Landing() {
       </section>
 
       <section id="crear" ref={workbenchRef} className="landing-workbench">
-        {workbenchHead}
+        <div ref={workbenchHeadRef} className="scroll-fade">{workbenchHead}</div>
         {/* Apuntes a la izquierda y palacios destacados a la derecha, a la misma altura. */}
         <div className="workbench-grid" data-reveal>
           {notesEditor}

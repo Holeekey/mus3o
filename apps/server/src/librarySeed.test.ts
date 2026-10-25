@@ -16,10 +16,12 @@ const seed = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.u
 }[];
 
 describe("semilla de la biblioteca propia", () => {
-  it("tiene entradas, ids únicos y todas aprobadas", () => {
+  it("tiene entradas, ids únicos y solo estados válidos", () => {
     expect(seed.length).toBeGreaterThan(50);
     expect(new Set(seed.map((e) => e.id)).size).toBe(seed.length);
-    expect(seed.every((e) => e.status === "approved")).toBe(true);
+    // Las pendientes (aún sin revisar) viven en la semilla, pero la biblioteca solo sirve las aprobadas.
+    expect(seed.every((e) => e.status === "approved" || e.status === "pending")).toBe(true);
+    expect(seed.filter((e) => e.status === "approved").length).toBeGreaterThan(50);
   });
 
   it("cada receta tiene partes válidas y palabras clave normalizadas", () => {

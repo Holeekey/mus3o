@@ -55,7 +55,7 @@ el tipo de error y la latencia (`generate-museum falló tras N ms: <Nombre>`).
 5. **Rate limit general** en `/api/*` (excepto imágenes): **10 peticiones por minuto por IP**.
 6. **Validación del cuerpo:** primero el formato legacy (`{ topic }` o `{ notes }`), luego `GenerateMuseumRequestSchema`.
 7. **Caché** (antes de tocar el presupuesto).
-8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Vive en memoria: se reinicia al reiniciar el proceso.
+8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Los topes diarios (generaciones, TTS, Aris, dioramas) los lleva `budgetStore.ts`: memoria más archivo en `.cache/budget/<namespace>.json` (`BUDGET_CACHE_DIR`), con escritura atómica, así sobreviven a un reinicio del proceso mientras el disco persista.
 
 Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de créditos en una demo pública.
 
@@ -136,7 +136,10 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 ## 7. Proxy de imágenes (`images.ts`)
 
 - **Resolución:** `resolveImage({ wiki, commons, lang })` busca primero el artículo de Wikipedia (`wikiTitle`) y, si no da imagen, en Commons (`commonsQuery`). `lang` default `es`. Clasifica el resultado como `painting`, `diagram` o `photo` según metadatos.
-- **Caché de resoluciones:** 500 entradas, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda.
+- **Filtro de relevancia** (`relevance.ts`, solo en las búsquedas de reserva, nunca en un acierto exacto de título): un resultado de la búsqueda de Wikipedia debe compartir una palabra con el título pedido o al menos dos con el contexto, y **no puede nombrar un país o gentilicio que ni la consulta ni el contexto mencionan** («Armada en el Caribe» no trae «Armada Argentina»; «Elecciones de 2024» de un palacio EE. UU.-Venezuela no trae las de Uruguay). Se descarta y se prueba el siguiente resultado (hasta 5); si ninguno sirve, 404 y el cuadro queda como lienzo de yeso. La búsqueda automática en Commons (sin `commonsQuery` de la IA) exige además que el nombre del archivo comparta una palabra con el título y no contradiga el país. Determinista, sin llamadas de IA.
+- **Contexto de las piezas:** `attachImageSearches` pone como contexto de una pieza `«sala · título del palacio»` (antes solo la sala), para que el tema del palacio desambigüe.
+- **Caché de resoluciones:** 500 entradas en memoria, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda. En disco cada resultado lleva `v: RESOLVER_VERSION`: la caché ignora lo escrito por versiones anteriores (podía contener la imagen de otro tema); la semilla del repo no se versiona.
+- **`src` de `ResolvedImage`:** siempre la ruta del proxy `/api/image/file?u=<url de Wikimedia codificada>`; la URL que da Commons trae `?utm_source=…` y se conserva dentro de `u` (es la clave de la semilla/caché de dioramas). El cliente (`wikimediaUrlOf`) acepta también una URL https directa de los hosts de Wikimedia.
 - **Concurrencia:** máximo **3** llamadas simultáneas a Wikimedia (un museo puede pedir decenas de imágenes a la vez).
 - **Peticiones idénticas simultáneas:** `resolveImage` y la descarga de `/image/file` comparten la consulta en curso por clave (`resolving` y `loading`) y la limpian al terminar, así un error transitorio no se cachea.
 - **Errores transitorios** (`UpstreamError`: límite de tasa, 5xx, timeout) **no** se cachean como "sin imagen".
@@ -274,7 +277,7 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de salas reciben un diorama de la biblioteca o compuesto en el cliente (sin IA); `POST /api/diorama-from-image` solo se usa si una sala queda sin diorama. Ver [diorama.md](./diorama.md) §4 |
+| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de mundos sale de la biblioteca hecha a mano o de `POST /api/diorama-from-image`. Ver [diorama.md](./diorama.md) §4 |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`

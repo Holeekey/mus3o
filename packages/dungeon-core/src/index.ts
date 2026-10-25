@@ -11,6 +11,7 @@ export * from "./application/engine/DungeonSandboxEngine.js";
 
 // Adapters
 export * from "./adapters/DungeonPalaceAdapter.js";
+export * from "./adapters/PalaceGraphNavigator.js";
 
 // Shared Types
 export * from "./shared/types.js";

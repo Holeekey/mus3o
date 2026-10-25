@@ -3,7 +3,7 @@ import { CanvasTexture, Color, SRGBColorSpace, TextureLoader, type Texture } fro
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
 import { capTextureSize } from '../lib/capTexture'
 import { usePhotoDiorama } from '../diorama/usePhotoDiorama'
-import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
+import { creditLine, userImageAsResolved, useResolvedImage, useRoomMainImage } from '../lib/images'
 import { useIntro } from '../intro/store'
 import { buildFrameGeometry } from './frameGeometry'
 import { LabelPlate } from './LabelPlate'
@@ -93,7 +93,9 @@ function usePlasterCanvas(enabled: boolean, title: string, plaster: string, trim
   return tex
 }
 
-/** Cuadro enmarcado con su placa. No dibuja nada hasta que la imagen carga. */
+const NO_SEARCHES: ImageSearch[] = []
+
+/** Cuadro enmarcado con su placa. No dibuja nada hasta que la imagen carga, ni nada si no hay imagen. */
 export function Painting({
   slot,
   search,
@@ -103,6 +105,7 @@ export function Painting({
   diorama: libraryDiorama,
   roomId,
   title,
+  alternatives = NO_SEARCHES,
 }: {
   slot: PaintingSlot
   search?: ImageSearch
@@ -115,8 +118,14 @@ export function Painting({
   roomId?: string
   /** Título de la sala: rotula el lienzo de yeso cuando el cuadro aún no tiene imagen. */
   title?: string
+  /** Cuadro principal: búsquedas de las piezas de la sala, por si su imagen ya es el cuadro principal de otra sala. */
+  alternatives?: ImageSearch[]
 }) {
-  const resolved = useResolvedImage(userImage ? undefined : search)
+  // El cuadro principal decide su imagen en orden de sala para no repetir la de otra (ver `decideMainImage`).
+  const isMain = Boolean(slot.main && roomId && !userImage)
+  const own = useResolvedImage(userImage || isMain ? undefined : search)
+  const main = useRoomMainImage(isMain ? roomId : undefined, isMain ? search : undefined, alternatives)
+  const resolved = isMain ? main : own
   const image = userImage ? userImageAsResolved(userImage.src, userImage.title) : resolved
   // Diorama de la biblioteca (hecho a mano) manda; si no hay, el cuadro principal pide recrear su foto real.
   // Si la foto no es una escena (retrato, diagrama...) o no hay IA, el cuadro queda normal, sin portal.
@@ -149,6 +158,9 @@ export function Painting({
   // Las ocho piezas del marco son una sola geometría (una malla, un draw call).
   const frameGeo = useMemo(() => buildFrameGeometry(ow, oh, FRAME_T, FRAME_DEPTH, WALL_Z), [ow, oh])
   useEffect(() => () => frameGeo.dispose(), [frameGeo])
+  // Sin imagen (o hasta que carga) no hay cuadro: ni marco vacío ni lienzo de yeso. Solo los dioramas de la
+  // biblioteca, mundos hechos a mano, se cuelgan aunque su imagen aún no esté.
+  if (!libraryDiorama && !hasTexture) return null
   const bottom = -oh / 2 - FRAME_T
 
   // Centro de la obra en el mundo (mismo plano que el cuadro plano), para el portal.

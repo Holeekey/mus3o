@@ -70,6 +70,13 @@ describe('interact (E o botón 👁️)', () => {
     expect(useStore.getState().openId).toBeNull()
   })
 
+  it('a closed door the player cannot open does not steal E from the focused pedestal', () => {
+    useStore.setState({ focusedDoorId: 'd1', focusedId: 'p1', hasKey: false })
+    interact(layout)
+    expect(useStore.getState().unlockedDoors).toEqual({})
+    expect(useStore.getState().openId).toBe('p1')
+  })
+
   it('enters the painting the player is looking at', () => {
     useDioramaStore.setState({ hintId: 'p1' })
     useStore.setState({ focusedId: 'p1' })

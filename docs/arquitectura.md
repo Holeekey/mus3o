@@ -20,7 +20,7 @@ apps/
     app.ts          rutas, rate limits, tope diario, manejo de errores
     index.ts        arranque (PORT, default 3001)
     claude.ts       llamadas a Claude, reintento de JSON, mock sin API key
-    prompts.ts      todos los prompts y reglas de la IA
+    prompts.ts      todos los prompts y reglas de la IA (`MUSEUM_WORDING`: al usuario se le dice "museo", nunca "palacio")
     cache.ts        caché en memoria de museos (100 entradas)
     images.ts       proxy de imágenes de Wikimedia (/api/image, /api/image/file)
   web/src/
@@ -42,9 +42,9 @@ packages/
 
 ```
 ┌────────── Navegador ──────────────────────────────────────────────────────────┐
-│ Landing: texto o archivos (docx/xlsx/csv/txt) → texto plano en el navegador   │
+│ Landing: texto o archivos (pdf/docx/xlsx/csv/txt) → texto plano en el navegador   │
 │   · looksLikeTopic(): 1 línea ≤200 car. = tema; si no = apuntes              │
-│   · "Generar con IA" → POST /api/generate-museum                             │
+│   · "Generar con Aris" → POST /api/generate-museum                           │
 │   · o parsePalace() local (sin IA): texto, JSON o CSV                        │
 │                                                                              │
 │ MuseumSchema.safeParse(respuesta)  →  store.enterPalace(palace, apuntes)     │

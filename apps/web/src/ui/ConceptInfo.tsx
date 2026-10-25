@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Piece, ResolvedImage } from '@mus3o/shared'
-import { creditLine } from '../lib/images'
-import { shortUrl, useWikiInfo } from '../lib/info'
+import { useWikiInfo } from '../lib/info'
 
 /**
  * Renglones visibles de "Para saber más" antes de "Leer más": con imagen la ficha tiene menos lugar.
@@ -62,25 +61,21 @@ export function ConceptInfo({ concept, image }: { concept: Piece; image: Resolve
           )}
         </section>
       )}
-      {(notes || info || image) && (
-        <section className="card-sources">
-          <h3>Fuentes</h3>
-          <ul>
-            {notes && <li className={concept.source ? undefined : 'card-src-warn'}>{notes}</li>}
-            {info && (
-              <li>
-                <span>
-                  {info.source} · «{info.title}» · {info.license}
-                </span>
-                <span className="card-src-url">{shortUrl(info.url)}</span>
-                <a className="card-src-open" href={info.url} target="_blank" rel="noopener noreferrer">
-                  Abrir artículo
-                </a>
-              </li>
-            )}
-            {image && <li>Imagen: {creditLine(image)}</li>}
-          </ul>
-        </section>
+      {(notes || info) && (
+        // Una línea: de dónde sale cada dato. El crédito de la imagen ya va bajo la foto.
+        <p className="card-sources">
+          <span className="card-sources-label">Fuentes:</span>{' '}
+          {notes && <span className={concept.source ? undefined : 'card-src-warn'}>{notes}</span>}
+          {notes && info && ' · '}
+          {info && (
+            <>
+              {info.source}, {info.license}{' '}
+              <a className="card-src-open" href={info.url} target="_blank" rel="noopener noreferrer">
+                Abrir artículo
+              </a>
+            </>
+          )}
+        </p>
       )}
     </>
   )

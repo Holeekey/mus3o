@@ -26,13 +26,14 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 ## 2. Landing (`ui/Landing.tsx`)
 
-- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo, vestida de lobby de museo (muros lisos beige con `Room plainWalls`, solo el cascarón con `Room shellOnly`: sin pedestales, cuadros ni títulos del tema; alfombra roja, un cuadro grande de Platanus Hack en el muro oeste (`scene/LobbyPoster.tsx`) y, al centro, el logotipo de `public/brand.svg` extruido y girando sobre un pedestal, `scene/LogoSculpture.tsx`), se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar. Con el lobby a pantalla completa (solo escritorio), "Haz clic para recorrer el lobby" pide el pointer lock y se camina con WASD/Shift; Esc vuelve al scroll (la página queda quieta mientras se camina). En la pared este cuelga la sección "Crea tu palacio" tal cual: texto guía, editor, palacios destacados y acciones (los mismos elementos de React que en `#crear`, con drei `Html` y `occlude="blending"`): al acercarse, E suelta el mouse y encuadra el panel para usarlo; E vuelve a caminar y Esc al scroll (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los palacios destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
+- **Estructura** (de arriba abajo): header crema que se desvanece al bajar (`ui/SiteHeader.tsx`); hero centrado; sección `#como-funciona` con scroll (`ui/showcase.ts`): la sala de inicio del palacio de ejemplo, vestida de lobby de museo (muros lisos beige con `Room plainWalls`, solo el cascarón con `Room shellOnly`: sin pedestales, cuadros ni títulos del tema; alfombra roja, un cuadro grande de Platanus Hack en el muro oeste (`scene/LobbyPoster.tsx`) y, al centro, el logotipo de `public/brand.svg` extruido y girando sobre un pedestal, `scene/LogoSculpture.tsx`), se abre a pantalla completa mientras la cámara baja de vista aérea a primera persona, y se vuelve a cerrar. Con el lobby a pantalla completa (solo escritorio), "Haz clic para recorrer el lobby" pide el pointer lock y se camina con WASD/Shift; Esc vuelve al scroll (la página queda quieta mientras se camina). En la pared este cuelga la sección "Crea tu museo" tal cual: texto guía, editor, museos destacados y acciones (los mismos elementos de React que en `#crear`, con drei `Html` y `occlude="blending"`): al acercarse, E suelta el mouse y encuadra el panel para usarlo; E vuelve a caminar y Esc al scroll (`scene/RoomPeek.tsx`, sala fija: no depende del editor); sección `#crear`, que sube como lámina sobre la sala, con el editor a la izquierda y los museos destacados en lista a la derecha (aparición al entrar en pantalla: `ui/reveal.ts`).
 - **Equipo:** `#equipo` muestra una página aparte (`ui/TeamSection.tsx`, elegida en `App.tsx` con `ui/useHash.ts`): galería vertical donde la tarjeta en el centro de la pantalla va a color y el resto en blanco y negro. Fotos en `public/team/<nombre>.jpg`.
 - Editor "Tus apuntes" (texto libre); el palacio se valida con el parser local (salas y conceptos en la barra de estado).
 - **"+ Fuentes"** abre y cierra una columna **dentro del recuadro del editor**, a la derecha del texto (debajo en pantallas ≤ 640 px) (`ui/SourcesPanel.tsx`); también se cierra con ✕ o Escape: botón "+ Adjuntar archivos", zona para arrastrar, lista con su resumen (`sourcesSummary`: fuentes, caracteres, imágenes y aviso si se resumirán con IA). Con adjuntos, el editor muestra "¿Qué quieres aprender de estos archivos? (opcional)": lo escrito es el pedido. Varios archivos a la vez, cada uno ≤ 15 MB; todo se lee en el navegador, sin IA (`lib/files.ts`):
 
 | Tipo | Cómo se lee |
 |---|---|
+| `.pdf` | `pdfjs-dist` (build legacy, cargado bajo demanda), hasta 60 páginas. Un PDF sin texto (escaneo) se rechaza con "no tiene texto seleccionable" |
 | `.docx` | `mammoth.extractRawText` |
 | `.xlsx` | `read-excel-file/universal`; cada fila queda como `encabezado: valor; ...` |
 | `.csv` | Separador `,` o `;` detectado, con comillas; mismo formato que `.xlsx` |
@@ -46,11 +47,12 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 
 | Botón | Qué hace |
 |---|---|
-| Construir palacio | Usa el parser local (`parsePalace`), sin IA |
-| Generar con IA | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
-| Entrar al palacio | Aparece tras generar con IA |
+| Construir offline | Último botón de la fila, discreto (`btn-ghost`): "Generar con Aris" es el principal. Usa el parser local (`parsePalace`), sin IA ni servidor de generación (las imágenes de Wikimedia sí necesitan internet) |
+| Generar con Aris | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
+| Entrar al museo | Aparece tras generar con Aris |
+
+En la interfaz la IA se presenta como **Aris** (botón, avisos de construcción y errores). Los errores del servidor ("IA no configurada") nunca se muestran tal cual: `lib/api.ts#describeAiError` los traduce.
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
-| Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
 
 - Mensajes de error y "demasiadas solicitudes" (429) ya están manejados.
@@ -113,6 +115,7 @@ La memoria por concepto vive **aparte**, en `memory/store.ts` (clave `mus3o-memo
 - **Colores de sala:** `ROOM_COLORS` (12 colores de neón, cíclicos) en orden de sala.
 - **Colisiones:** `moveWithCollisions` mueve por ejes separados para deslizarse contra muros.
 - `assignPaintings(room)` decide qué imagen o diorama va en cada hueco.
+- **Recorrido de estudio** (`palace/route.ts`, método de loci): los tótems de cada sala van en anillo siguiendo el orden del contenido. `ringAngles` pone el tótem 1 junto a la entrada (el punto de aparición en la sala inicial; en las demás, la puerta del primer enlace que llega a la sala) y avanza en un mismo sentido, alejándolos de los cuatro lados donde puede haber puerta (así no se mueven cuando la sala gana puertas en la construcción en vivo). Cada cartel lleva su número ("1 · Bicapa lipídica") y la ficha dice "Sala · N de M". En teléfonos angostos (≤ 420 px) el cartel de la sala oculta el total del museo (`.plaque-total`). En exploración, un marcador flota sobre el próximo tótem sin memorizar (`nextStop`, solo en la sala actual) y un aviso de 5 s ("→ Empieza por el 1 · …" / "→ Siguiente: 2 · …") aparece al entrar a una sala, al volver de la pausa y al cerrar una ficha. No se bloquea nada: es una guía.
 - **Identidad de sala** (`palace/roomIdentity.ts`): cada `RoomLayout` trae `floorStyle` (`checker` mármol, `radial` rosetón, `hexRings` anillos) y `decor` (`columns`, `arches`, `niches` en las esquinas, o `kind: null` en ~25 % de las salas). Salen del título de la sala (hash) y difieren de la sala anterior; la decoración esquiva puertas (`doorOpenings`), cuadros (`slotZone`), pedestales, la pieza central y el punto de entrada, y sus cajas (`decorBox`) entran en `layout.colliders`. Al añadir una puerta solo desaparece lo que la tapa. Test: `roomIdentity.test.ts`.
 
 Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `sourceText.test.ts`, `pieceKind.test.ts`.
@@ -161,6 +164,7 @@ Tests: `palace.test.ts`, `slots.test.ts`, `keys.test.ts`, `sources.test.ts`, `so
 | `G` | Dentro de un diorama: Aris repite lo que se mira (o la introducción) | `diorama/DioramaGuide.tsx` |
 | `R` / `Y` | En el examen: reintentar el dictado / escribir la respuesta | `ui/ExamCard.tsx` |
 | `Esc` | Pausa | Ayuda del HUD |
+| `Enter` / `Espacio` / clic fuera | Volver de la pausa, o de una ficha leída con el mouse suelto (Esc no puede: el navegador no deja bloquear el puntero con Esc). `ui/resume.ts` | Panel de pausa y pie de la ficha |
 
 En el examen, responder exige escribir, así que se libera el puntero.
 
@@ -194,12 +198,13 @@ HUD responsive (sección "HUD responsive" al final de `index.css`):
 | Componente | Función |
 |---|---|
 | `cardScroll.ts` | `useCardScroll`: las fichas largas se desplazan con la rueda aunque el puntero esté bloqueado en la escena; mientras queda contenido abajo, el texto se desvanece y aparece "↓ Sigue leyendo". El estado (memorizado) y las teclas van en un pie fijo |
-| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa |
-| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), contadores, llaves, repaso, ayudas de teclado |
+| `ConceptInfo.tsx` | "Para saber más" muestra 4 renglones si la ficha tiene imagen y 8 si no (`extractLines`), con "Leer más" / "Ver menos" solo cuando el texto no cabe. Con una ficha abierta no aparece la pausa: con el puntero suelto se lee, se desplaza y se abren sus enlaces; al cerrarla (E o ✕) se vuelve al palacio con el puntero bloqueado (`closeCard` en `scene/actions.ts`), sin pasar por la pausa. Con el mouse suelto (Esc o alt+tab), un clic fuera de la ficha o Enter vuelven a caminar con la ficha abierta. La rueda desplaza la ficha también en Firefox, que la mide en líneas (`wheelPixels` en `ui/cardScroll.ts`) |
+| `Hud` | Panel de concepto (`ConceptCard`, con el crédito del modelo 3D si es CC-BY), tarjeta de examen (`ExamCard`), llaves, repaso y ayudas de teclado. HUD liviano: el progreso va en el cartel de la sala ("N de M memorizadas · X de Y en total" con barra); "Repasos pendientes" solo si hay; Aris se oculta con una ficha abierta. Pausa en dos niveles: arriba Entrar, Examen, Repasar (si hay pendientes) y VR; en "Más opciones" "Salir del museo" (vuelve a la pantalla de inicio) y exploración libre. El simulador de tiempo se quitó de la interfaz (queda `?dias=N` en la URL para demos). La pausa lista todas las teclas. En pantallas bajas y anchas (teléfono horizontal, `max-height: 520px` + `landscape`) va en dos columnas: texto a la izquierda y controles a la derecha. El narrador se oculta durante la pausa |
+| `legend.ts` | Píldora de controles abajo al centro (solo escritorio): se ve al entrar hasta el primer paso o 15 s (`INTRO_MS`) y vuelve tras 30 s quieto (`IDLE_MS`) |
+| `Narrator.tsx` | En escritorio, apagado no ocupa lugar: al cambiarlo con N se ve 2 s. En táctil es el interruptor y queda siempre |
 | `Minimap` | Mapa del palacio (salas, puertas, posición del jugador vía `playerPose`) |
 | `ArisDialog` | Prompt y respuesta de Aris |
 | `FreeExploreToggle` | Interruptor de exploración libre (puertas abiertas) |
-| `SourceBlock` | Muestra la cita de los apuntes de donde sale un concepto (`sourceView`) |
 | `Landing` | Pantalla de inicio (ver sección 2) |
 
 ## 7. Aris (`palace/arisBrain.ts`)
