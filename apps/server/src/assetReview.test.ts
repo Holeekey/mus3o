@@ -34,6 +34,15 @@ describe("assetReview", () => {
     expect(e).toMatchObject({ status: "pending", uses: 2, keywords: ["key", "door key"] });
   });
 
+  it("soporta asignaciones concurrentes sin colisión de archivos temporales", async () => {
+    resetReviewState();
+    await Promise.all(
+      Array.from({ length: 12 }, (_, i) => rec(`concurrent-${i}`, `kw-${i}`))
+    );
+    const list = await listReview();
+    expect(list.filter((x) => x.assetId.startsWith("concurrent-"))).toHaveLength(12);
+  });
+
   it("rechazar borra el .glb y deja el modelo en lista negra", async () => {
     await mkdir(assetDir(), { recursive: true });
     await writeFile(join(assetDir(), "r2.glb"), "glTF");

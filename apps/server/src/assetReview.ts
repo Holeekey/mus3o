@@ -1,5 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { randomBytes } from "node:crypto";
 import { assetDir, isValidAssetId, removeAsset } from "./assetStore";
 
 /**
@@ -36,16 +37,29 @@ async function load(): Promise<Map<string, ReviewEntry>> {
   return entries;
 }
 
-async function save(map: Map<string, ReviewEntry>) {
+let saving: Promise<void> = Promise.resolve();
+
+async function save(map: Map<string, ReviewEntry>): Promise<void> {
   await mkdir(assetDir(), { recursive: true });
-  const tmp = `${file()}.tmp`;
-  await writeFile(tmp, JSON.stringify([...map.values()], null, 2));
-  await rename(tmp, file());
+  const tmp = `${file()}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  try {
+    await writeFile(tmp, JSON.stringify([...map.values()], null, 2));
+    await rename(tmp, file());
+  } catch (err) {
+    await unlink(tmp).catch(() => {});
+    throw err;
+  }
+}
+
+function queueSave(map: Map<string, ReviewEntry>): Promise<void> {
+  saving = saving.catch(() => {}).then(() => save(map));
+  return saving;
 }
 
 /** Solo para pruebas: olvida el estado en memoria para releer desde disco. */
 export const resetReviewState = () => {
   entries = null;
+  saving = Promise.resolve();
 };
 
 export async function isRejected(assetId: string): Promise<boolean> {
@@ -63,7 +77,7 @@ export async function recordAssignment(a: Omit<ReviewEntry, "status" | "uses" | 
     uses: (prev?.uses ?? 0) + 1,
     updatedAt: new Date().toISOString(),
   });
-  await save(map);
+  await queueSave(map);
 }
 
 export async function listReview(status?: ReviewStatus): Promise<ReviewEntry[]> {
@@ -79,6 +93,6 @@ export async function setStatus(assetId: string, status: ReviewStatus): Promise<
   e.status = status;
   e.updatedAt = new Date().toISOString();
   if (status === "rejected") await removeAsset(assetId);
-  await save(map);
+  await queueSave(map);
   return e;
 }

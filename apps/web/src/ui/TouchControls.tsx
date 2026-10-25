@@ -6,7 +6,8 @@ import { useStore } from '../store'
 import { resetTouchMove, touchInput } from '../scene/touchInput'
 import { useIsTouch } from './useIsTouch'
 
-const RADIUS = 50
+// Radio por defecto; el real sale del tamaño del joystick en pantalla (escala con el CSS).
+const DEFAULT_RADIUS = 50
 const TIP_KEY = 'mus3o-touch-tip'
 
 function tipSeen(): boolean {
@@ -33,6 +34,7 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
 
   const baseRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
+  const radius = useRef(DEFAULT_RADIUS)
 
   if (!touch || !locked || !!openId) return null
 
@@ -59,6 +61,8 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
       }
       center.current = { x: e.clientX, y: e.clientY }
       if (baseRef.current && knobRef.current) {
+        radius.current = baseRef.current.offsetWidth / 2 || DEFAULT_RADIUS
+        const RADIUS = radius.current
         baseRef.current.classList.remove('is-idle')
         baseRef.current.style.transform = `translate3d(${e.clientX - RADIUS}px, ${e.clientY - RADIUS}px, 0)`
         knobRef.current.style.transform = 'translate3d(0, 0, 0)'
@@ -71,6 +75,7 @@ export function TouchControls({ layout }: { layout: PalaceLayout }) {
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (e.pointerId === joystickId.current) {
+      const RADIUS = radius.current
       const dx = e.clientX - center.current.x
       const dy = e.clientY - center.current.y
       const dist = Math.hypot(dx, dy)

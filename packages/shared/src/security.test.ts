@@ -112,6 +112,24 @@ describe("repairAndSanitizePiece", () => {
     }
   });
 
+  it("preserves valid 3-digit and 6-digit hex colors without falling back to gray", () => {
+    const hexPiece: Piece = {
+      ...basePiece,
+      model: {
+        type: "procedural",
+        parts: [
+          { shape: "box", args: [1, 1, 1], pos: [0, 0, 0], rot: [0, 0, 0], color: "#fff" },
+          { shape: "sphere", args: [1], pos: [0, 0, 0], rot: [0, 0, 0], color: "#112233" },
+        ],
+      },
+    };
+    const repaired = repairAndSanitizePiece(hexPiece);
+    if (repaired.model?.type === "procedural") {
+      expect(repaired.model.parts[0].color).toBe("#fff");
+      expect(repaired.model.parts[1].color).toBe("#112233");
+    }
+  });
+
   it("provides safe default model if procedural parts are empty", () => {
     const emptyModelPiece: Piece = {
       ...basePiece,

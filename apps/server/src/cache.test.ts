@@ -15,54 +15,58 @@ const withoutDisk = () => {
   const prev = process.env.MUSEUM_CACHE_DIR;
   process.env.MUSEUM_CACHE_DIR = join(blocker, "museums");
   return () => {
-    process.env.MUSEUM_CACHE_DIR = prev;
+    if (prev === undefined) {
+      delete process.env.MUSEUM_CACHE_DIR;
+    } else {
+      process.env.MUSEUM_CACHE_DIR = prev;
+    }
   };
 };
 
 describe("museum cache", () => {
-  it("returns what was stored, ignoring case and surrounding spaces", () => {
-    setCached("  Roma  ", museum("roma"));
-    expect(getCached("roma")?.title).toBe("roma");
+  it("returns what was stored, ignoring case and surrounding spaces", async () => {
+    await setCached("  Roma  ", museum("roma"));
+    expect((await getCached("roma"))?.title).toBe("roma");
   });
 
-  it("evicts the least recently used entry, not the oldest inserted", () => {
+  it("evicts the least recently used entry, not the oldest inserted", async () => {
     const restore = withoutDisk();
-    for (let i = 0; i < 100; i++) setCached(`lru-${i}`, museum(`m${i}`));
+    for (let i = 0; i < 100; i++) await setCached(`lru-${i}`, museum(`m${i}`));
     // lru-0 es la más antigua, pero se vuelve a pedir: pasa a ser la más reciente.
-    expect(getCached("lru-0")).toBeDefined();
-    setCached("lru-extra", museum("extra"));
-    expect(getCached("lru-0")).toBeDefined();
-    expect(getCached("lru-1")).toBeUndefined();
-    expect(getCached("lru-extra")).toBeDefined();
+    expect(await getCached("lru-0")).toBeDefined();
+    await setCached("lru-extra", museum("extra"));
+    expect(await getCached("lru-0")).toBeDefined();
+    expect(await getCached("lru-1")).toBeUndefined();
+    expect(await getCached("lru-extra")).toBeDefined();
     restore();
   });
 
-  it("does not evict when an existing key is stored again", () => {
+  it("does not evict when an existing key is stored again", async () => {
     const restore = withoutDisk();
-    for (let i = 0; i < 100; i++) setCached(`same-${i}`, museum(`m${i}`));
-    setCached("same-99", museum("updated"));
-    expect(getCached("same-0")).toBeDefined();
-    expect(getCached("same-99")?.title).toBe("updated");
+    for (let i = 0; i < 100; i++) await setCached(`same-${i}`, museum(`m${i}`));
+    await setCached("same-99", museum("updated"));
+    expect(await getCached("same-0")).toBeDefined();
+    expect((await getCached("same-99"))?.title).toBe("updated");
     restore();
   });
 
   it("survives a restart: reads back from disk, revalidated", async () => {
-    setCached("persist-me", museum("persistido"));
+    await setCached("persist-me", museum("persistido"));
     vi.resetModules();
     const fresh = await import("./cache");
-    expect(fresh.getCached("persist-me")?.title).toBe("persistido");
-    expect(fresh.getCached("never-stored")).toBeUndefined();
+    expect((await fresh.getCached("persist-me"))?.title).toBe("persistido");
+    expect(await fresh.getCached("never-stored")).toBeUndefined();
   });
 
   it("ignores a corrupt or invalid file on disk", async () => {
     const { createHash } = await import("node:crypto");
-    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const { mkdir, writeFile } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const dir = process.env.MUSEUM_CACHE_DIR as string;
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, createHash("sha256").update("broken").digest("hex") + ".json"), '{"title": 3}');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, createHash("sha256").update("broken").digest("hex") + ".json"), '{"title": 3}');
     vi.resetModules();
     const fresh = await import("./cache");
-    expect(fresh.getCached("broken")).toBeUndefined();
+    expect(await fresh.getCached("broken")).toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { MuseumSchema, type Museum } from "@mus3o/shared";
 
@@ -9,24 +9,33 @@ const store = new Map<string, Museum>();
 const key = (topic: string) => topic.trim().toLowerCase();
 
 // Capa en disco: un reinicio del servidor (Render duerme los planes gratuitos) no debe volver a pagar los museos ya generados.
-const museumDir = () => resolve(process.env.MUSEUM_CACHE_DIR || ".cache/museums");
+const museumDir = () => {
+  const dir = process.env.MUSEUM_CACHE_DIR;
+  return resolve(dir && dir !== "undefined" ? dir : ".cache/museums");
+};
 const fileFor = (k: string) => join(museumDir(), `${createHash("sha256").update(k).digest("hex")}.json`);
 
-function readDisk(k: string): Museum | undefined {
+async function readDisk(k: string): Promise<Museum | undefined> {
   try {
     // Se revalida: un archivo viejo, dañado o de otra versión del esquema se ignora.
-    const parsed = MuseumSchema.safeParse(JSON.parse(readFileSync(fileFor(k), "utf8")));
+    const raw = await readFile(fileFor(k), "utf8");
+    const parsed = MuseumSchema.safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : undefined;
   } catch {
     return undefined;
   }
 }
 
-function writeDisk(k: string, museum: Museum) {
+async function writeDisk(k: string, museum: Museum): Promise<void> {
+  const dir = museumDir();
+  const target = fileFor(k);
+  const tmp = `${target}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   try {
-    mkdirSync(museumDir(), { recursive: true });
-    writeFileSync(fileFor(k), JSON.stringify(museum));
+    await mkdir(dir, { recursive: true });
+    await writeFile(tmp, JSON.stringify(museum));
+    await rename(tmp, target);
   } catch {
+    await unlink(tmp).catch(() => {});
     // La caché en disco es opcional (p. ej. disco de solo lectura).
   }
 }
@@ -41,17 +50,17 @@ function remember(k: string, museum: Museum) {
 }
 
 /** LRU: un acierto vuelve a poner la entrada al final, así se expulsa lo que nadie volvió a pedir. */
-export function getCached(topic: string) {
+export async function getCached(topic: string): Promise<Museum | undefined> {
   const k = key(topic);
-  const hit = store.get(k) ?? readDisk(k);
+  const hit = store.get(k) ?? (await readDisk(k));
   if (hit) remember(k, hit);
   return hit;
 }
 
-export function setCached(topic: string, museum: Museum) {
+export async function setCached(topic: string, museum: Museum): Promise<void> {
   const k = key(topic);
   remember(k, museum);
-  writeDisk(k, museum);
+  await writeDisk(k, museum);
 }
 
 /** Temarios base de /api/digest-sources: LRU aparte para no mezclar tipos con los museos. */

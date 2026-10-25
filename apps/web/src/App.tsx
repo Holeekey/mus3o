@@ -5,6 +5,7 @@ import { dungeonDemoMuseum } from './mocks/dungeon'
 import { medicinaMuseum } from './mocks/medicina' // science-kit
 import { historiaMuseum } from './mocks/historia'
 import { compuestoMuseum } from './mocks/compuesto'
+import { attachComposedDioramas } from './diorama/compose'
 import { EXAMPLE_TEXT } from './palace/example'
 import { parsePalace } from './palace/parse'
 import { useStore } from './store'
@@ -14,13 +15,13 @@ import { DEFAULT_THEME } from './theme'
 const World = lazy(() => import('./scene/World').then((m) => ({ default: m.World })))
 
 // ?demo entra directo al palacio de ejemplo; ?demo=ia usa el museo de muestra con modelos de IA;
-// ?demo=compuesto prueba los dioramas compuestos en salas sin diorama;
+// ?demo=compuesto prueba el compositor de dioramas con conceptos (legado, solo demo);
 // ?demo=historia muestra el museo de historia con cuadros reales de Wikimedia;
 // ?demo=dungeon usa la mazmorra del sandbox adaptada a museo.
 const demo = new URLSearchParams(window.location.search).get('demo')
 if (demo === 'ia') useStore.getState().enterPalace(demoMuseum)
 else if (demo === 'historia') useStore.getState().enterPalace(historiaMuseum)
-else if (demo === 'compuesto') useStore.getState().enterPalace(compuestoMuseum) // dioramas compuestos (sin IA)
+else if (demo === 'compuesto') useStore.getState().enterPalace(attachComposedDioramas(compuestoMuseum)) // legado: dioramas compuestos (ya no es el comportamiento por defecto)
 else if (demo === 'dungeon') useStore.getState().enterPalace(dungeonDemoMuseum)
 else if (demo === 'medicina') useStore.getState().enterPalace(medicinaMuseum) // science-kit
 else if (demo !== null) {

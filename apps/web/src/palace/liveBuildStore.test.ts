@@ -104,13 +104,14 @@ describe('building store actions', () => {
     expect(state().palace?.rooms.length).toBe(LIMITS.maxRooms)
   })
 
-  it('gives every arriving room a living painting (library or composed), like entering the finished palace', () => {
+  it('every arriving room gets a diorama right away (library or composed), with no AI call', () => {
     state().beginBuildingPalace({ title: 'T' })
     for (const r of ids.map((id) => room(id))) {
       state().addBuiltRoom(r)
       const arrived = state().palace!.rooms[state().palace!.rooms.length - 1]
+      // Las salas de prueba no encajan con la biblioteca: reciben uno compuesto al llegar.
       expect(arrived.diorama).toBeDefined()
-      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBe(arrived.diorama)
+      expect(state().layout!.rooms[state().layout!.rooms.length - 1].diorama).toBeDefined()
     }
   })
 

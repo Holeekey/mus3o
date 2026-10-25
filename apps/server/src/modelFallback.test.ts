@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sampleMuseum, type DynamicAsset, type Museum } from "@mus3o/shared";
 import { fillMissingModels, parseFallbackModels } from "./modelFallback";
+import { resolveModels } from "./claude";
 
 const parts = [{ shape: "box", args: [1, 1, 1], pos: [0, 0.5, 0], rot: [0, 0, 0], color: "#aabbcc" }];
 const asset: DynamicAsset = { assetId: "a", url: "/api/assets/a.glb", title: "", author: "", license: "CC0", sourceUrl: "" };
@@ -44,5 +45,18 @@ describe("fillMissingModels", () => {
   it("descarta partes inválidas", () => {
     const out = parseFallbackModels(JSON.stringify({ a: parts, b: [{ shape: "pyramid" }], c: [] }), ["a", "b", "c", "d"]);
     expect([...out.keys()]).toEqual(["a"]);
+  });
+});
+
+describe("resolveModels", () => {
+  it("sin ANTHROPIC_API_KEY retorna el museo hidratado sin llamar al fallback", async () => {
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const out = await resolveModels(sampleMuseum);
+      expect(out).toBeDefined();
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
   });
 });

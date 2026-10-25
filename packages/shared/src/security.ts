@@ -83,7 +83,7 @@ function clamp(val: unknown, min: number, max: number, fallback: number): number
   return Math.min(Math.max(num, min), max);
 }
 
-const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
+const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 function sanitizeHexColor(hex: unknown, fallback: string = "#888888"): string {
   if (typeof hex === "string" && HEX_REGEX.test(hex.trim())) {
     return hex.trim();
@@ -207,6 +207,15 @@ export function repairAndSanitizeMuseum(museum: Museum): Museum {
       period: room.period ? sanitizeDisplayText(room.period, 40) || undefined : undefined,
       imageSearch: room.imageSearch ? sanitizeImageSearch(room.imageSearch) : undefined,
       diorama: room.diorama ? sanitizeDiorama(room.diorama) : undefined,
+      dioramaDirectives: room.dioramaDirectives
+        ? {
+            ...room.dioramaDirectives,
+            props: room.dioramaDirectives.props.map((p) => ({
+              ...p,
+              label: p.label ? sanitizeDisplayText(p.label, 40) || undefined : undefined,
+            })),
+          }
+        : undefined,
       pieces,
     };
   });

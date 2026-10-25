@@ -1,0 +1,16 @@
+{
+  "name": "mus3o",
+  "short_name": "mus3o",
+  "description": "Convierte tus apuntes en un palacio de la memoria 3D que recorres en primera persona.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#8e2a1e",
+  "theme_color": "#8e2a1e",
+  "icons": [
+    { "src": "/icon-1000.png", "sizes": "1000x1000", "type": "image/png", "purpose": "any" },
+    { "src": "/brand.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

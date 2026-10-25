@@ -1,9 +1,10 @@
 import { Billboard, Text } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Fragment, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { Atmosphere } from './atmosphere'
 import type { Diorama } from '@mus3o/shared'
+import { capTextureSize } from '../lib/capTexture'
 import { LabelPlate } from '../scene/LabelPlate'
 import { DEFAULT_THEME } from '../theme'
 import { Builder, darken, lighten, mat } from './geo'
@@ -68,6 +69,54 @@ function SkyDome({ atmo, follow }: { atmo: Atmosphere; follow: boolean }) {
     <mesh ref={ref} renderOrder={-10} frustumCulled={false}>
       <sphereGeometry args={[250, 24, 14]} />
       <shaderMaterial vertexShader={SKY_VERT} fragmentShader={SKY_FRAG} uniforms={uniforms} side={THREE.BackSide} depthWrite={false} fog={false} />
+    </mesh>
+  )
+}
+
+// --- Foto original al fondo (dioramas hechos desde una imagen real): panel curvo que rodea el horizonte ---
+const BACKDROP_R = 36 // radio (m) del panel
+const BACKDROP_H = 26 // alto (m)
+
+/** La imagen de la que sale la escena, grande y al fondo, para que el visitante reconozca lo que está recreado. */
+function Backdrop({ src }: { src: string }) {
+  const [tex, setTex] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    let dead = false
+    let loaded: THREE.Texture | null = null
+    new THREE.TextureLoader().setCrossOrigin('anonymous').load(
+      src,
+      (t) => {
+        if (dead) return t.dispose()
+        capTextureSize(t, 2048)
+        t.colorSpace = THREE.SRGBColorSpace
+        t.anisotropy = 4
+        // El panel se ve desde dentro (BackSide): el eje U queda invertido, se voltea para que la foto se lea bien.
+        t.wrapS = THREE.RepeatWrapping
+        t.repeat.x = -1
+        t.offset.x = 1
+        loaded = t
+        setTex(t)
+      },
+      undefined,
+      () => {},
+    )
+    return () => {
+      dead = true
+      loaded?.dispose()
+    }
+  }, [src])
+  const geo = useMemo(() => {
+    const img = tex?.image as { width: number; height: number } | undefined
+    const aspect = img?.width && img?.height ? img.width / img.height : 4 / 3
+    const arc = Math.min(2.4, Math.max(0.9, (BACKDROP_H * aspect) / BACKDROP_R))
+    // Centrado hacia -z, que es hacia donde se mira al entrar.
+    return new THREE.CylinderGeometry(BACKDROP_R, BACKDROP_R, BACKDROP_H, 40, 1, true, Math.PI - arc / 2, arc)
+  }, [tex])
+  useEffect(() => () => geo.dispose(), [geo])
+  if (!tex) return null
+  return (
+    <mesh geometry={geo} position={[0, BACKDROP_H / 2 - 1, 0]} frustumCulled={false}>
+      <meshBasicMaterial map={tex} side={THREE.BackSide} toneMapped={false} fog={false} />
     </mesh>
   )
 }
@@ -368,6 +417,7 @@ export function DioramaScene({ diorama, unit = 1, shadowMapSize = 2048, labels =
       />
       <group scale={unit}>
         <SkyDome atmo={atmo} follow={followSky} />
+        {diorama.backdrop && <Backdrop src={diorama.backdrop} />}
         {atmo.stars && <Stars />}
         {atmo.clouds && <Clouds atmo={atmo} clipping={clipping} />}
         <mesh geometry={model.terrain} receiveShadow>

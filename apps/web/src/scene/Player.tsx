@@ -5,16 +5,15 @@ import { Vector3 } from 'three'
 
 import { handleDioramaKey, isDioramaActive, useDioramaStore } from '../diorama/dioramaStore'
 import { allowedKeys } from '../palace/inputKeys'
-import { moveWithCollisions, roomAt, type PalaceLayout } from '../palace/layout'
+import { roomAt, type PalaceLayout } from '../palace/layout'
 import { isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
 import { examine, openAris, toggleMemorize } from './actions'
-import { consumeTouchLook, touchInput } from './touchInput'
+import { applyTouchLook } from './moveInput'
+import { touchInput } from './touchInput'
+import { EYE, stepWalk } from './walk'
 
-const EYE = 1.7
-const WALK = 4.5
-const RUN = 8
 const REACH = 3.2
 
 const onLock = () => useStore.getState().set({ locked: true })
@@ -93,13 +92,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     const s = useStore.getState()
 
     // Rotación táctil de la cámara (yaw y pitch)
-    const { dx: lookDx, dy: lookDy } = consumeTouchLook()
-    if (lookDx !== 0 || lookDy !== 0) {
-      camera.rotation.y -= lookDx
-      // Clampear pitch vertical entre -80° y +80° (-1.4 a +1.4 rad)
-      const newPitch = Math.max(-1.4, Math.min(1.4, camera.rotation.x - lookDy))
-      camera.rotation.x = newPitch
-    }
+    applyTouchLook(camera)
 
     const k = keys.current
     const f = forward.current
@@ -108,48 +101,19 @@ export function Player({ layout }: { layout: PalaceLayout }) {
     f.normalize()
 
     if (s.locked) {
-      const keyAx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      const keyAz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      const keyRunning = k.ShiftLeft || k.ShiftRight
-
-      const touchAx = touchInput.moveX
-      const touchAz = touchInput.moveZ
-      const touchRunning = touchInput.isRunning
-
-      const ax = keyAx !== 0 ? keyAx : touchAx
-      const az = keyAz !== 0 ? keyAz : touchAz
-      const isRunning = keyRunning || touchRunning
-
-      if (ax !== 0 || az !== 0) {
-        const speed = (isRunning ? RUN : WALK) * dt
-        // derecha = forward × up = (-f.z, 0, f.x)
-        let dx = f.x * az - f.z * ax
-        let dz = f.z * az + f.x * ax
-        const len = Math.hypot(dx, dz)
-        if (len > 0.001) {
-          const mag = Math.min(1, len)
-          dx = (dx / len) * speed * mag
-          dz = (dz / len) * speed * mag
-
-          // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
-          // La lista solo se rehace cuando cambian las puertas abiertas (no en cada frame que se camina).
-          const cache = colliderCache.current
-          if (cache.unlocked !== s.unlockedDoors || cache.free !== s.freeExplore || cache.layout !== layout) {
-            const doorColliders = (layout.doors ?? [])
-              .filter((d) => !isDoorOpen(s, d.id))
-              .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
-            cache.list = [...layout.colliders, ...doorColliders]
-            cache.unlocked = s.unlockedDoors
-            cache.free = s.freeExplore
-            cache.layout = layout
-          }
-          const totalColliders = cache.list
-
-          const next = moveWithCollisions(totalColliders, camera.position.x, camera.position.z, dx, dz)
-          camera.position.x = next.x
-          camera.position.z = next.z
-        }
+      // Físicas: colliders del mapa + puertas cerradas que actúan como obstáculos
+      // La lista solo se rehace cuando cambian las puertas abiertas (no en cada frame).
+      const cache = colliderCache.current
+      if (cache.unlocked !== s.unlockedDoors || cache.free !== s.freeExplore || cache.layout !== layout) {
+        const doorColliders = (layout.doors ?? [])
+          .filter((d) => !isDoorOpen(s, d.id))
+          .map((d) => ({ x: d.x, z: d.z, w: d.w, d: d.d, h: 4 }))
+        cache.list = [...layout.colliders, ...doorColliders]
+        cache.unlocked = s.unlockedDoors
+        cache.free = s.freeExplore
+        cache.layout = layout
       }
+      stepWalk(camera, f, k, dt, cache.list)
     }
 
     playerPose.x = camera.position.x
