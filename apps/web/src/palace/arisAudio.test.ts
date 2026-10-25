@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { speak as speakVoice } from '../lib/voice'
 import {
   cleanTextForSpeech,
   selectBestSpanishVoice,
@@ -6,6 +7,21 @@ import {
   defaultVoiceEngine,
   type IArisVoiceEngine,
 } from './arisAudio'
+
+vi.mock('../lib/voice', () => ({ speak: vi.fn(), stopSpeaking: vi.fn() }))
+
+describe('defaultVoiceEngine', () => {
+  it('limpia el texto y aplica el pitch/rate de Aris antes de delegar en lib/voice', () => {
+    defaultVoiceEngine.speak('Aris: **Hola** viajero https://mus3o.app')
+    expect(speakVoice).toHaveBeenCalledWith('Hola viajero', { lang: undefined, pitch: 1.25, rate: 1.05 })
+  })
+
+  it('no habla si el texto queda vacío tras limpiarlo', () => {
+    vi.mocked(speakVoice).mockClear()
+    defaultVoiceEngine.speak('Aris: ')
+    expect(speakVoice).not.toHaveBeenCalled()
+  })
+})
 
 describe('cleanTextForSpeech', () => {
   it('removes Aris: prefix', () => {

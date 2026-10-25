@@ -8,6 +8,9 @@
 
 import { speak as speakVoice, stopSpeaking } from '../lib/voice'
 
+const ARIS_PITCH = 1.25 // Ligeramente agudo para carácter amigable
+const ARIS_RATE = 1.05
+
 export interface VoiceOptions {
   pitch?: number
   rate?: number
@@ -134,8 +137,8 @@ export class WebSpeechVoiceEngine implements IArisVoiceEngine {
 
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.lang = options?.lang || 'es-ES'
-      utterance.pitch = options?.pitch ?? 1.25 // Ligeramente agudo para carácter amigable
-      utterance.rate = options?.rate ?? 1.05
+      utterance.pitch = options?.pitch ?? ARIS_PITCH
+      utterance.rate = options?.rate ?? ARIS_RATE
 
       const voices = window.speechSynthesis.getVoices()
       const chosenVoice = selectBestSpanishVoice(voices)
@@ -161,7 +164,11 @@ export class WebSpeechVoiceEngine implements IArisVoiceEngine {
 
 // Instancia por defecto: ElevenLabs con fallback al navegador (lógica en lib/voice).
 export const defaultVoiceEngine: IArisVoiceEngine = {
-  speak: (text, options) => speakVoice(text, { lang: options?.lang, pitch: options?.pitch, rate: options?.rate }),
+  speak: (text, options) => {
+    const clean = cleanTextForSpeech(text)
+    if (!clean) return
+    speakVoice(clean, { lang: options?.lang, pitch: options?.pitch ?? ARIS_PITCH, rate: options?.rate ?? ARIS_RATE })
+  },
   cancel: stopSpeaking,
 }
 
