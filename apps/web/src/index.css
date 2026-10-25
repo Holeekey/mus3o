@@ -828,6 +828,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .narrator[aria-pressed='true'] { background: var(--accent); }
 /* Apagado no ocupa lugar en escritorio: solo se ve un momento al cambiarlo con N. */
 :root:not([data-touch]) .narrator[aria-pressed='false']:not(.is-flash) { display: none; }
+/* En pausa el narrador no sirve y, en táctil (z-index alto por el joystick), taparía el panel. */
+.hud:has(> .pause) .narrator { display: none; }
 
 .listen { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .listen-label { font-weight: 600; font-size: 0.95rem; }
