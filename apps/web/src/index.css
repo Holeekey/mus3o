@@ -184,6 +184,58 @@ kbd {
 }
 .site-link:hover, .site-link:focus-visible { background: var(--bg); color: var(--surface); border-color: var(--bg); }
 .site-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* Botón hamburguesa: solo en móvil. Tres rayas (la del medio es el span, las otras sus pseudo-elementos) que se vuelven una X. */
+.site-menu-btn { display: none; }
+@media (max-width: 720px) {
+  .site-menu-btn {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .site-menu-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .site-menu-btn span,
+  .site-menu-btn span::before,
+  .site-menu-btn span::after {
+    display: block;
+    width: 22px;
+    height: 2.5px;
+    border-radius: 2px;
+    background: var(--bg);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .site-menu-btn span { position: relative; }
+  .site-menu-btn span::before,
+  .site-menu-btn span::after { content: ''; position: absolute; left: 0; }
+  .site-menu-btn span::before { top: -7px; }
+  .site-menu-btn span::after { top: 7px; }
+  .site-header[data-open='true'] .site-menu-btn span { background: transparent; }
+  .site-header[data-open='true'] .site-menu-btn span::before { transform: translateY(7px) rotate(45deg); }
+  .site-header[data-open='true'] .site-menu-btn span::after { transform: translateY(-7px) rotate(-45deg); }
+  /* El menú cae bajo el header, a todo el ancho, con los enlaces apilados. */
+  .site-header nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px clamp(16px, 5vw, 72px) 16px;
+    background: var(--surface);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  .site-header[data-open='true'] nav { display: flex; }
+  .site-header nav .site-link { padding: 12px 16px; font-size: 1.05rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-menu-btn span, .site-menu-btn span::before, .site-menu-btn span::after { transition: none; }
+}
 html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 
 /* Toda la landing (y la página del equipo) va en Public Sans, aunque un tema traiga otra fuente. */
