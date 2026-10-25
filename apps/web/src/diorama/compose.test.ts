@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_PROPS, parseDiorama, type Museum, type Room } from '@mus3o/shared'
-import { attachComposedDioramas, classifyRoom, composeDiorama, ENTRY_Z, MAX_LINKED, MIN_LINK_SPACING, type Archetype, flagsFor } from './compose'
+import { DioramaDirectivesSchema, MAX_PROPS, parseDiorama, type Museum, type Room } from '@mus3o/shared'
+import { attachComposedDioramas, attachDirectedDioramas, classifyRoom, composeDiorama, ENTRY_Z, MAX_LINKED, MIN_LINK_SPACING, type Archetype, flagsFor } from './compose'
 import { historiaMuseum } from '../mocks/historia'
 import { medicinaMuseum } from '../mocks/medicina'
 import { attachLibraryDioramas } from './library'
@@ -181,5 +181,55 @@ describe('flagsFor', () => {
     const f = flagsFor('Guerras médicas Maratón', '#8e2a1e')
     expect(f.a).toMatchObject({ pattern: 'vertical', color: '#8e2a1e', secondary: '#8e2a1e' })
     expect(f.a.color).not.toBe('#f2c200')
+  })
+})
+
+describe('composeDiorama con directivas de la IA', () => {
+  const r = room('Batalla de Carabobo', ['Bolívar', 'Páez', 'Estandartes'])
+  const directives = DioramaDirectivesSchema.parse({
+    archetype: 'battle',
+    time: 'night',
+    props: [
+      { zone: 'center', kind: 'figure', pose: 'pointing', piece: 1, label: 'Bolívar' },
+      { zone: 'front', kind: 'rider', pose: 'charging', count: 6, piece: 2 },
+      { zone: 'background', kind: 'flag', count: 2, pattern: 'saltire', color: '#ffffff', secondary: '#a8322d' },
+      { zone: 'left', kind: 'tree', count: 4 },
+    ],
+  })
+
+  it('respeta hora y tipos pedidos y es válido y determinista', () => {
+    const a = composeDiorama(r, 'Museo', 1, undefined, directives)
+    const b = composeDiorama(structuredClone(r), 'Museo', 1, undefined, directives)
+    expect(a).toEqual(b)
+    expect(a.time).toBe('night')
+    expect(a.props.length).toBeLessThanOrEqual(MAX_PROPS)
+    const linked = linkedOf(a)
+    expect(linked.find((p) => p.pieceId === r.pieces[0].id)?.kind).toBe('figure')
+    const second = linked.find((p) => p.pieceId === r.pieces[1].id)
+    expect(second?.kind).toBe('rider')
+    expect(second?.count).toBe(6)
+  })
+
+  it('un prop sin pieza se coloca por zona, sin pisar la entrada, y conserva patrón y colores', () => {
+    const d = composeDiorama(r, 'Museo', 1, undefined, directives)
+    const flag = d.props.find((p) => p.kind === 'flag' && p.pattern === 'saltire' && !p.pieceId)
+    expect(flag).toBeDefined()
+    expect(flag!.color).toBe('#ffffff')
+    for (const p of d.props) expect(p.pos[1]).toBeLessThanOrEqual(ENTRY_Z)
+  })
+
+  it('cada pieza de la sala sigue teniendo su prop enlazado', () => {
+    const d = composeDiorama(r, 'Museo', 1, undefined, directives)
+    expect(linkedOf(d).map((p) => p.pieceId).sort()).toEqual(r.pieces.map((p) => p.id).sort())
+  })
+
+  it('attachDirectedDioramas compone solo las salas con directivas y respeta las que ya tienen diorama', () => {
+    const plain = room('Otra sala', ['A'])
+    const withDiorama = { ...room('Hecha', ['B']), diorama: composeDiorama(room('Hecha', ['B']), 'M', 1), dioramaDirectives: directives }
+    const museum = { title: 'M', rooms: [{ ...r, dioramaDirectives: directives }, plain, withDiorama] } as unknown as Museum
+    const out = attachDirectedDioramas(museum)
+    expect(out.rooms[0].diorama?.time).toBe('night')
+    expect(out.rooms[1].diorama).toBeUndefined()
+    expect(out.rooms[2].diorama).toBe(withDiorama.diorama)
   })
 })

@@ -241,6 +241,8 @@ Formato (cada línea empieza por su etiqueta):
 TITLE: <título del mus3o, máx. 80 car.>
 ROOM: <id-slug> | <título> | <theme: cyberpunk|ancient|organic|void|cathedral> | <primaryHex> | <fogHex> | <monumento: torus|dodecahedron|ring_system|crystal> | <requires: ids de salas anteriores separados por coma, o vacío> | <diorama: "diorama" solo si la sala es un evento histórico, lugar, paisaje, ecosistema u organismo representable como maqueta 3D (máx. 2 salas por museo); si no, vacío> | <related: ids de otras salas relacionadas separados por coma, o vacío>
 PIECE: <concepto> | <glifo: cpu|shield|database|torus|box|crystal|sphere|cone> | <mnemonicCue> | <searchKeyword> | <explicación>
+DIO: <arquetipo: battle|assembly|naval|sacred|nature|city> | <hora: day|sunset|night|storm> | <terreno opcional: plain|hills|mountains|coast|river|forest|city|desert>   (solo bajo una sala con diorama histórico o geográfico)
+D_PROP: <zona: center|front|left|right|flanks|background|path> | <kind> | <pose: standing|pointing|charging|fallen|seated|raising-arm|-> | <cantidad 1-30> | <número de pieza de esa sala o -> | <rótulo breve> [| <color #hex> [| <secundario #hex> [| <patrón: saltire|vertical|stripes>]]]   (3 a 6 por DIO)
 PERIOD: <período>   (solo modo biography, tras cada ROOM)
 QUIZ: <pregunta> | <opción> | <opción> | ... | <índice>   (solo modo quiz, tras cada PIECE)
 IMAGE: <id de imagen>   (opcional, tras una PIECE, solo si el pedido adjunta imágenes)
@@ -252,6 +254,8 @@ Campos de PIECE:
 - <explicación>: UNA frase (máx. 160 car.) con la idea esencial.
 Ningún campo puede contener el carácter "|".
 Dioramas: si el tema trata de historia, geografía, naturaleza, biología o medicina, marca con "diorama" 1 o 2 salas (las más visuales); solo en temas totalmente abstractos puedes no marcar ninguna.
+- Sala de historia, geografía o naturaleza con diorama: tras sus PIECE añade una línea DIO y 3 a 6 líneas D_PROP. NO escribas coordenadas: elige zona y tipo; el cliente coloca los props. <kind>: figure|rider|horse|flag|cannon|tree|rock|tent|house|church|ship|column|arch|campfire. Personas y animales siempre como figure, rider o horse. Enlaza con el número de la PIECE (1, 2, ...) a los personajes o elementos clave (máx. 5). Usa <cantidad> para multitudes (tropas, árboles) en vez de repetir líneas.
+- Sala de biología, medicina o anatomía: marca "diorama" pero NO escribas DIO ni D_PROP (el diorama científico se pide aparte).
 
 Ejemplo (modo education: rama paralela, convergencia y atajo):
 TITLE: La computadora

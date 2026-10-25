@@ -13,6 +13,9 @@ import {
   SearchKeywordSchema,
   MAX_EDGES,
   MuseumSchema,
+  DioramaDirectivesSchema,
+  DioramaDirectivePropSchema,
+  MAX_DIRECTIVE_PROPS,
 } from "./schema";
 
 const VALID_THEMES: Record<string, RoomTheme> = {
@@ -57,7 +60,7 @@ const GLYPH_MAP: Record<string, Glyph> = {
   pointer: "cone",
 };
 
-const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE)\**\s*:\s*\**/i;
+const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE|DIO|D_PROP)\**\s*:\s*\**/i;
 
 const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -148,7 +151,7 @@ function buildGraph(rooms: Array<Room & { requires?: string[]; related?: string[
 /** Sala tal como la lee el parser: `requires` y `related` (ids de otras salas) solo sirven para armar el grafo. */
 export type DslRoom = Room & { requires: string[]; related?: string[] };
 
-export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE";
+export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE" | "DIO" | "D_PROP";
 
 /** Clasifica una línea del DSL (tolerante a viñetas, negritas y mayúsculas); `body` ya lleva las barras normalizadas. */
 export function classifyDslLine(trimmed: string): { kind?: DslLineKind; body: string } {
@@ -223,6 +226,11 @@ class DslAccumulator {
         this.usedImages.add(id);
         this.lastPiece.image = { imageId: id };
       }
+      return;
+    }
+
+    if (kind === "DIO" || kind === "D_PROP") {
+      this.feedDirective(kind, body);
       return;
     }
 
@@ -343,6 +351,47 @@ class DslAccumulator {
       this.current.pieces.push(piece);
       this.lastPiece = piece;
     }
+  }
+
+  /**
+   * Micro-DSL del diorama, bajo su sala:
+   *   DIO: <arquetipo> | <hora> [| <terreno>]
+   *   D_PROP: <zona> | <kind> | <pose> | <cantidad> | <pieza> | <rótulo> [| <color> [| <secundario> [| <patrón>]]]
+   * Las coordenadas las pone el cliente. Una línea inválida se descarta sin afectar a la sala. Solo las
+   * 2 primeras salas con directivas cuentan (igual que el tope de salas con "diorama").
+   */
+  private feedDirective(kind: "DIO" | "D_PROP", body: string): void {
+    const room = this.current;
+    if (!room || this.skippingRoom) return;
+    if (!room.dioramaDirectives && this.rooms.filter((r) => r.dioramaDirectives).length >= 2) return;
+    const f = body.split("|").map((x) => x.trim());
+    const value = (v: string | undefined) => (v && v !== "-" ? v.toLowerCase() : undefined);
+    const current = room.dioramaDirectives ?? { props: [] };
+    if (kind === "DIO") {
+      room.dioramaDirectives = DioramaDirectivesSchema.parse({
+        ...current,
+        archetype: value(f[0]),
+        time: value(f[1]),
+        terrain: value(f[2]),
+      });
+      return;
+    }
+    if (current.props.length >= MAX_DIRECTIVE_PROPS) return;
+    const piece = /(\d+)\s*$/.exec(f[4] ?? "");
+    const count = Number(f[3]);
+    const prop = DioramaDirectivePropSchema.safeParse({
+      zone: value(f[0]),
+      kind: value(f[1]),
+      pose: value(f[2]),
+      count: Number.isFinite(count) && f[3] !== "" ? count : 1,
+      piece: piece ? Number(piece[1]) : undefined,
+      label: f[5] ? f[5].slice(0, 40) : undefined,
+      color: value(f[6]),
+      secondary: value(f[7]),
+      pattern: value(f[8]),
+    });
+    if (!prop.success) return;
+    room.dioramaDirectives = DioramaDirectivesSchema.parse({ ...current, props: [...current.props, prop.data] });
   }
 
   /** Rellenos, grafo y validación final. */

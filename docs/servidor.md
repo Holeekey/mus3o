@@ -229,7 +229,8 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | Llamada aparte **solo** para las salas que la IA marcó con `diorama` (8.º campo de `ROOM`, máx. 2); sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal) |
+| Dioramas históricos/geográficos/naturales | La IA los pide en la **misma llamada** con líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente los compone con `compose.ts`. Ver [diorama.md](./diorama.md) §4 |
+| Dioramas científicos (biología, medicina) | Llamada aparte **solo** para las salas marcadas con `diorama` (8.º campo de `ROOM`, máx. 2) **sin** directivas; sin marcas no hay llamada. Modelo: `ANTHROPIC_DIORAMA_MODEL` (por defecto el principal). `completeMuseum` excluye las salas con `dioramaDirectives` |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`

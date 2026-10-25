@@ -207,6 +207,15 @@ export function repairAndSanitizeMuseum(museum: Museum): Museum {
       period: room.period ? sanitizeDisplayText(room.period, 40) || undefined : undefined,
       imageSearch: room.imageSearch ? sanitizeImageSearch(room.imageSearch) : undefined,
       diorama: room.diorama ? sanitizeDiorama(room.diorama) : undefined,
+      dioramaDirectives: room.dioramaDirectives
+        ? {
+            ...room.dioramaDirectives,
+            props: room.dioramaDirectives.props.map((p) => ({
+              ...p,
+              label: p.label ? sanitizeDisplayText(p.label, 40) || undefined : undefined,
+            })),
+          }
+        : undefined,
       pieces,
     };
   });

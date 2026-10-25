@@ -1,5 +1,5 @@
 import type { Museum, Room } from '@mus3o/shared'
-import { attachComposedDioramas } from '../diorama/compose'
+import { attachComposedDioramas, attachDirectedDioramas } from '../diorama/compose'
 import { attachLibraryDioramas } from '../diorama/library'
 import { DEFAULT_THEME, roomPalettes } from '../theme'
 
@@ -13,13 +13,19 @@ import { DEFAULT_THEME, roomPalettes } from '../theme'
  */
 export function attachDioramasToArrivingRoom(existing: Room[], room: Room, title = ''): Room {
   const partial = { title, rooms: [...existing, room] } as Museum
-  const withDioramas = completeDioramas(attachLibraryDioramas(partial))
+  const withDioramas = completeDioramas(attachLibraryDioramas(attachDirected(partial)))
   return withDioramas.rooms[withDioramas.rooms.length - 1]
 }
 
 /** Lo mismo para el museo final: completa las salas que aún no tengan diorama sin tocar las que ya lo tienen. */
 export function attachDioramasToFinalMuseum(museum: Museum): Museum {
-  return completeDioramas(attachLibraryDioramas(museum))
+  return completeDioramas(attachLibraryDioramas(attachDirected(museum)))
+}
+
+/** Las salas que la IA pidió con directivas (DIO / D_PROP) se componen con ellas, antes que la biblioteca. */
+export function attachDirected(museum: Museum): Museum {
+  const pigments = roomPalettes(DEFAULT_THEME, museum.rooms.map((r) => r.name))
+  return attachDirectedDioramas(museum, (i) => pigments[i])
 }
 
 /** Las salas sin diorama reciben uno compuesto con el pigmento de su fresco (los que ya tienen no cambian). */

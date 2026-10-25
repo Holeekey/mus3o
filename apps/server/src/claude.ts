@@ -316,7 +316,9 @@ export const flowStreamable = () => flowFormat() === "dsl";
  * las salas marcadas. Lo usan tanto la generación completa como el final del streaming.
  */
 export async function completeMuseum(enriched: Museum, dioramaRooms: string[] = []): Promise<Museum> {
-  const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms)]);
+  // Las salas con directivas (DIO / D_PROP) las hidrata el cliente: solo el resto va por la llamada de JSON.
+  const directed = new Set(enriched.rooms.filter((r) => r.dioramaDirectives).map((r) => r.id));
+  const [withModels, withDioramas] = await Promise.all([resolveModels(enriched), addDioramas(enriched, dioramaRooms.filter((id) => !directed.has(id)))]);
   // Cada tarea devuelve el museo completo: se combinan por sala/pieza.
   const dioramaByRoom = new Map(withDioramas.rooms.map((r) => [r.id, r.diorama]));
   return { ...withModels, rooms: withModels.rooms.map((r) => (dioramaByRoom.get(r.id) ? { ...r, diorama: dioramaByRoom.get(r.id) } : r)) };

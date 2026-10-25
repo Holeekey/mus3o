@@ -3,7 +3,7 @@
 **Proyecto:** mus3o — Palacios de la Memoria 3D  
 **Rama:** `feature/diorama-semantic-dsl`  
 **Fecha:** 24 de Octubre, 2026 (revisado tras análisis de viabilidad)  
-**Estado:** Documento de diseño. Nada implementado todavía.
+**Estado:** Fases 1 a 3 implementadas (parser, hidratación en el cliente, prompt y servidor), sin zonas avanzadas (Fase 4) y con la medición real pendiente (Fase 0). La línea base de `docs/servidor.md` (3 365 tokens, 27 s, 1 diorama) es una medición real de la arquitectura anterior. Los dioramas con Haiku se descartaron allí con el JSON; con micro-DSL habría que repetir la prueba antes de usarlo en Aris.
 
 > **Sobre las cifras.** Los conteos de tokens de este documento son **estimaciones por inspección de código, no
 > mediciones**. Los costos usan los precios vigentes de los modelos que el código realmente usa (sección 4). Antes
@@ -160,18 +160,18 @@ Orden revisado: primero la fusión con hidratación mínima, que entrega casi to
 - [ ] Reemplazar las estimaciones de la sección 4 por esos números.
 
 ### Fase 1: Parser (`@mus3o/shared`)
-- [ ] Reconocer `DIO:` y `D_PROP:` en `packages/shared/src/dsl.ts` y acumularlas en la sala (vale para el parser de una pasada y el incremental).
-- [ ] Líneas inválidas: se descartan sin afectar la sala.
-- [ ] Pruebas en `packages/shared/src/dsl.test.ts`, incluida una entrada por el parser incremental.
+- [x] Reconocer `DIO:` y `D_PROP:` en `packages/shared/src/dsl.ts` y acumularlas en la sala (vale para el parser de una pasada y el incremental).
+- [x] Líneas inválidas: se descartan sin afectar la sala.
+- [x] Pruebas en `packages/shared/src/dsl.test.ts`, incluida una entrada por el parser incremental.
 
 ### Fase 2: Hidratación en el cliente (`apps/web`)
-- [ ] `hydrateDioramaFromDirectives` en `compose.ts`, primero con `arcSlots` y `ambientFor`, sin zonas.
-- [ ] Conectarla en `store.ts` antes de `attachComposedDioramas`.
-- [ ] Pruebas en `apps/web/src/diorama/compose.test.ts`: resultado válido según `DioramaSchema`, props enlazados con `pieceId` existente, sin solapes (`MIN_LINK_SPACING`).
+- [x] Hidratación en `compose.ts` (`composeDiorama` con directivas + `attachDirectedDioramas`, en lugar de `hydrateDioramaFromDirectives`), primero con `arcSlots` y `ambientFor`, sin zonas.
+- [x] Conectarla en `store.ts` antes de `attachComposedDioramas`.
+- [x] Pruebas en `apps/web/src/diorama/compose.test.ts`: resultado válido según `DioramaSchema`, props enlazados con `pieceId` existente, sin solapes (`MIN_LINK_SPACING`).
 
 ### Fase 3: Prompts y servidor (`apps/server`)
-- [ ] Especificación del micro-DSL en `FLOW_DSL_SYSTEM_PROMPT` (`prompts.ts`).
-- [ ] Limitar `addDioramas` a salas científicas/respaldo, en `claude.ts:302` y `stream.ts:119`.
+- [x] Especificación del micro-DSL en `FLOW_DSL_SYSTEM_PROMPT` (`prompts.ts`).
+- [x] Limitar `addDioramas` a salas científicas/respaldo, en `claude.ts:302` y `stream.ts:119`.
 - [ ] Revisar `maxTokens` de la llamada principal.
 - [ ] `npm run test -w @mus3o/server`.
 

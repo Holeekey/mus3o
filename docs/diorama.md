@@ -130,6 +130,21 @@ pieza. Máximo 5 enlaces recomendados en el prompt.
 - `pos` en metros dentro de ±14. Deja libre `z > 6`: ahí entra la vista.
 - Máximo 5 enlaces `pieceId` a piezas de **esa misma sala**.
 
+### Micro-DSL (`DIO` / `D_PROP`)
+
+En el flujo DSL la IA no escribe coordenadas: bajo la sala emite
+
+```text
+DIO: <arquetipo> | <hora> [| <terreno>]
+D_PROP: <zona> | <kind> | <pose|-> | <cantidad> | <pieza|-> | <rótulo> [| <color> [| <secundario> [| <patrón>]]]
+```
+
+- **Parser** (`packages/shared/src/dsl.ts`, `feedDirective`): guarda `room.dioramaDirectives` (`DioramaDirectivesSchema`). Una línea inválida se
+  descarta sin afectar a la sala; máx. 2 salas con directivas y 8 props por sala. La pieza se indica por número (1..N), no por id, porque el saneado puede cambiar ids.
+- **Cliente** (`compose.ts`): `composeDiorama(room, title, seed, pigment, directives)` usa el arquetipo/hora/terreno pedidos, reemplaza el tipo del prop de cada
+  pieza enlazada y coloca los demás por zona (`zoneAnchor`). `attachDirectedDioramas` va **antes** de la biblioteca (`liveDioramas.ts`, `enterPalace`).
+- **Ciencia**: los terrenos `organic`/`cellular`/`vessel` y sus kinds no están en el micro-DSL; esas salas siguen por el JSON de `DIORAMA_RULES` (llamada aparte).
+
 ## 5. Cómo probarlo
 
 - Demo rápida: `?demo=historia` (tiene dioramas) o el palacio con una sala que tenga `diorama`.

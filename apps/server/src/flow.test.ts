@@ -1,10 +1,10 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GenerateMuseumRequestSchema, sampleMuseum, type GenerateMuseumRequest } from "@mus3o/shared";
 import { app } from "./app";
-import { addDioramas, buildFlowContent, parseFlowDsl, parseFlowMuseum } from "./claude";
-import { FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
+import { addDioramas, buildFlowContent, completeMuseum, enrichMuseum, parseFlowDsl, parseFlowMuseum } from "./claude";
+import { FLOW_DSL_SYSTEM_PROMPT, FLOW_STATIC_RULES, flowDslPrompt, flowMaxTokens, roomPlan, flowPrompt, SYSTEM_PROMPT, SYSTEM_PROMPT_LIGHT, userPrompt } from "./prompts";
 
 const request = (overrides: Partial<GenerateMuseumRequest> = {}): GenerateMuseumRequest =>
   GenerateMuseumRequestSchema.parse({ prompt: "Bases de datos", ...overrides });
@@ -236,6 +236,46 @@ PIECE: Senado | box | cue | column | Órgano de gobierno`;
   it("sin salas marcadas no se hace llamada de dioramas", async () => {
     const m = parseFlowDsl(dsl, request({ mode: "exploration", images: [image] }));
     expect(await addDioramas(m, [])).toBe(m);
+  });
+});
+
+describe("micro-DSL de dioramas en el flujo", () => {
+  const dsl = `TITLE: Venezuela
+ROOM: a | Carabobo | ancient | #112233 | #000000 | torus | | diorama |
+PIECE: Bolívar | box | cue | horse | Libertador
+DIO: battle | sunset
+D_PROP: center | figure | pointing | 1 | p1 | Bolívar
+D_PROP: front | rider | charging | 6 | - | Carga
+ROOM: b | La célula | organic | #112233 | #000000 | torus | a | diorama |
+PIECE: Núcleo | sphere | cue | nucleus | Guarda el ADN`;
+
+  it("el prompt del sistema pide DIO / D_PROP sin coordenadas y deja la ciencia al JSON", () => {
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("DIO:");
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("D_PROP:");
+    expect(FLOW_DSL_SYSTEM_PROMPT).toContain("NO escribas coordenadas");
+    expect(FLOW_DSL_SYSTEM_PROMPT).not.toContain('"pos"');
+  });
+
+  it("parseFlowDsl conserva las directivas de la sala y las marca como sala con diorama", () => {
+    let marked: string[] = [];
+    const m = parseFlowDsl(dsl, request({ mode: "exploration" }), (ids) => (marked = ids));
+    expect(m.rooms[0].dioramaDirectives?.props.map((p) => p.kind)).toEqual(["figure", "rider"]);
+    expect(m.rooms[1].dioramaDirectives).toBeUndefined();
+    expect(marked).toEqual(["a", "b"]);
+  });
+
+  it("completeMuseum no pide por JSON el diorama de una sala con directivas", async () => {
+    const m = enrichMuseum(parseFlowDsl(dsl, request({ mode: "exploration" })), "Venezuela");
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await completeMuseum(m, ["a"]);
+      // Si hubiera intentado la llamada de dioramas, habría registrado "dioramas fallaron" (sin API key).
+      expect(err.mock.calls.some((c) => String(c[0]).includes("dioramas fallaron"))).toBe(false);
+      expect(out.rooms[0].diorama).toBeUndefined();
+      expect(out.rooms[0].dioramaDirectives).toBeDefined();
+    } finally {
+      err.mockRestore();
+    }
   });
 });
 

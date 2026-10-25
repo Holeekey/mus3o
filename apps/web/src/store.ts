@@ -7,7 +7,7 @@ import { askArisHelp } from './lib/api'
 import { countSources, edgesAtArrival, LIMITS, MuseumSchema, type GraphEdge, type Museum, type Room } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
 import { attachComposedDioramas } from './diorama/compose'
-import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum } from './palace/liveDioramas'
+import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum, attachDirected } from './palace/liveDioramas'
 import { sourceSummary } from './palace/sourceSummary'
 import { cancelBuildSession } from './build/session'
 import { DEFAULT_THEME, roomPalettes } from './theme'
@@ -165,7 +165,7 @@ export const useStore = create<State>()(
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
         // Los museos generados por IA no traen dioramas: se recuperan de la biblioteca si encajan.
         // Las salas que aún no tienen diorama reciben uno compuesto (sin IA) con el pigmento de su fresco.
-        const library = attachLibraryDioramas(rawPalace)
+        const library = attachLibraryDioramas(attachDirected(rawPalace))
         const pigments = roomPalettes(DEFAULT_THEME, library.rooms.map((r) => r.name))
         const palace = attachComposedDioramas(library, (i) => pigments[i])
         set({
