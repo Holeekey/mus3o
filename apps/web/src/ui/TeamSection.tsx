@@ -48,7 +48,7 @@ export function TeamPage() {
           {/* TODO(equipo): contar la historia del hackathon. */}
           <span className="inline-logo" role="img" aria-label="mus3o" /> nació en Platanus Hack 26 Caracas.
           <br />
-          Nosotros escogimos el reto <i>"Three-Dimensional"</i>, después de una lluvia de ideas, surgió nuestro proyecto: convertir apuntes en un palacio de la memoria que se
+          Nosotros escogimos el reto <i>"Three-Dimensional"</i>, después de una lluvia de ideas, surgió nuestro proyecto: convertir apuntes en un museo de la memoria que se
           recorre en primera persona.
         </p>
         {/* Galería vertical: la persona en el centro de la pantalla va a color, el resto en blanco y negro. */}

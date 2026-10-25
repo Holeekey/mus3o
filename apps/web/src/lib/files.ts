@@ -20,6 +20,7 @@ const EXTENSIONS: Record<string, FileKind> = {
   md: 'md',
   markdown: 'md',
   json: 'json',
+  pdf: 'pdf',
   png: 'image',
   jpg: 'image',
   jpeg: 'image',
@@ -141,14 +142,44 @@ async function extractXlsx(file: File): Promise<string> {
   return parts.filter(Boolean).join('\n')
 }
 
-/** Lee un archivo de texto (docx, xlsx, csv, txt, md, json) y devuelve su texto ya compactado. */
+// Tope de páginas: un libro entero tarda y el texto igual se resume antes de generar.
+const MAX_PDF_PAGES = 60
+
+type PdfTextItem = { str?: string; hasEOL?: boolean }
+
+/** Texto de una página de PDF: pdf.js lo entrega en trozos y marca dónde termina cada renglón. */
+export function pdfPageText(items: PdfTextItem[]): string {
+  return items.map((item) => (item.str ?? '') + (item.hasEOL ? '\n' : '')).join('')
+}
+
+async function extractPdf(file: File): Promise<string> {
+  // pdf.js pesa: se carga solo cuando alguien sube un PDF. El build "legacy" corre en Node (tests) y en móviles viejos.
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default
+  }
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+  try {
+    const pages: string[] = []
+    for (let n = 1; n <= Math.min(doc.numPages, MAX_PDF_PAGES); n++) {
+      const content = await (await doc.getPage(n)).getTextContent()
+      pages.push(pdfPageText(content.items as PdfTextItem[]))
+    }
+    return pages.join('\n')
+  } finally {
+    await doc.destroy()
+  }
+}
+
+/** Lee un archivo de texto (pdf, docx, xlsx, csv, txt, md, json) y devuelve su texto ya compactado. */
 export async function readTextAttachment(file: File): Promise<Source> {
   const kind = fileKindOf(file.name)
   if (kind === 'image') throw new UnsupportedFileError(`"${file.name}" es una imagen, no un texto.`)
 
   let text: string
   try {
-    if (kind === 'docx') text = compactText(await extractDocx(file))
+    if (kind === 'pdf') text = compactText(await extractPdf(file))
+    else if (kind === 'docx') text = compactText(await extractDocx(file))
     else if (kind === 'xlsx') text = await extractXlsx(file)
     else if (kind === 'csv') text = compactTable(parseCsv(await file.text()))
     else if (kind === 'json') text = compactJson(JSON.parse(await file.text()))
@@ -157,6 +188,9 @@ export async function readTextAttachment(file: File): Promise<Source> {
     if (err instanceof UnsupportedFileError) throw err
     if (kind === 'json') throw new UnsupportedFileError(`"${file.name}" no es un JSON válido.`)
     throw new UnsupportedFileError(`No pudimos leer "${file.name}". ¿Está dañado o protegido?`)
+  }
+  if (!text && kind === 'pdf') {
+    throw new UnsupportedFileError(`"${file.name}" no tiene texto seleccionable (¿es un escaneo?). Copia el texto en un .txt o súbelo como imagen.`)
   }
   if (!text) throw new UnsupportedFileError(`"${file.name}" está vacío.`)
   return { name: file.name.slice(0, 120), kind, text }

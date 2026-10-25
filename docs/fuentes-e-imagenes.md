@@ -81,6 +81,7 @@ ImageSearch = { wikiTitle?, commonsQuery?, lang? }
 
 - Concurrencia máxima de **3** llamadas a Wikimedia.
 - Clasificación `kind`: `painting`, `diagram` o `photo`.
+- **Relevancia** (`images.ts`): un resultado de la búsqueda de Wikipedia se acepta solo si nombra todas las palabras de la pieza ("Páez" → "José Antonio Páez") o si más de la mitad de su título es del tema; una palabra suelta no basta ("Liberación de Venezuela" ya no da "Operación Liberación del Pueblo"). En la búsqueda libre de Commons (título + contexto) el nombre del archivo debe compartir una palabra con la pieza. Solo se usan JPEG, PNG, WebP, GIF y SVG: DjVu y TIFF suelen ser escaneos de libros. Preferimos un cuadro sin foto a una foto ajena.
 - Caché de resoluciones (500, incluye "sin imagen") y de archivos (LRU 60 entradas / 40 MB).
 - Errores transitorios (límite de tasa, 5xx, timeout) no se cachean como "sin imagen". Responden 502.
 

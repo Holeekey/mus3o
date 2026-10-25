@@ -207,13 +207,15 @@ export async function hydrateMuseumAssets(
   museum: Museum,
   find: Finder = findCandidates,
   download: Downloader = downloadFirst,
+  /** Piezas que ya resolvió la biblioteca propia: tiene prioridad sobre Poly Pizza. */
+  skip: ReadonlySet<string> = new Set(),
 ): Promise<Museum> {
   if (!polyEnabled() && find === findCandidates) return museum;
   if (polyBlocked()) return museum;
   const targets: Piece[] = [];
   for (const room of museum.rooms) {
     for (const piece of room.pieces) {
-      if (piece.searchKeyword && targets.length < MAX_HYDRATED) targets.push(piece);
+      if (piece.searchKeyword && !skip.has(piece.id) && targets.length < MAX_HYDRATED) targets.push(piece);
     }
   }
   if (targets.length === 0) return museum;

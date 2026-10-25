@@ -45,7 +45,7 @@ function matchesAny(tokens: string[], targets: string[], maxDist = 1): boolean {
 }
 
 
-const STOPWORDS = new Set(['sobre', 'para', 'como', 'cómo', 'esta', 'este', 'esto', 'esos', 'esas', 'cual', 'cuál', 'quien', 'quién', 'donde', 'dónde', 'tiene', 'significa', 'dime', 'cuentame', 'cuéntame', 'explicame', 'explícame', 'habla', 'palacio', 'sala', 'concepto', 'pieza', 'pedestal', 'pedestales', 'del', 'los', 'las', 'una', 'que', 'qué', 'por', 'con', 'son', 'fue'])
+const STOPWORDS = new Set(['sobre', 'para', 'como', 'cómo', 'esta', 'este', 'esto', 'esos', 'esas', 'cual', 'cuál', 'quien', 'quién', 'donde', 'dónde', 'tiene', 'significa', 'dime', 'cuentame', 'cuéntame', 'explicame', 'explícame', 'habla', 'palacio', 'museo', 'sala', 'concepto', 'pieza', 'pedestal', 'pedestales', 'del', 'los', 'las', 'una', 'que', 'qué', 'por', 'con', 'son', 'fue'])
 
 const normalize = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
@@ -93,7 +93,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   const { palace, currentRoomId, memorized, hasKey, unlockedDoors, mode } = ctx
 
   if (!palace || palace.rooms.length === 0) {
-    return { text: 'Aris: Aún estamos levantando los cimientos del palacio. ¡Enseguida estará listo!' }
+    return { text: 'Aris: Aún estamos levantando los cimientos del museo. ¡Enseguida estará listo!' }
   }
 
   const currentRoom = palace.rooms.find((r) => r.id === currentRoomId) ?? palace.rooms[0]
@@ -107,7 +107,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   // 1. SALUDOS / PRESENTACIÓN ("hoa", "hola", "buenas", "hey", "aris", "quién eres")
   if (matchesAny(rawTokens, ['hola', 'hoa', 'ola', 'buenas', 'buenos', 'hey', 'saludos', 'quien', 'aris'])) {
     return {
-      text: 'Aris: ¡Hola! Soy Aris, tu compañero de estudio en este palacio. Puedo orientarte hacia la siguiente sala, recordarte qué conceptos te faltan memorizar o darte pistas. ¿Qué quieres explorar?',
+      text: 'Aris: ¡Hola! Soy Aris, tu compañero de estudio en este museo. Puedo orientarte hacia la siguiente sala, recordarte qué conceptos te faltan memorizar o darte pistas. ¿Qué quieres explorar?',
     }
   }
 
@@ -122,7 +122,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   if (matchesAny(rawTokens, ['progreso', 'score', 'cuanto', 'cuánto', 'avance', 'puntos', 'porcentaje', 'estadistica'])) {
     const pct = Math.round((memorizedTotal / Math.max(totalCount, 1)) * 100)
     return {
-      text: `Aris: Tu avance en el palacio es del ${pct}% (${memorizedTotal} de ${totalCount} conceptos dominados). En la sala actual "${currentRoom.name}" te faltan ${unmemorizedInRoom.length} pedestales por aprender.`,
+      text: `Aris: Tu avance en el museo es del ${pct}% (${memorizedTotal} de ${totalCount} conceptos dominados). En la sala actual "${currentRoom.name}" te faltan ${unmemorizedInRoom.length} pedestales por aprender.`,
     }
   }
 
@@ -176,7 +176,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
     return { text: `Aris: En "${currentRoom.name}" hay ${currentPieces.length} conceptos: ${brief(names, 220)}.` }
   }
   if (matchesAny(rawTokens, ['salas', 'habitaciones', 'camaras', 'cámaras', 'mapa', 'minimapa']) && q.includes('cu')) {
-    return { text: `Aris: El palacio "${palace.title}" tiene ${palace.rooms.length} salas y ${totalCount} conceptos en total. Estás en la Sala ${currentIndex + 1}.` }
+    return { text: `Aris: El museo "${palace.title}" tiene ${palace.rooms.length} salas y ${totalCount} conceptos en total. Estás en la Sala ${currentIndex + 1}.` }
   }
 
   // 5d. CONTROLES / CÓMO SE JUEGA ("controles", "teclas", "cómo me muevo", "cómo marco memorizado")
@@ -187,9 +187,9 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
   }
 
   // 5e. QUÉ ES ESTO / MÉTODO ("qué es un palacio de la memoria", "método de loci", "para qué sirve")
-  if (matchesAny(rawTokens, ['loci', 'metodo', 'método', 'mnemotecnia', 'sirve', 'funciona', 'palacio']) && !q.includes('progreso')) {
+  if (matchesAny(rawTokens, ['loci', 'metodo', 'método', 'mnemotecnia', 'sirve', 'funciona', 'palacio', 'museo']) && !q.includes('progreso')) {
     return {
-      text: 'Aris: Un palacio de la memoria asocia cada idea con un lugar y un objeto 3D. Al recorrer las salas en orden y recordar la imagen de cada pedestal, recuerdas el concepto. Luego el repaso espaciado y el examen miden qué retienes.',
+      text: 'Aris: Un museo de la memoria asocia cada idea con un lugar y un objeto 3D. Al recorrer las salas en orden y recordar la imagen de cada pedestal, recuerdas el concepto. Luego el repaso espaciado y el examen miden qué retienes.',
     }
   }
 
@@ -204,7 +204,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
       const remainingGlobal = allPieces.filter((p) => !memorized[p.id])
       if (remainingGlobal.length === 0) {
         return {
-          text: 'Aris: ¡Completaste todo el palacio! Has memorizado cada concepto. Ya estás preparado para afrontar el Modo Examen.',
+          text: 'Aris: ¡Completaste todo el museo! Has memorizado cada concepto. Ya estás preparado para afrontar el Modo Examen.',
         }
       }
       return {
@@ -222,7 +222,7 @@ export function evaluateArisQuery(query: string, ctx: BrainContext): ArisRespons
       }
     } else {
       return {
-        text: 'Aris: Estás en la última cámara del palacio. Puedes repasar los pedestales o ingresar al Modo Examen para validar tu retención.',
+        text: 'Aris: Estás en la última cámara del museo. Puedes repasar los pedestales o ingresar al Modo Examen para validar tu retención.',
       }
     }
   }
