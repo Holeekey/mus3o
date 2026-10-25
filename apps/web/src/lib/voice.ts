@@ -25,12 +25,40 @@ function recognitionCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+// --- Dictado con ElevenLabs (opcional) ---
+// Mismo esquema que la voz: el servidor dice si está configurado y cualquier fallo cae al dictado del navegador.
+// `sttEnabled` solo es true cuando /api/stt/status ya respondió que sí (ver warmVoice).
+let sttEnabled = false
+let sttStatus: Promise<boolean> | null = null
+function remoteStt(): Promise<boolean> {
+  sttStatus ??=
+    typeof fetch === 'function'
+      ? fetch('/api/stt/status')
+          .then((r) => (r.ok ? r.json() : { enabled: false }))
+          .then((j: { enabled?: boolean }) => j.enabled === true)
+          .catch(() => false)
+          .then((v) => (sttEnabled = v))
+      : Promise.resolve(false)
+  return sttStatus
+}
+
+const hasMic = () => typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function'
+const remoteListenReady = () => sttEnabled && hasMic()
+
+/** Consulta al servidor qué voz y dictado remotos hay, para que la primera frase no espere ese viaje. */
+export function warmVoice(): void {
+  void remoteTts()
+  void remoteStt()
+}
+
 export function canListen(): boolean {
-  return recognitionCtor() !== null
+  return recognitionCtor() !== null || remoteListenReady()
 }
 
 export type ListenOptions = {
   lang?: string
+  /** Términos que conviene reconocer bien (solo lo usa el dictado remoto; máx. 50 de hasta 20 caracteres). */
+  keyterms?: string[]
   onInterim?: (text: string) => void
   /** Todas las alternativas del resultado final, de más a menos probable. */
   onFinal: (alternatives: string[]) => void
@@ -38,8 +66,39 @@ export type ListenOptions = {
   onError?: (code: string) => void
 }
 
-/** Empieza a escuchar; devuelve la función que lo detiene. Un solo resultado final por llamada. */
-export function listen({ lang = 'es-ES', onInterim, onFinal, onError }: ListenOptions): () => void {
+/**
+ * Empieza a escuchar; devuelve la función que lo detiene. Un solo resultado final por llamada.
+ * Con ElevenLabs disponible dicta por ahí (texto parcial en vivo y cualquier navegador); si falla antes de dar una
+ * frase, sigue con el dictado del navegador. Sin permiso de micrófono no hay respaldo posible: se avisa 'not-allowed'.
+ */
+export function listen(o: ListenOptions): () => void {
+  if (!remoteListenReady()) return listenBrowser(o)
+  let stopped = false
+  let stopInner: () => void = () => {}
+  const toBrowser = () => {
+    if (!stopped) stopInner = listenBrowser(o)
+  }
+  void import('./scribe').then(({ listenScribe }) => {
+    if (stopped) return
+    stopInner = listenScribe({
+      keyterms: o.keyterms,
+      onInterim: o.onInterim,
+      onFinal: o.onFinal,
+      onNoSpeech: () => o.onError?.('no-speech'),
+      onFail: (code) => {
+        if (stopped) return
+        if (code === 'not-allowed') o.onError?.(code)
+        else toBrowser()
+      },
+    })
+  }, toBrowser)
+  return () => {
+    stopped = true
+    stopInner()
+  }
+}
+
+function listenBrowser({ lang = 'es-ES', onInterim, onFinal, onError }: ListenOptions): () => void {
   const Ctor = recognitionCtor()
   if (!Ctor) {
     onError?.('unsupported')

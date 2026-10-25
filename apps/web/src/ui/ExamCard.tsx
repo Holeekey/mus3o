@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { Piece as Concept } from '@mus3o/shared'
-import { examVoiceReducer, initialVoiceState } from '../lib/examVoice'
+import { examKeyterms, examVoiceReducer, initialVoiceState } from '../lib/examVoice'
 import { canListen, listen, speak, stopSpeaking } from '../lib/voice'
 import { isCorrectAny } from '../palace/match'
 import { pointerLock } from '../scene/pointerLock'
@@ -36,6 +36,7 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
     stopSpeaking()
     dispatch({ type: 'listen' })
     stopRef.current = listen({
+      keyterms: examKeyterms(useStore.getState().palace?.rooms ?? [], concept.id),
       onInterim: (text) => dispatch({ type: 'interim', text }),
       onFinal: (alts) => {
         setHeard(alts[0])
@@ -47,7 +48,7 @@ export function ExamCard({ concept, palette }: { concept: Concept; palette: Room
         if (code === 'not-allowed' || code === 'service-not-allowed' || code === 'unsupported') pointerLock.unlock()
       },
     })
-  }, [concept.title, finish])
+  }, [concept.id, concept.title, finish])
 
   const toTyping = useCallback(() => {
     stopRef.current()

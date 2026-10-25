@@ -13,6 +13,7 @@
     "test": "vitest run --testTimeout=30000"
   },
   "dependencies": {
+    "@elevenlabs/client": "^1.30.0",
     "@mus3o/dungeon-core": "*",
     "@mus3o/shared": "*",
     "@react-three/drei": "^10.0.0",
