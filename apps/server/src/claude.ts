@@ -258,7 +258,7 @@ export async function generateFlowMuseum(request: GenerateMuseumRequest): Promis
 
 /**
  * Flujo completo por DSL: una salida de ~2-4 mil tokens en lugar de un JSON de hasta 16 mil. El servidor deriva
- * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas ya no los genera la IA (biblioteca a mano o foto real, ver photoDiorama.ts).
+ * el grafo según el modo, las imágenes de cada cuadro, las citas y los modelos 3D; los dioramas no llevan llamada aparte: la IA solo añade las líneas DIO / D_PROP en esta misma salida y el cliente los compone.
  */
 async function generateFlowMuseumDsl(request: GenerateMuseumRequest): Promise<Museum> {
   const { system, content, maxTokens } = flowDslCall(request);
@@ -277,7 +277,7 @@ export const flowStreamable = () => flowFormat() === "dsl";
 
 /**
  * Cierre de la generación DSL ya enriquecida: modelos 3D (búsqueda + respaldo). Lo usan tanto la generación completa
- * como el final del streaming. El museo no lleva dioramas: los cuadros usan la biblioteca hecha a mano o recrean su foto.
+ * como el final del streaming. El museo no lleva dioramas JSON: el cliente compone los de las directivas DIO / D_PROP o usa la biblioteca.
  */
 export async function completeMuseum(enriched: Museum): Promise<Museum> {
   return resolveModels(enriched);

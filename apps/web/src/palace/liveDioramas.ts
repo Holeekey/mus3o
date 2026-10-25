@@ -29,7 +29,7 @@ export function attachDirected(museum: Museum): Museum {
 }
 
 /** Las salas sin diorama reciben uno compuesto con el pigmento de su fresco (los que ya tienen no cambian), sin llamadas a la IA. */
-function completeDioramas(museum: Museum): Museum {
+export function completeDioramas(museum: Museum): Museum {
   const pigments = roomPalettes(DEFAULT_THEME, museum.rooms.map((r) => r.name))
   return attachComposedDioramas(museum, (i) => pigments[i])
 }

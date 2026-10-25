@@ -363,21 +363,23 @@ class DslAccumulator {
   private feedDirective(kind: "DIO" | "D_PROP", body: string): void {
     const room = this.current;
     if (!room || this.skippingRoom) return;
-    if (!room.dioramaDirectives && this.rooms.filter((r) => r.dioramaDirectives).length >= 2) return;
+    const current = room.dioramaDirectives ?? { props: [] };
+    // El cupo (2 salas) lo gastan solo las salas con props válidos: una DIO vacía o inválida no quita su turno a otra.
+    if (current.props.length === 0 && this.rooms.filter((r) => r.dioramaDirectives?.props.length).length >= 2) return;
     const f = body.split("|").map((x) => x.trim());
     const value = (v: string | undefined) => (v && v !== "-" ? v.toLowerCase() : undefined);
-    const current = room.dioramaDirectives ?? { props: [] };
     if (kind === "DIO") {
+      // Un segundo DIO completa o corrige, pero un campo vacío ("-") no borra lo ya pedido.
       room.dioramaDirectives = DioramaDirectivesSchema.parse({
         ...current,
-        archetype: value(f[0]),
-        time: value(f[1]),
-        terrain: value(f[2]),
+        archetype: value(f[0]) ?? current.archetype,
+        time: value(f[1]) ?? current.time,
+        terrain: value(f[2]) ?? current.terrain,
       });
       return;
     }
     if (current.props.length >= MAX_DIRECTIVE_PROPS) return;
-    const piece = /(\d+)\s*$/.exec(f[4] ?? "");
+    const piece = /^(?:[\w-]*p|pieza\s*)?(\d+)$/i.exec(f[4] ?? "");
     const count = Number(f[3]);
     const prop = DioramaDirectivePropSchema.safeParse({
       zone: value(f[0]),

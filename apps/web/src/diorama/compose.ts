@@ -718,6 +718,7 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
  * biblioteca: lo que la IA pidió explícitamente gana, igual que un diorama que ya viene hecho.
  */
 export function attachDirectedDioramas(museum: Museum, pigmentOf?: (roomIndex: number) => Pigment | undefined, seed: number | string = 0): Museum {
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location?.search ?? '').get('dioramas') === 'library') return museum
   if (!museum.rooms.some((r) => !r.diorama && r.dioramaDirectives)) return museum
   return {
     ...museum,

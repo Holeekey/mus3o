@@ -420,6 +420,24 @@ describe("micro-DSL de dioramas (DIO / D_PROP)", () => {
     expect(museum.rooms.map((r) => r.dioramaDirectives?.props.length)).toEqual([8, 8, undefined]);
   });
 
+  it("una DIO inválida o vacía no gasta el cupo de 2 salas", () => {
+    const room = (n: number, body: string) => `ROOM: s${n} | Sala ${n} | void | #111111 | #000000 | torus | | |\nPIECE: A | box | c | thing | t\n${body}`;
+    const good = "DIO: nature | day\nD_PROP: center | tree | - | 1 | - | Árbol";
+    const museum = parseMus3oDSL([room(1, "DIO: foo | bar"), room(2, good), room(3, good), room(4, good)].join("\n"));
+    expect(museum.rooms.map((r) => r.dioramaDirectives?.props.length ?? 0)).toEqual([0, 1, 1, 0]);
+  });
+
+  it("un segundo DIO con campos vacíos no borra lo pedido", () => {
+    const m = parseMus3oDSL(["ROOM: a | A | void | #111111 | #000000 | torus | | |", "PIECE: A | box | c | thing | t", "DIO: battle | night | hills", "DIO: - | - | -"].join("\n"));
+    expect(m.rooms[0].dioramaDirectives).toMatchObject({ archetype: "battle", time: "night", terrain: "hills" });
+  });
+
+  it("el campo pieza solo acepta número, pN o <sala>-pN", () => {
+    const prop = (piece: string) => `D_PROP: center | figure | - | 1 | ${piece} | X`;
+    const m = parseMus3oDSL(["ROOM: a | A | void | #111111 | #000000 | torus | | |", "PIECE: A | box | c | thing | t", ...["2", "p3", "a-p4", "x-5", "sala-2024", "-6"].map(prop)].join("\n"));
+    expect(m.rooms[0].dioramaDirectives?.props.map((p) => p.piece)).toEqual([2, 3, 4, undefined, undefined, undefined]);
+  });
+
   it("el parser incremental lee las directivas igual que el de una pasada", () => {
     const whole = parseMus3oDSL(DIORAMA_DSL);
     const s = new Mus3oDslStream();
