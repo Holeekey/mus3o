@@ -1,4 +1,4 @@
-import { MAX_PROPS, parseDiorama, type Diorama, type Museum, type Room } from '@mus3o/shared'
+import { DIORAMA_ARCHETYPES, MAX_PROPS, parseDiorama, type Diorama, type DioramaDirectives, type DioramaDirectiveProp, type Museum, type Room } from '@mus3o/shared'
 import { fold } from './library'
 import { hashStr, mulberry32, type Rng } from './random'
 import { heightField, shoreZ } from './terrain'
@@ -564,16 +564,57 @@ function ambientFor(arch: Archetype, ctx: Ctx): Raw[] {
 // Composición
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// Directivas semánticas de la IA (líneas DIO / D_PROP del DSL)
+// ---------------------------------------------------------------------------------------------
+
+/** Ancla de cada zona pedida por la IA, en metros (la vista entra por z positivo; `amb` mantiene libre la entrada). */
+function zoneAnchor(zone: DioramaDirectiveProp['zone'], i: number, rng: Rng): { x: number; z: number } {
+  const j = (a: number) => (rng() - 0.5) * a
+  switch (zone) {
+    case 'front':
+      return { x: j(10), z: 1.5 }
+    case 'left':
+      return { x: -9 + j(2), z: -4 + j(4) }
+    case 'right':
+      return { x: 9 + j(2), z: -4 + j(4) }
+    case 'flanks':
+      return { x: (i % 2 ? -1 : 1) * (10 + j(2)), z: -3 + j(5) }
+    case 'background':
+      return { x: -9 + ((i * 6.5) % 18) + j(1.5), z: -12 + j(1) }
+    case 'path':
+      return { x: j(1.5), z: Math.max(-12, -1 - i * 3) }
+    default:
+      return { x: j(2), z: -4 + j(2) }
+  }
+}
+
+/** Atributos del prop pedido por la IA (sin posición): solo lo que el modelo especificó. */
+function directiveProp(d: DioramaDirectiveProp): Raw {
+  const spread = d.count > 1 ? Math.min(8, round(1 + d.count * 0.35)) : 0
+  return {
+    kind: d.kind,
+    count: d.count,
+    ...(spread ? { spread } : {}),
+    ...(d.pose ? { pose: d.pose } : {}),
+    ...(d.color ? { color: d.color } : {}),
+    ...(d.secondary ? { secondary: d.secondary } : {}),
+    ...(d.pattern ? { pattern: d.pattern } : {}),
+  }
+}
+
+const isArchetype = (v: unknown): v is Archetype => typeof v === 'string' && (DIORAMA_ARCHETYPES as readonly string[]).includes(v)
+
 const FALLBACK = (title: string): Diorama => parseDiorama({ title: title || 'Diorama', terrain: 'abstract', time: 'day', props: [] })
 
 /**
  * Diorama de una sala, armado con la biblioteca de props. Determinista y siempre válido
  * (pasa por `parseDiorama`); nunca lanza.
  */
-export function composeDiorama(room: RoomLike, museumTitle: string, seed: number | string, pigment?: Pigment): Diorama {
+export function composeDiorama(room: RoomLike, museumTitle: string, seed: number | string, pigment?: Pigment, directives?: DioramaDirectives): Diorama {
   const roomName = textOf(room?.name)
   try {
-    const arch = classifyRoom(room, museumTitle)
+    const arch = isArchetype(directives?.archetype) ? directives!.archetype : classifyRoom(room, museumTitle)
     const pieces = piecesOf(room)
     const base = hashStr(`${seed}|${museumTitle}|${roomName}`)
     const rng = mulberry32(base)
@@ -598,7 +639,8 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
       else if (/\b(desierto|desert)/.test(hay)) terrain = 'desert'
       else if (/\b(clima|climate|geografia|relieve|paisaje|landscape)/.test(hay) && !/\b(selva|bosque|jungle|forest)/.test(hay)) terrain = 'hills'
     }
-    const time: Diorama['time'] = arch === 'battle' && base % 3 === 0 ? 'sunset' : def.time
+    if (directives?.terrain) terrain = directives.terrain
+    const time: Diorama['time'] = directives?.time ?? (arch === 'battle' && base % 3 === 0 ? 'sunset' : def.time)
 
     const infos: Info[] = pieces.slice(0, MAX_LINKED).map((p, index) => ({
       id: p.id,
@@ -641,9 +683,23 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
       infos.forEach((info, i) => place(info, i, slots[i]))
     }
 
+    // Directivas de la IA: las que enlazan una pieza reemplazan el tipo de su prop; las demás se colocan por zona.
+    const placed: Raw[] = []
+    directives?.props.forEach((d, i) => {
+      const info = d.piece ? infos[d.piece - 1] : undefined
+      const at = info ? linked.findIndex((l) => l.pieceId === info.id) : -1
+      if (at >= 0) {
+        const { pos, rotY, scale, label, pieceId } = linked[at]
+        linked[at] = { rotY, pos, ...(typeof scale === 'number' ? { scale } : {}), ...directiveProp(d), label: d.label ? clip(d.label) : label, pieceId }
+        return
+      }
+      const { x, z } = zoneAnchor(d.zone, i, rng)
+      placed.push(amb(d.kind, x, z, { ...directiveProp(d), ...(d.label ? { label: clip(d.label) } : {}) }))
+    })
+
     // El ambiente se recorta para respetar el tope de props del esquema.
     const ctx: Ctx = { waterUsed: w, rng, accent, ground, terrain, flags, hasKey: (re) => infos.some((i) => re.test(i.key)) }
-    const ambient = ambientFor(arch, ctx).slice(0, Math.max(0, MAX_PROPS - linked.length))
+    const ambient = [...placed, ...ambientFor(arch, ctx)].slice(0, Math.max(0, MAX_PROPS - linked.length))
 
     return parseDiorama({
       title: clip(roomName || 'Diorama', 80),
@@ -654,6 +710,21 @@ export function composeDiorama(room: RoomLike, museumTitle: string, seed: number
     })
   } catch {
     return FALLBACK(roomName)
+  }
+}
+
+/**
+ * Salas cuyo diorama pidió la IA con directivas (DIO / D_PROP): se componen con ellas. Va antes que la
+ * biblioteca: lo que la IA pidió explícitamente gana, igual que un diorama que ya viene hecho.
+ */
+export function attachDirectedDioramas(museum: Museum, pigmentOf?: (roomIndex: number) => Pigment | undefined, seed: number | string = 0): Museum {
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location?.search ?? '').get('dioramas') === 'library') return museum
+  if (!museum.rooms.some((r) => !r.diorama && r.dioramaDirectives)) return museum
+  return {
+    ...museum,
+    rooms: museum.rooms.map((room, i) =>
+      !room.diorama && room.dioramaDirectives ? { ...room, diorama: composeDiorama(room, museum.title, seed, pigmentOf?.(i), room.dioramaDirectives) } : room,
+    ),
   }
 }
 

@@ -379,3 +379,71 @@ describe("Mus3oDslStream", () => {
     expect(whole.rooms.flatMap((r) => r.pieces).filter((p) => p.image).length).toBe(1);
   });
 });
+
+describe("micro-DSL de dioramas (DIO / D_PROP)", () => {
+  const DIORAMA_DSL = [
+    "ROOM: batalla | Batalla de Carabobo | ancient | #a8322d | #1c1203 | torus | | diorama |",
+    "PIECE: Bolívar | box | Un jinete | horse | Líder patriota.",
+    "PIECE: Páez | box | Una carga | horse | Jefe de caballería.",
+    "DIO: battle | sunset",
+    "D_PROP: center | figure | pointing | 1 | p1 | Bolívar",
+    "D_PROP: front | rider | charging | 6 | batalla-p2 | Carga de Páez | #2b4c94",
+    "D_PROP: background | flag | standing | 2 | - | Estandartes | #ffffff | #a8322d | saltire",
+    "D_PROP: nowhere | dragon | idle | x | p1 | inválido",
+    "ROOM: otra | Otra sala | void | #111111 | #000000 | torus | batalla | |",
+    "PIECE: Algo | box | cue | thing | texto",
+  ].join("\n");
+
+  it("lee DIO y D_PROP bajo su sala con piezas por número, colores y patrón", () => {
+    const [room, other] = parseMus3oDSL(DIORAMA_DSL).rooms;
+    expect(room.dioramaDirectives?.archetype).toBe("battle");
+    expect(room.dioramaDirectives?.time).toBe("sunset");
+    const props = room.dioramaDirectives?.props ?? [];
+    expect(props.map((p) => p.kind)).toEqual(["figure", "rider", "flag"]);
+    expect(props[0]).toMatchObject({ zone: "center", pose: "pointing", count: 1, piece: 1, label: "Bolívar" });
+    expect(props[1]).toMatchObject({ zone: "front", count: 6, piece: 2, color: "#2b4c94" });
+    expect(props[2]).toMatchObject({ pattern: "saltire", color: "#ffffff", secondary: "#a8322d" });
+    expect(props[2].piece).toBeUndefined();
+    expect(other.dioramaDirectives).toBeUndefined();
+  });
+
+  it("descarta la línea inválida sin afectar a la sala ni al museo", () => {
+    const museum = parseMus3oDSL(DIORAMA_DSL);
+    expect(museum.rooms).toHaveLength(2);
+    expect(museum.rooms[0].pieces).toHaveLength(2);
+    expect(museum.rooms[0].dioramaDirectives?.props.some((p) => p.label === "inválido")).toBe(false);
+  });
+
+  it("solo las 2 primeras salas con directivas y como mucho 8 props", () => {
+    const room = (n: number) => `ROOM: s${n} | Sala ${n} | void | #111111 | #000000 | torus | | |\nPIECE: A | box | c | thing | t\nDIO: nature | day\n${Array.from({ length: 12 }, () => "D_PROP: center | tree | - | 1 | - | Árbol").join("\n")}`;
+    const museum = parseMus3oDSL([1, 2, 3].map(room).join("\n"));
+    expect(museum.rooms.map((r) => r.dioramaDirectives?.props.length)).toEqual([8, 8, undefined]);
+  });
+
+  it("una DIO inválida o vacía no gasta el cupo de 2 salas", () => {
+    const room = (n: number, body: string) => `ROOM: s${n} | Sala ${n} | void | #111111 | #000000 | torus | | |\nPIECE: A | box | c | thing | t\n${body}`;
+    const good = "DIO: nature | day\nD_PROP: center | tree | - | 1 | - | Árbol";
+    const museum = parseMus3oDSL([room(1, "DIO: foo | bar"), room(2, good), room(3, good), room(4, good)].join("\n"));
+    expect(museum.rooms.map((r) => r.dioramaDirectives?.props.length ?? 0)).toEqual([0, 1, 1, 0]);
+  });
+
+  it("un segundo DIO con campos vacíos no borra lo pedido", () => {
+    const m = parseMus3oDSL(["ROOM: a | A | void | #111111 | #000000 | torus | | |", "PIECE: A | box | c | thing | t", "DIO: battle | night | hills", "DIO: - | - | -"].join("\n"));
+    expect(m.rooms[0].dioramaDirectives).toMatchObject({ archetype: "battle", time: "night", terrain: "hills" });
+  });
+
+  it("el campo pieza solo acepta número, pN o <sala>-pN", () => {
+    const prop = (piece: string) => `D_PROP: center | figure | - | 1 | ${piece} | X`;
+    const m = parseMus3oDSL(["ROOM: a | A | void | #111111 | #000000 | torus | | |", "PIECE: A | box | c | thing | t", ...["2", "p3", "a-p4", "x-5", "sala-2024", "-6"].map(prop)].join("\n"));
+    expect(m.rooms[0].dioramaDirectives?.props.map((p) => p.piece)).toEqual([2, 3, 4, undefined, undefined, undefined]);
+  });
+
+  it("el parser incremental lee las directivas igual que el de una pasada", () => {
+    const whole = parseMus3oDSL(DIORAMA_DSL);
+    const s = new Mus3oDslStream();
+    for (let i = 0; i < DIORAMA_DSL.length; i += 7) s.push(DIORAMA_DSL.slice(i, i + 7));
+    s.end();
+    const streamed = s.finish();
+    expect(streamed.rooms.map((r) => r.dioramaDirectives)).toEqual(whole.rooms.map((r) => r.dioramaDirectives));
+  });
+});

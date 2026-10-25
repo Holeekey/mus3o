@@ -50,6 +50,7 @@ Room = {
   period?: string (≤40)          // obligatorio en biography
   imageSearch?: ImageSearch      // cuadro principal de la sala
   diorama?: Diorama              // si es inválido se descarta (.catch), no falla el museo
+  dioramaDirectives?: DioramaDirectives  // pedido compacto de la IA (líneas DIO/D_PROP); el cliente lo hidrata a `diorama`
 }
 
 Piece = {

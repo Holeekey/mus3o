@@ -6,7 +6,7 @@ import { arisHelpContext, evaluateArisQuery, speakAris } from './palace/arisBrai
 import { askArisHelp } from './lib/api'
 import { countSources, edgesAtArrival, LIMITS, MuseumSchema, type GraphEdge, type Museum, type Room } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
-import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum } from './palace/liveDioramas'
+import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum, attachDirected, completeDioramas } from './palace/liveDioramas'
 import { sourceSummary } from './palace/sourceSummary'
 import { cancelBuildSession } from './build/session'
 import { resetDioramaState } from './diorama/dioramaStore'
@@ -161,10 +161,9 @@ export const useStore = create<State>()(
       build: IDLE_BUILD,
 
       enterPalace: (rawPalace, sourceText, userImages = {}) => {
-        // Los museos generados por IA no traen dioramas: se recuperan de la biblioteca (hechos a mano) si encajan.
-        // El resto de cuadros pide recrear su foto real al resolverse (diorama/usePhotoDiorama); nunca se arma un
-        // mundo con los conceptos de la sala.
-        const palace = attachLibraryDioramas(rawPalace)
+        // Los museos generados por IA solo traen las directivas DIO / D_PROP de sus salas históricas; se componen primero.
+        // Luego la biblioteca (hechos a mano) y, a las salas que sigan sin diorama, uno compuesto sin IA con el pigmento de su fresco.
+        const palace = completeDioramas(attachLibraryDioramas(attachDirected(rawPalace)))
         set({
           palace,
           sourceText: capSourceText(sourceText),

@@ -23,7 +23,7 @@
 | Memoria espaciada (curva de olvido) | ✅ Funciona | Niveles, repaso, máquina del tiempo |
 | Llaves, puertas y exploración libre | ✅ Funciona | Llave por sala, llave de hierro en la mazmorra |
 | Examen y repaso | ✅ Funciona | Respuesta escrita con tolerancia a tipeo y pista visual mnemotécnica |
-| Diorama ("entrar al cuadro") | ✅ Funciona | Portal, transición, biblioteca de props, terrenos. Los mundos salen de la biblioteca (a mano) o de la **foto real** del cuadro (visión); sin foto recreable, cuadro normal |
+| Diorama ("entrar al cuadro") | ✅ Funciona | Portal, transición, biblioteca de props, terrenos. Todo cuadro nace con diorama sin pasos extra: directivas `DIO`/`D_PROP` de la IA (misma llamada), biblioteca (a mano) o composición sin IA; la **foto real** (visión) solo actúa si no hay ninguno |
 | Aris (asistente por reglas) | ✅ Funciona | Voz del navegador, búsqueda aproximada, compañero 3D con glTF comprimido (318 KB) |
 | Mazmorra (sandbox `dungeon-core`) | 🟡 Demo | Solo se usa desde `mocks/dungeon.ts` y el botón "Explorar Mazmorra" |
 | Persistencia en el navegador | ✅ Funciona | `mus3o-v1` y `mus3o-memory-v1`, validado al cargar |

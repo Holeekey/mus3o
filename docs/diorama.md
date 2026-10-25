@@ -7,7 +7,9 @@ explorable. Con `E` se entra; con `Q` se vuelve a la sala.
 
 1. **Biblioteca** (`library.ts`, hecha a mano: Carabobo, corazón, célula, neurona): manda donde el tema coincide.
 2. **La foto real del cuadro** (`photoDiorama.ts`, `usePhotoDiorama.ts`, servidor `POST /api/diorama-from-image`, ver `servidor.md`): cuando la imagen del cuadro principal ya se resolvió, Claude (visión) clasifica si es una escena recreable (batalla, paisaje, lugar, interior, escena microscópica) y, si lo es, la describe con la biblioteca de props. **Si no es una escena (retrato, diagrama, mapa, texto, logo) o no hay IA, el cuadro queda normal, sin portal.** Nunca se arma un mundo con los conceptos de la sala.
-3. Nada más. El compositor por conceptos (`compose.ts`) ya no se usa por defecto; solo lo llama la demo `?demo=compuesto`.
+3. **Directivas de la IA y relleno compuesto** (`compose.ts`, sin llamadas extra): las salas históricas/geográficas/naturales traen `DIO`/`D_PROP` en la misma llamada del DSL y se componen **antes** que la biblioteca (`attachDirected`); a las salas que sigan sin diorama se les compone uno con su pigmento (`attachComposedDioramas`, 0 tokens) al llegar. **Toda sala nace con diorama, sin pasos adicionales.**
+
+> Como toda sala ya tiene diorama al llegar, el paso 2 (foto real) solo actúa en cuadros que quedaron sin diorama; hoy casi nunca. Se conserva por si se desactiva el relleno (`?dioramas=library`).
 
 Dentro del mundo de foto, la imagen original se ve como **panel curvo al fondo** (`Backdrop` en `DioramaScene.tsx`, campo `diorama.backdrop`) para reconocer la escena, los props siguen la composición de la imagen y la paleta sale de ella. Cada prop lleva un `label` en español (qué representa en la imagen), útil para la narración.
 
@@ -142,6 +144,21 @@ pieza. Máximo 5 enlaces recomendados en el prompt.
 - `pos` en metros dentro de ±14, reflejando la composición de la imagen. Deja libre `z > 6`: ahí entra la vista.
 - Interiores: `terrain` `interior` y sin edificios de exterior como mobiliario (el saneado además reduce su escala y cantidad).
 - Sin enlaces `pieceId`: los props llevan solo `label` en español.
+
+### Micro-DSL (`DIO` / `D_PROP`)
+
+En el flujo DSL la IA no escribe coordenadas: bajo la sala emite
+
+```text
+DIO: <arquetipo> | <hora> [| <terreno>]
+D_PROP: <zona> | <kind> | <pose|-> | <cantidad> | <pieza|-> | <rótulo> [| <color> [| <secundario> [| <patrón>]]]
+```
+
+- **Parser** (`packages/shared/src/dsl.ts`, `feedDirective`): guarda `room.dioramaDirectives` (`DioramaDirectivesSchema`). Una línea inválida se
+  descarta sin afectar a la sala; máx. 2 salas con directivas y 8 props por sala. La pieza se indica por número (1..N), no por id, porque el saneado puede cambiar ids.
+- **Cliente** (`compose.ts`): `composeDiorama(room, title, seed, pigment, directives)` usa el arquetipo/hora/terreno pedidos, reemplaza el tipo del prop de cada
+  pieza enlazada y coloca los demás por zona (`zoneAnchor`). `attachDirectedDioramas` va **antes** de la biblioteca (`liveDioramas.ts`, `enterPalace`).
+- **Ciencia**: los terrenos `organic`/`cellular`/`vessel` y sus kinds no están en el micro-DSL, y el prompt no pide DIO/D_PROP en biología, medicina ni anatomía. Ya no existe la llamada aparte de dioramas en JSON (se quitó con los dioramas por foto): esas salas usan la biblioteca o la recreación de su foto.
 
 ## 5. Cómo probarlo
 
