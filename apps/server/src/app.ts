@@ -25,6 +25,7 @@ import { infoRouter } from "./info";
 import { ttsRouter } from "./tts";
 import { assetRouter } from "./assetRoutes";
 import { arisRouter } from "./arisHelp";
+import { photoRouter } from "./photoDiorama";
 import { getCached, getCachedDigest, setCached, setCachedDigest } from "./cache";
 
 export const app = express();
@@ -64,7 +65,8 @@ app.use("/api", infoRouter);
 app.use("/api", ttsRouter);
 app.use("/api", assetRouter);
 app.use("/api", arisRouter);
-app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets") || req.originalUrl.startsWith("/api/aris-help"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
+app.use("/api", photoRouter);
+app.use("/api/", rateLimit({ skip: (req) => req.originalUrl.startsWith("/api/image") || req.originalUrl.startsWith("/api/info") || req.originalUrl.startsWith("/api/tts") || req.originalUrl.startsWith("/api/assets") || req.originalUrl.startsWith("/api/aris-help") || req.originalUrl.startsWith("/api/diorama-from-image"), windowMs: 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiadas solicitudes, intenta en un minuto" } }));
 
 const RequestSchema = z.union([
   z.object({ topic: z.string().trim().min(1).max(200) }).strict(),

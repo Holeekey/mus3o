@@ -9,4 +9,5 @@ process.env.IMAGE_CACHE_DIR = join(dir, "cache");
 process.env.MUSEUM_CACHE_DIR = join(dir, "museums");
 process.env.ASSET_CACHE_DIR = join(dir, "assets");
 process.env.IMAGE_SEED_DIR = join(dir, "seed");
+process.env.DIORAMA_SEED_DIR = join(dir, "seed-dioramas");
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
