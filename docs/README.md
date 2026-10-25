@@ -36,7 +36,6 @@ Documentos previos (decisiones de producto y de seguridad, no cambian con el có
 - [idea.md](./idea.md): concepto, fundamento cognitivo y visión.
 - [contrato-flujo.md](./contrato-flujo.md): propuesta original del contrato del flujo de generación (modo, grafo, imágenes).
 - [seguridad.md](./seguridad.md): prompt injection, validación de salida, límites de costo y privacidad.
-- [plan-poly-pizza-3d-assets.md](./plan-poly-pizza-3d-assets.md): plan original de los modelos 3D dinámicos (implementado; las desviaciones están en `servidor.md`).
 
 ---
 
