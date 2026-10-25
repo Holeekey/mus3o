@@ -1,4 +1,40 @@
 import { MuseumSchema, type Museum } from '@mus3o/shared'
+import {
+  aluChip,
+  controlUnit,
+  registerFile,
+  systemClock,
+  cacheL1,
+  ramStick,
+  nvmeSsd,
+  dataBus,
+  addressBus,
+  controlBus,
+} from './assets/pcAssets'
+import {
+  phospholipidBilayer,
+  proteinChannel,
+  sodiumPotassiumPump,
+  atpSynthase,
+  krebsCycle,
+  cristaeMitochondria,
+  dnaDoubleHelix,
+  mrnaTranscription,
+  ribosomeTranslation,
+} from './assets/bioAssets'
+import {
+  corinthianColumn,
+  rostraSpeakers,
+  romanLaw,
+  curiaIulia,
+  fasces,
+  meditationsAurelius,
+  romanScutum,
+  gladiusHispaniensis,
+  viaAppia,
+} from './assets/romanAssets'
+
+export * from './assets'
 
 export interface PresetPalace {
   id: string
@@ -33,7 +69,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Circuito combinacional de alta velocidad que realiza operaciones booleanas y sumas binarias.',
           fact: 'Opera en fracciones de nanosegundo sobre buses de 64 bits.',
           mnemonicCue: 'Una fragua de magma digital que forja sumas a la velocidad de la luz en el centro de la sala.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: aluChip() },
         },
         {
           id: 'cpu-cu',
@@ -41,7 +77,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Decodifica el código de operación y comanda las microórdenes que guían los buses.',
           fact: 'Gobierna el ciclo de instrucción: búsqueda, decodificación y ejecución.',
           mnemonicCue: 'Un director de orquesta holográfico que dispara impulsos luminosos hacia cada compuerta.',
-          model: { type: 'glyph', shape: 'dodecahedron' },
+          model: { type: 'procedural', parts: controlUnit() },
         },
         {
           id: 'cpu-reg',
@@ -49,7 +85,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Celdas de memoria ultrarrápidas dentro del die de la CPU accesibles en un ciclo de reloj.',
           fact: 'Contienen el Contador de Programa (PC) y el Acumulador.',
           mnemonicCue: 'Cofres de cristal resplandeciente flotando pegados al corazón del procesador.',
-          model: { type: 'glyph', shape: 'octahedron' },
+          model: { type: 'procedural', parts: registerFile() },
         },
         {
           id: 'cpu-clock',
@@ -57,7 +93,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Oscilador de cuarzo que sincroniza el avance coordinado de todos los flip-flops.',
           fact: 'A 4 GHz genera 4 mil millones de pulsos cuadrados por segundo.',
           mnemonicCue: 'Un metrónomo dorado gigantesco cuyo tic-tac hace temblar el suelo del templo.',
-          model: { type: 'glyph', shape: 'torus' },
+          model: { type: 'procedural', parts: systemClock() },
         },
       ],
     },
@@ -75,7 +111,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Memoria estática SRAM microscópica integrada en el núcleo para evitar paradas de ejecución.',
           fact: 'Tiene latencia de 1 a 4 ciclos de reloj.',
           mnemonicCue: 'Un rayo de hielo congelado que conecta la memoria principal directamente al procesador.',
-          model: { type: 'glyph', shape: 'tetrahedron' },
+          model: { type: 'procedural', parts: cacheL1() },
         },
         {
           id: 'mem-ram',
@@ -83,7 +119,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Memoria dinámica DRAM volátil con condensadores que requieren refresco continuo.',
           fact: 'Alberga el mapa de memoria del sistema operativo y los procesos activos.',
           mnemonicCue: 'Un inmenso tablero de ajedrez donde cada casilla retiene una esfera de luz eléctrica.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: ramStick() },
         },
         {
           id: 'mem-ssd',
@@ -91,7 +127,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Memoria Flash NAND con celdas de compuerta flotante que conservan los datos sin energía.',
           fact: 'Alcanza tasas de transferencia superiores a 7 GB/s vía PCIe.',
           mnemonicCue: 'Un monolito de obsidiana negra indestructible que retiene los recuerdos de la máquina.',
-          model: { type: 'glyph', shape: 'octahedron' },
+          model: { type: 'procedural', parts: nvmeSsd() },
         },
       ],
     },
@@ -109,7 +145,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Canal bidireccional por el que viajan los operandos y resultados de las instrucciones.',
           fact: 'El ancho del bus determina cuántos bits se transfieren en paralelo por ciclo.',
           mnemonicCue: 'Un río de fotones violetas fluyendo a ambos lados del corredor.',
-          model: { type: 'glyph', shape: 'torus' },
+          model: { type: 'procedural', parts: dataBus() },
         },
         {
           id: 'bus-addr',
@@ -117,7 +153,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Canal unidireccional que transporta la ubicación física de memoria a la que se accede.',
           fact: 'Un bus de 32 bits puede direccionar 4 GB; 64 bits puede direccionar 16 Exabytes.',
           mnemonicCue: 'Un faro láser que proyecta coordenadas numéricas gigantes sobre los muros.',
-          model: { type: 'glyph', shape: 'cone' },
+          model: { type: 'procedural', parts: addressBus() },
         },
         {
           id: 'bus-ctrl',
@@ -125,7 +161,7 @@ const computerArchitectureMuseum: Museum = MuseumSchema.parse({
           text: 'Señales de habilitación de lectura, escritura, interrupciones y reloj.',
           fact: 'Sincroniza los dispositivos lentos de entrada/salida con la alta velocidad del procesador.',
           mnemonicCue: 'Semáforos flotantes de cristal que dan paso ordenado a las ráfagas de datos.',
-          model: { type: 'glyph', shape: 'sphere' },
+          model: { type: 'procedural', parts: controlBus() },
         },
       ],
     },
@@ -163,7 +199,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Mosaico fluido con cabezas hidrofílicas hacia el agua y colas hidrofóbicas hacia el interior.',
           fact: 'Permite el paso espontáneo de pequeñas moléculas no polares como O2 y CO2.',
           mnemonicCue: 'Una muralla viviente de esferas aceitosas ondulando como las olas de un mar verde.',
-          model: { type: 'glyph', shape: 'sphere' },
+          model: { type: 'procedural', parts: phospholipidBilayer() },
         },
         {
           id: 'bio-channel',
@@ -171,7 +207,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Túneles proteicos con compuerta selectiva para el transporte pasivo de iones específicos.',
           fact: 'El canal de potasio deja pasar K+ pero bloquea Na+ por diferencia de hidratación.',
           mnemonicCue: 'Compuertas de coral luminoso que se abren solo cuando reconocen la contraseña química.',
-          model: { type: 'glyph', shape: 'cone' },
+          model: { type: 'procedural', parts: proteinChannel() },
         },
         {
           id: 'bio-pump',
@@ -179,7 +215,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Transportador activo primario que expulsa 3 Na+ e introduce 2 K+ consumiendo una molécula de ATP.',
           fact: 'Consume hasta un 30% del ATP total de una neurona para mantener el potencial de reposo.',
           mnemonicCue: 'Un pistón biológico latiendo que bombea esferas doradas contra la corriente.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: sodiumPotassiumPump() },
         },
       ],
     },
@@ -197,7 +233,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Complejo motor rotatorio que sintetiza ATP aprovechando el gradiente electroquímico de protones.',
           fact: 'Gira a más de 6.000 revoluciones por minuto acoplando ADP con fosfato inorgánico.',
           mnemonicCue: 'Una turbina hidroeléctrica microscópica girando furiosamente y expulsando monedas de fuego.',
-          model: { type: 'glyph', shape: 'torus' },
+          model: { type: 'procedural', parts: atpSynthase() },
         },
         {
           id: 'bio-krebs',
@@ -205,7 +241,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Ruta metabólica oxidativa que degrada acetil-CoA generando NADH, FADH2 y GTP en la matriz.',
           fact: 'Descubierto por Hans Krebs en 1937, clave para la respiración aeróbica.',
           mnemonicCue: 'Una rueda de molino dorada que muele azúcar y libera nubes de vapor carbónico.',
-          model: { type: 'glyph', shape: 'octahedron' },
+          model: { type: 'procedural', parts: krebsCycle() },
         },
         {
           id: 'bio-crest',
@@ -213,7 +249,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Repliegues de la membrana interna que maximizan la superficie para la cadena de electrones.',
           fact: 'Las células cardíacas tienen miles de crestas por su altísima demanda energética.',
           mnemonicCue: 'Un laberinto de cañones plegados como un acordeón infinito en las paredes.',
-          model: { type: 'glyph', shape: 'dodecahedron' },
+          model: { type: 'procedural', parts: cristaeMitochondria() },
         },
       ],
     },
@@ -231,15 +267,15 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Polímero de desoxirribonucleótidos unidos por puentes de hidrógeno entre bases complementarias.',
           fact: 'Contiene 3.200 millones de pares de bases empaquetadas en 23 pares de cromosomas.',
           mnemonicCue: 'Una escalera de caracol de cristal estelar que gira elevándose hasta el techo de la catedral.',
-          model: { type: 'glyph', shape: 'tetrahedron' },
+          model: { type: 'procedural', parts: dnaDoubleHelix() },
         },
         {
           id: 'bio-mrna',
           title: 'ARN Mensajero y Transcripción',
           text: 'Copia monocatenaria del gen que sale por los poros nucleares hacia el citoplasma.',
-          fact: 'Pasa por maduración: corte y empalme (splicing), caperuza en 5\' y cola poli-A en 3\'.',
+          fact: "Pasa por maduración: corte y empalme (splicing), caperuza en 5' y cola poli-A en 3'.",
           mnemonicCue: 'Un pergamino resplandeciente flotando velozmente a través de un portal circular.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: mrnaTranscription() },
         },
         {
           id: 'bio-ribo',
@@ -247,7 +283,7 @@ const cellBiologyMuseum: Museum = MuseumSchema.parse({
           text: 'Complejo ribonucleoproteico que lee codones de 3 letras y acopla aminoácidos en péptidos.',
           fact: 'Posee sitios A (aminoacil), P (peptidil) y E (salida) para los ARN de transferencia.',
           mnemonicCue: 'Una máquina de coser cósmica que ensambla collares de perlas de colores sobre el pedestal.',
-          model: { type: 'glyph', shape: 'sphere' },
+          model: { type: 'procedural', parts: ribosomeTranslation() },
         },
       ],
     },
@@ -285,7 +321,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Orden arquitectónico predilecto de Roma, símbolo de monumentalidad imperial y elegancia.',
           fact: 'Inspirada en el follaje de acanto sobre una cesta mortuoria en Corinto.',
           mnemonicCue: 'Una columna de mármol cuyas hojas talladas en piedra susurran discursos de Cicerón.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: corinthianColumn() },
         },
         {
           id: 'rom-rostra',
@@ -293,7 +329,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Tribuna pública adornada con los espolones de bronce capturados a las naves enemigas.',
           fact: 'Desde aquí se proclamaban los discursos fúnebres de los héroes y las leyes de los tribunos.',
           mnemonicCue: 'Un estrado de bronce forjado con colmillos de barcos de guerra apuntando al espectador.',
-          model: { type: 'glyph', shape: 'octahedron' },
+          model: { type: 'procedural', parts: rostraSpeakers() },
         },
         {
           id: 'rom-law',
@@ -301,7 +337,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Cuerpo normativo que fundó la tradición jurídica occidental sobre equidad y jurisprudencia.',
           fact: 'Desde la Ley de las XII Tablas hasta el Corpus Iuris Civilis de Justiniano.',
           mnemonicCue: 'Doce tablas de bronce flotantes grabadas con cincel ardiendo con fuego azul.',
-          model: { type: 'glyph', shape: 'dodecahedron' },
+          model: { type: 'procedural', parts: romanLaw() },
         },
       ],
     },
@@ -319,7 +355,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Sede del Senado donde los patres deliberaban sobre la guerra, los tratados y las finanzas.',
           fact: 'Su suelo de opus sectile combinaba pórfido rojo de Egipto y mármol verde de Esparta.',
           mnemonicCue: 'Una banca de senadores esculpida en piedra milenaria donde una toga blanca arde sin consumirse.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: curiaIulia() },
         },
         {
           id: 'rom-fasces',
@@ -327,7 +363,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Haz de varas de olmo con un hacha central que portaban los lictores como símbolo del imperium.',
           fact: 'Simbolizaban que la unión hace la fuerza y el poder legítimo de administrar justicia.',
           mnemonicCue: 'Un haz de varas atadas con correas de cuero rojo y un hacha que refleja la verdad pura.',
-          model: { type: 'glyph', shape: 'cone' },
+          model: { type: 'procedural', parts: fasces() },
         },
         {
           id: 'rom-marcus',
@@ -335,7 +371,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Reflexiones íntimas del emperador filósofo sobre el deber estoico, la muerte y la serenidad.',
           fact: 'Escritas en campaña militar junto al río Danubio durante las guerras marcomanas.',
           mnemonicCue: 'Una ciudadela de granito inmutable que permanece inmóvil mientras relámpagos caen a su alrededor.',
-          model: { type: 'glyph', shape: 'tetrahedron' },
+          model: { type: 'procedural', parts: meditationsAurelius() },
         },
       ],
     },
@@ -353,7 +389,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Escudo curvo de madera contrachapada con umbo de hierro capaz de formar una muralla móvil.',
           fact: 'Los legionarios se cubrían frontal y cenitalmente volviendo a la unidad inmune a proyectiles.',
           mnemonicCue: 'Un caparazón de tortuga gigante de roble rojo y bronce que repele lluvia de saetas.',
-          model: { type: 'glyph', shape: 'box' },
+          model: { type: 'procedural', parts: romanScutum() },
         },
         {
           id: 'rom-gladius',
@@ -361,7 +397,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Espada corta de doble filo diseñada para estocadas letales y rápidas en combate cerrado.',
           fact: 'Adoptada tras las guerras púnicas al comprobar su superioridad frente a espadas de corte.',
           mnemonicCue: 'Una hoja de acero toledano reluciente flotando sobre un pedestal envuelta en laureles de oro.',
-          model: { type: 'glyph', shape: 'tetrahedron' },
+          model: { type: 'procedural', parts: gladiusHispaniensis() },
         },
         {
           id: 'rom-road',
@@ -369,7 +405,7 @@ const romanEmpireMuseum: Museum = MuseumSchema.parse({
           text: 'Red viaria pavimentada con gravilla, mortero y losas poligonales de basalto que unió el mundo.',
           fact: 'Más de 80.000 kilómetros de calzadas principales permitían marchar 40 km por día a las legiones.',
           mnemonicCue: 'Un camino de adoquines negros que se extiende hacia el infinito cruzando montañas y ríos.',
-          model: { type: 'glyph', shape: 'sphere' },
+          model: { type: 'procedural', parts: viaAppia() },
         },
       ],
     },
