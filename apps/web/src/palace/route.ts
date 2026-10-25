@@ -45,3 +45,8 @@ export function nextStop(ids: string[], memorized: Record<string, unknown>): num
   const k = ids.findIndex((id) => !memorized[id])
   return k === -1 ? null : k
 }
+
+/** Aviso del recorrido: invita a empezar por el 1 en una sala sin estudiar; si no, señala el siguiente. */
+export function routeHintText(next: number, done: number, title: string): string {
+  return next === 0 && done === 0 ? `Empieza por el 1 · ${title}` : `Siguiente: ${next + 1} · ${title}`
+}

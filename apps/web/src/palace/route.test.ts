@@ -78,3 +78,17 @@ describe('study route in a real museum layout', () => {
     })
   })
 })
+
+describe('routeHintText', () => {
+  it('invites to start with totem 1 in a fresh room', async () => {
+    const { routeHintText } = await import('./route')
+    expect(routeHintText(0, 0, 'Bicapa lipídica')).toBe('Empieza por el 1 · Bicapa lipídica')
+  })
+
+  it('points to the next totem once the route has started', async () => {
+    const { routeHintText } = await import('./route')
+    expect(routeHintText(1, 1, 'Proteínas de canal')).toBe('Siguiente: 2 · Proteínas de canal')
+    // Saltó el 1: igual se le guía a volver a él.
+    expect(routeHintText(0, 2, 'Bicapa lipídica')).toBe('Siguiente: 1 · Bicapa lipídica')
+  })
+})
