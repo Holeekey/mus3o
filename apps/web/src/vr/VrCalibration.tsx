@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { calibState, nextPreset, PRESET_ORDER, PRESETS, reloadCalib, saveValues, selectPreset, type PresetId } from './calib'
+import { calibState, formatFov, formatSep, reloadCalib, resetCalib, saveValues, stepFov, stepSep } from './calib'
 import { comfortView, reloadComfort, saveComfort } from './comfort'
 
 /** Ajustes del visor, para tocarlos ANTES de ponerse el teléfono (panel de pausa). Solo cardboard; en WebXR el visor se elige en Chrome. */
@@ -9,21 +9,13 @@ export function VrCalibration() {
   if (!open) reloadCalib()
   const refresh = () => bump((n) => n + 1)
   const c = calibState.calib
-  const field = (key: 'fov' | 'ipd' | 'k1' | 'k2' | 'lens', label: string, step: number, shown: number, toStored: (n: number) => number = (n) => n) => (
-    <label className="vr-cal-field">
-      <span>{label}</span>
-      <input
-        type="number"
-        step={step}
-        value={Number.isFinite(shown) ? shown : 0}
-        onChange={(e) => {
-          const n = Number(e.target.value)
-          if (!Number.isFinite(n)) return
-          saveValues({ [key]: toStored(n) })
-          refresh()
-        }}
-      />
-    </label>
+  const w = window.visualViewport?.width ?? window.innerWidth
+  const stepper = (label: string, value: string, less: () => void, more: () => void) => (
+    <div className="vr-cal-step">
+      <button type="button" className="btn btn-ghost" onClick={() => { less(); refresh() }} aria-label={`${label}: menos`}>−</button>
+      <span>{label}: {value}</span>
+      <button type="button" className="btn btn-ghost" onClick={() => { more(); refresh() }} aria-label={`${label}: más`}>+</button>
+    </div>
   )
   return (
     <div className="vr-cal">
@@ -32,37 +24,19 @@ export function VrCalibration() {
       </button>
       {open && (
         <div className="vr-cal-body">
-          <div className="vr-cal-presets" role="group" aria-label="Preajustes del visor">
-            {PRESET_ORDER.map((id: PresetId) => (
-              <button
-                key={id}
-                type="button"
-                className={`btn btn-ghost${calibState.preset === id ? ' is-on' : ''}`}
-                onClick={() => {
-                  selectPreset(id)
-                  refresh()
-                }}
-              >
-                {PRESETS[id].label}
-              </button>
-            ))}
-          </div>
-          <div className="vr-cal-fields">
-            {field('fov', 'FOV (°)', 1, c.fov)}
-            {field('ipd', 'Ojos (mm)', 1, Math.round(c.ipd * 1000), (n) => n / 1000)}
-            {field('k1', 'k1', 0.01, c.k1)}
-            {field('k2', 'k2', 0.01, c.k2)}
-            {field('lens', 'Lente (mm)', 1, c.lens)}
-          </div>
+          {stepper('Separación', formatSep(c, w), () => saveValues({ sep: stepSep(calibState.calib, w, -1) }), () => saveValues({ sep: stepSep(calibState.calib, w, 1) }))}
+          {stepper('Zoom', formatFov(c), () => saveValues({ fov: stepFov(calibState.calib, -1) }), () => saveValues({ fov: stepFov(calibState.calib, 1) }))}
+          <button type="button" className="btn btn-ghost" onClick={() => { resetCalib(); refresh() }}>
+            Restablecer
+          </button>
           <label className="vr-cal-check">
             <input type="checkbox" checked={comfortView.on} onChange={(e) => { saveComfort(e.target.checked); refresh() }} />
             <span>Modo cómodo (marcha lenta y bordes oscuros al moverse)</span>
           </label>
-          <p className="vr-cal-hint">«Lente» es la distancia del centro de la pantalla al centro de cada lente (en un VR Box, unos 32 mm). Cambia de preajuste dentro del visor con el botón ◐.</p>
+          <p className="vr-cal-hint">Separación: distancia entre los centros de las dos lentes. Si ves doble, ajusta hasta que las dos imágenes se junten.</p>
         </div>
       )}
     </div>
   )
 }
 
-export { nextPreset }
