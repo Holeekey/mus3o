@@ -190,6 +190,28 @@ describe("image endpoints", () => {
       expect((await get("Fuga a Varennes", "República y Terror · La Revolución Francesa")).status).toBe(404);
     });
 
+    it("a generic word alone is not a match: 'Operación del 3 de enero' is not 'Operación Westindien'", async () => {
+      wiki(["Operación Westindien"]);
+      expect((await get("Operación del 3 de enero", TOPIC)).status).toBe(404);
+      wiki(["Operación Resolución Absoluta de 2026 en Venezuela", "Operación Westindien"]);
+      expect((await get("Operación del 3 de enero", TOPIC)).status).toBe(404); // sin palabra distintiva ni dos del contexto...
+    });
+
+    it("searches Wikipedia with the piece and its room only; the palace in the context just feeds the gate", async () => {
+      wiki(["Ataques de Estados Unidos contra supuestos narcotraficantes (2025-presente)"]);
+      const res = await get("Ataques a lanchas", `Despliegue militar · ${TOPIC}`);
+      expect(res.status).toBe(200);
+      const search = calls.find((u) => u.includes("list=search"))!;
+      expect(decodeURIComponent(search)).toContain("srsearch=Ataques a lanchas Despliegue militar&");
+    });
+
+    it("rejects a city or state of another country once the query names one (República de Florencia, crisis asiática)", async () => {
+      wiki(["República de Florencia"]);
+      expect((await get("República y ejecución del rey", "República y Terror · La Revolución Francesa")).status).toBe(404);
+      wiki(["Crisis financiera asiática"]);
+      expect((await get("Crisis financiera", "Crisis y Estados Generales · La Revolución Francesa")).status).toBe(404);
+    });
+
     it("does not gate an exact title hit", async () => {
       wiki([], false);
       const res = await get("Armada Argentina", TOPIC);

@@ -247,26 +247,51 @@ export function genericKind(title: string): "strict" | "weak" | null {
 }
 
 /**
+ * Palabras de la consulta que NO bastan por sí solas para dar por buena una coincidencia ("Operación del 3 de enero" no es
+ * "Operación Westindien"). Si todo el título es genérico, cuentan todas.
+ */
+const COMMON_WORDS = new Set(
+  ("operacion operaciones batalla batallas guerra guerras crisis revolucion conflicto conflictos ataque ataques relaciones " +
+    "historia proceso procesos tratado acuerdo gobierno ejercito fuerzas presencia despliegue caida politica sistema " +
+    "accion acciones origen origenes causas consecuencias antecedentes raices desarrollo final inicio epoca periodo").split(" "),
+);
+/** Palabras del título que distinguen la consulta (las genéricas solo se usan si no queda otra). */
+export const distinctiveWords = (title: string) => {
+  const all = words(title);
+  const rare = all.filter((w) => !COMMON_WORDS.has(w));
+  return new Set(rare.length > 0 ? rare : all);
+};
+
+/**
  * Búsqueda en Wikipedia: los resultados cuyo título comparte palabras significativas con la consulta, del mejor al peor.
- * Filtro de relevancia (solo aquí, nunca en un acierto exacto): el resultado debe compartir una palabra con el título
- * pedido o al menos dos con el contexto, y no puede nombrar un país que ni la consulta ni el contexto mencionan
+ * Filtro de relevancia (solo aquí, nunca en un acierto exacto): el resultado debe compartir una palabra distintiva con el
+ * título pedido o al menos dos con el contexto, y no puede nombrar un país que ni la consulta ni el contexto mencionan
  * ("Armada en el Caribe" no trae "Armada Argentina"; "Elecciones de 2024" de EE. UU. no trae las de Uruguay).
+ * El contexto de una pieza es «sala · palacio»: se busca con la sala (como antes) y el palacio sirve para el filtro.
  */
 export async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
-  const q = [title, context].filter(Boolean).join(" ");
+  const q = [title, context.split(" · ")[0]].filter(Boolean).join(" ");
   const data = await getJson(
     `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=5&format=json`,
   );
   const hits: string[] = (data?.query?.search ?? []).map((h: any) => String(h?.title ?? "")).filter(Boolean);
   const own = new Set(words(title));
+  const key = distinctiveWords(title);
   const ctx = new Set(words(context));
   const all = new Set([...own, ...ctx]);
   return hits
     .map((hit, i) => {
       const w = words(hit);
-      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length, ctx: w.filter((x) => ctx.has(x) && !own.has(x)).length };
+      return {
+        hit,
+        i,
+        mine: w.filter((x) => own.has(x)).length,
+        key: w.filter((x) => key.has(x)).length,
+        any: w.filter((x) => all.has(x)).length,
+        ctx: w.filter((x) => ctx.has(x) && !own.has(x)).length,
+      };
     })
-    .filter((h) => (h.mine > 0 || h.ctx >= 2) && !contradictsCountry(title, context, h.hit))
+    .filter((h) => (h.key > 0 || h.ctx >= 2) && !contradictsCountry(title, context, h.hit))
     .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
     .map((h) => h.hit);
 }
@@ -341,8 +366,8 @@ async function retrieve(wiki: string, commons: string, context: string, lang: st
   if (commons) return fromCommons(commons);
   if (!context) return null;
   // Búsqueda automática por título + contexto: el archivo debe nombrar algo del título y no contradecir el país.
-  const own = new Set(words(wiki));
-  return fromCommons(`${wiki} ${context}`, (file) => words(file).some((w) => own.has(w)) && !contradictsCountry(wiki, context, file));
+  const key = distinctiveWords(wiki);
+  return fromCommons(`${wiki} ${context.split(" · ")[0]}`, (file) => words(file).some((w) => key.has(w)) && !contradictsCountry(wiki, context, file));
 }
 
 // LRU de archivos: 60 entradas / 40 MB.

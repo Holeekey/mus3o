@@ -78,6 +78,38 @@ for (const [id, names, stems, loose] of COUNTRIES) {
   for (const w of loose) TOKEN_DEMONYM.set(w, id);
 }
 
+// Ciudades, estados históricos y continentes: señal más débil que un país (un hit "Bastilla (París)" no contradice a un
+// palacio sin país). Solo cuentan si la consulta o su contexto ya nombran algún país o lugar. Se unen al id de su país.
+const PLACES: Array<[string, string[]]> = [
+  ["it", ["florencia", "venecia", "milan", "napoles", "genova", "republica de florencia", "republica de venecia", "roma", "imperio romano"]],
+  ["gr", ["atenas", "esparta"]],
+  ["gb", ["londres"]],
+  ["fr", ["paris", "versalles", "marsella"]],
+  ["es", ["madrid", "barcelona", "sevilla", "castilla", "aragon"]],
+  ["de", ["berlin", "prusia", "baviera", "sacro imperio"]],
+  ["at", ["viena"]],
+  ["ru", ["moscu", "san petersburgo"]],
+  ["pl", ["varsovia"]],
+  ["tr", ["estambul", "constantinopla"]],
+  ["eg", ["el cairo"]],
+  ["il", ["jerusalen"]],
+  ["cn", ["pekin", "beijing", "shanghai"]],
+  ["jp", ["tokio"]],
+  ["us", ["nueva york", "washington dc", "california", "texas"]],
+  ["pt", ["lisboa"]],
+  ["be", ["bruselas"]],
+  ["nl", ["amsterdam"]],
+  ["cu", ["la habana"]],
+  ["co", ["bogota"]],
+  
+  ["ve", ["caracas"]],
+  ["ar", ["buenos aires"]],
+  ["uy", ["montevideo"]],
+  ["asia", ["asia", "asiatico", "asiatica", "asiaticos", "asiaticas"]],
+  ["africa", ["africa", "africano", "africana", "africanos", "africanas"]],
+];
+const PLACE_RES: Array<[string, RegExp]> = PLACES.flatMap(([id, names]) => names.map((n): [string, RegExp] => [id, new RegExp(`(?:^| )${n}(?: |$)`)]));
+
 /** Países (o gentilicios) que menciona un texto. */
 export function countriesIn(text: string): Set<string> {
   const t = fold(text);
@@ -90,14 +122,25 @@ export function countriesIn(text: string): Set<string> {
   return out;
 }
 
+/** Ciudades, estados históricos y continentes que menciona un texto (como id de su país). */
+export function placesIn(text: string): Set<string> {
+  const t = fold(text);
+  const out = new Set<string>();
+  for (const [id, re] of PLACE_RES) if (re.test(t)) out.add(id);
+  return out;
+}
+
 /**
- * ¿El título de un resultado de búsqueda es admisible para esta consulta? Rechaza si nombra un país que la
- * consulta y su contexto no mencionan (otro país, otro tema).
+ * ¿El título de un resultado de búsqueda contradice la consulta? Sí si nombra un país o gentilicio que ni la consulta ni
+ * su contexto mencionan, o (señal débil) un lugar de otro país cuando la consulta ya nombra alguno.
  */
 export function contradictsCountry(query: string, context: string, hitTitle: string): boolean {
-  const hit = countriesIn(hitTitle);
-  if (hit.size === 0) return false;
-  const known = countriesIn(`${query} ${context}`);
-  for (const c of hit) if (!known.has(c)) return true;
+  const hitCountries = countriesIn(hitTitle);
+  const hitPlaces = placesIn(hitTitle);
+  if (hitCountries.size === 0 && hitPlaces.size === 0) return false;
+  const text = `${query} ${context}`;
+  const known = new Set([...countriesIn(text), ...placesIn(text)]);
+  for (const c of hitCountries) if (!known.has(c)) return true;
+  if (known.size > 0) for (const c of hitPlaces) if (!known.has(c)) return true;
   return false;
 }

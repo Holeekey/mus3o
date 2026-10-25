@@ -30,3 +30,16 @@ describe("contradictsCountry", () => {
     expect(contradictsCountry("Armada", ctx, "Armada venezolana")).toBe(false);
   });
 });
+
+describe("weak place signals (cities, historical states, continents)", () => {
+  const ctx = "República y Terror · La Revolución Francesa";
+  it("rejects a place of another country only when the query already names one", () => {
+    expect(contradictsCountry("República y ejecución del rey", ctx, "República de Florencia")).toBe(true);
+    expect(contradictsCountry("Crisis financiera", "Crisis y Estados Generales · La Revolución Francesa", "Crisis financiera asiática")).toBe(true);
+    expect(contradictsCountry("República", "Tema libre", "República de Florencia")).toBe(false); // nada con qué contradecir
+  });
+  it("accepts places that belong to a country the query names", () => {
+    expect(contradictsCountry("Toma de la Bastilla", ctx, "Bastilla (París)")).toBe(false);
+    expect(contradictsCountry("Reyes", "Corte · Historia de España", "Palacio de Madrid")).toBe(false);
+  });
+});
