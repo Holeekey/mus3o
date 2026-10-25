@@ -140,7 +140,7 @@ function Pedestal({ p, order, palette, theme }: { p: PedestalLayout; order: numb
   )
 
   const hidden = asked && !result
-  // El número marca el recorrido de estudio de la sala (palace/route.ts).
+  // El número marca el recorrido de estudio de todo el museo (palace/route.ts): la sala 2 sigue donde terminó la 1.
   const label = `${order} · ${hidden ? '???' : p.concept.title}`
   const tokens = theme.ui.tokens
   const band = asked && result ? (result === 'ok' ? tokens.ok : tokens.danger) : memorized ? palette.trim : null
@@ -306,7 +306,7 @@ export function Room({
         <StaticMerge>
           {room.pedestals.map((p, k) => (
             <Reveal key={p.concept.id} id={pedestalKey(p.concept.id)} mode="sink">
-              <Pedestal p={p} order={k + 1} palette={palette} theme={theme} />
+              <Pedestal p={p} order={room.firstOrder + k} palette={palette} theme={theme} />
             </Reveal>
           ))}
         </StaticMerge>

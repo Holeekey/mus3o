@@ -77,18 +77,69 @@ describe('study route in a real museum layout', () => {
       expect(first).toBeLessThanOrEqual(Math.min(...rest) + 1e-6)
     })
   })
+
+  it('continues the numbering from one room to the next', async () => {
+    const { EXAMPLE_TEXT } = await import('./example')
+    const { buildLayout } = await import('./layout')
+    const { parsePalace } = await import('./parse')
+    const parsed = parsePalace(EXAMPLE_TEXT)
+    if (!parsed.ok) throw new Error('example must parse')
+    const rooms = [...buildLayout(parsed.palace).rooms].sort((a, b) => a.index - b.index)
+    let expected = 1
+    for (const room of rooms) {
+      expect(room.firstOrder).toBe(expected)
+      expected += room.pedestals.length
+    }
+    expect(rooms.length).toBeGreaterThan(1)
+  })
+})
+
+describe('routeStarts', () => {
+  it('numbers the whole museum in one sequence: room 2 continues where room 1 ended', async () => {
+    const { routeStarts } = await import('./route')
+    expect(routeStarts([{ pieces: [1, 2, 3] }, { pieces: [1, 2, 3] }, { pieces: [1, 2] }])).toEqual([1, 4, 7])
+    expect(routeStarts([])).toEqual([])
+  })
+})
+
+describe('routeNext', () => {
+  const rooms = [
+    { id: 'r1', index: 0, title: 'Membrana', firstOrder: 1, pedestals: ['a', 'b', 'c'].map((id) => ({ concept: { id, title: id.toUpperCase() } })) },
+    { id: 'r2', index: 1, title: 'Núcleo', firstOrder: 4, pedestals: ['d', 'e'].map((id) => ({ concept: { id, title: id.toUpperCase() } })) },
+  ]
+
+  it('points to the next totem of the current room with its museum-wide number', async () => {
+    const { routeNext } = await import('./route')
+    expect(routeNext(rooms, 'r1', {})).toEqual({ number: 1, title: 'A', fresh: true })
+    expect(routeNext(rooms, 'r1', { a: true })).toEqual({ number: 2, title: 'B', fresh: false })
+    expect(routeNext(rooms, 'r2', {})).toEqual({ number: 4, title: 'D', fresh: true })
+  })
+
+  it('sends you to the next room once the current one is complete', async () => {
+    const { routeNext } = await import('./route')
+    expect(routeNext(rooms, 'r1', { a: true, b: true, c: true })).toEqual({ number: 4, title: 'D', fresh: false, room: 'Núcleo' })
+  })
+
+  it('is null when the whole museum is memorized', async () => {
+    const { routeNext } = await import('./route')
+    expect(routeNext(rooms, 'r2', { a: 1, b: 1, c: 1, d: 1, e: 1 })).toBeNull()
+  })
 })
 
 describe('routeHintText', () => {
-  it('invites to start with totem 1 in a fresh room', async () => {
+  it('invites to start a fresh room with its first number', async () => {
     const { routeHintText } = await import('./route')
-    expect(routeHintText(0, 0, 'Bicapa lipídica')).toBe('Empieza por el 1 · Bicapa lipídica')
+    expect(routeHintText({ number: 1, title: 'Bicapa lipídica', fresh: true })).toBe('Empieza por el 1 · Bicapa lipídica')
+    expect(routeHintText({ number: 4, title: 'ADN', fresh: true })).toBe('Empieza por el 4 · ADN')
   })
 
   it('points to the next totem once the route has started', async () => {
     const { routeHintText } = await import('./route')
-    expect(routeHintText(1, 1, 'Proteínas de canal')).toBe('Siguiente: 2 · Proteínas de canal')
-    // Saltó el 1: igual se le guía a volver a él.
-    expect(routeHintText(0, 2, 'Bicapa lipídica')).toBe('Siguiente: 1 · Bicapa lipídica')
+    expect(routeHintText({ number: 2, title: 'Proteínas de canal', fresh: false })).toBe('Siguiente: 2 · Proteínas de canal')
+  })
+
+  it('names the next room when the current one is complete', async () => {
+    const { routeHintText } = await import('./route')
+    expect(routeHintText({ number: 4, title: 'ADN', fresh: false, room: 'Núcleo' })).toBe('Sala completa → sigue en «Núcleo»: 4 · ADN')
   })
 })
