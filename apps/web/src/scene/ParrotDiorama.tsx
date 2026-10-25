@@ -11,10 +11,10 @@ const BODY_GREEN = new THREE.Color('#228B22') // Verde bosque esmeralda para el 
 
 type ParrotModelProps = {
   scale?: number
-  interactive?: boolean
+  lookAtPointer?: boolean
 }
 
-export function ParrotModel({ scale = 4.2, interactive = true }: ParrotModelProps) {
+export function ParrotModel({ scale = 4.2, lookAtPointer = true }: ParrotModelProps) {
   const animRef = useRef<THREE.Group>(null)
   const { scene, animations } = useGLTF(MODEL_PATH)
   const { actions } = useAnimations(animations, scene)
@@ -82,7 +82,7 @@ export function ParrotModel({ scale = 4.2, interactive = true }: ParrotModelProp
     anim.position.y = Math.sin(t * 1.8) * 0.03
     anim.position.x = Math.cos(t * 0.9) * 0.015
 
-    if (interactive) {
+    if (lookAtPointer) {
       const targetRotY = Math.PI / 4 + state.pointer.x * 0.2
       const targetRotX = -state.pointer.y * 0.12
       anim.rotation.y = THREE.MathUtils.damp(anim.rotation.y, targetRotY, 4, delta)
