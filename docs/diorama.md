@@ -1,8 +1,17 @@
 # Diorama: "entrar al cuadro"
 
-Cuando una sala tiene un `diorama` (solo en 1 o 2 salas, las que son representables: un evento
-histórico, un lugar, un paisaje, un ecosistema), su cuadro principal se vuelve una **ventana** a
-una maqueta 3D explorable. Con `E` se entra; con `Q` se vuelve a la sala.
+Cuando el cuadro principal de una sala tiene un diorama, se vuelve una **ventana** a una maqueta 3D
+explorable. Con `E` se entra; con `Q` se vuelve a la sala.
+
+**De dónde sale el diorama** (en este orden):
+
+1. **Biblioteca** (`library.ts`, hecha a mano: Carabobo, corazón, célula, neurona): manda donde el tema coincide.
+2. **La foto real del cuadro** (`photoDiorama.ts`, `usePhotoDiorama.ts`, servidor `POST /api/diorama-from-image`, ver `servidor.md`): cuando la imagen del cuadro principal ya se resolvió, Claude (visión) clasifica si es una escena recreable (batalla, paisaje, lugar, interior, escena microscópica) y, si lo es, la describe con la biblioteca de props. **Si no es una escena (retrato, diagrama, mapa, texto, logo) o no hay IA, el cuadro queda normal, sin portal.** Nunca se arma un mundo con los conceptos de la sala.
+3. Nada más. El compositor por conceptos (`compose.ts`) ya no se usa por defecto; solo lo llama la demo `?demo=compuesto`.
+
+Dentro del mundo de foto, la imagen original se ve como **panel curvo al fondo** (`Backdrop` en `DioramaScene.tsx`, campo `diorama.backdrop`) para reconocer la escena, los props siguen la composición de la imagen y la paleta sale de ella. Cada prop lleva un `label` en español (qué representa en la imagen), útil para la narración.
+
+Cliente: pide **solo** el cuadro principal sin diorama de biblioteca, con imagen de Wikimedia (no las subidas por el usuario ni las clasificadas como `diagram`), solo cuando la sala está a ≤ 64 m de la del jugador (o de la inicial), **2 peticiones a la vez** y la sala del jugador primero; cada imagen se pide una sola vez por sesión y un fallo transitorio se reintenta pasado 1 min. `usePhotoDioramaStore.ready` hace que `World` cargue el runtime de dioramas aunque ninguna sala traiga uno de biblioteca.
 
 La IA **no escribe geometría**. Elige de una biblioteca cerrada (tipos de prop, terrenos, horas
 del día) y coloca. El cliente construye todo con primitivas low-poly.
@@ -13,8 +22,10 @@ del día) y coloca. El cliente construye todo con primitivas low-poly.
 
 | Archivo | Qué hace |
 |---|---|
-| `packages/shared/src/schema.ts` | `DioramaSchema`, `DioramaPropSchema`, `KINDS`, `POSES`, `TERRAINS`, `TIMES`, `MAX_PROPS` |
-| `apps/server/src/prompts.ts` (`DIORAMA_RULES`) | Qué pedirle a la IA y cómo colocar |
+| `packages/shared/src/schema.ts` | `DioramaSchema` (con `backdrop` opcional), `DioramaPropSchema`, `KINDS`, `POSES`, `TERRAINS`, `TIMES`, `MAX_PROPS`, `PhotoDioramaRequestSchema` y `PhotoDioramaResponseSchema` |
+| `apps/web/src/diorama/photoDiorama.ts`, `usePhotoDiorama.ts` | Cola de peticiones (2 a la vez), caché por imagen y hook que decide el portal de cada cuadro |
+| `apps/server/src/photoDiorama.ts` | Endpoint que recrea la escena de una imagen real |
+| `apps/server/src/photoDiorama.ts` (`PHOTO_SYSTEM_PROMPT`) | Qué pedirle a la IA al recrear una foto y cómo colocar. La generación del museo ya **no** pide dioramas |
 | `apps/web/src/diorama/dioramaStore.ts` | Fase de la transición, portales registrados, atajos `E` y `Q` |
 | `apps/web/src/diorama/DioramaRuntime.tsx` | Transiciones, cámara, colisiones dentro del diorama, cuadro-portal (`MeshPortalMaterial`) |
 | `apps/web/src/diorama/DioramaScene.tsx` | Escena de la maqueta: cielo, luz, suelo, props instanciados |
@@ -40,6 +51,7 @@ Tests: `apps/web/src/diorama/diorama.test.ts` y `packages/shared/src/diorama.tes
 ```ts
 Diorama = {
   title, terrain, time,
+  backdrop?,                          // solo dioramas de foto: ruta del proxy de imágenes
   palette: { ground, sky, accent },   // hex de 6 dígitos
   props: DioramaProp[]                // máx. 24; inválidos se descartan
 }
@@ -122,17 +134,18 @@ Un prop con `pieceId` y `label` queda enlazado a una pieza de la sala (`Linked`)
 (coseno ≥ 0.9). Si lo encuentra, lo pone como `focusedId`: el mismo foco que usa `E` para examinar la
 pieza. Máximo 5 enlaces recomendados en el prompt.
 
-## 4. Reglas para la IA (resumen de `DIORAMA_RULES`)
+## 4. Reglas para la IA (resumen de `PHOTO_SYSTEM_PROMPT`)
 
-- Solo en 1 o 2 salas, las más representables. En salas abstractas, no.
-- 8 a 16 props. Usa `count` para multitudes en vez de repetir.
-- Personas y animales: siempre `figure`, `rider` o `horse`, nunca partes sueltas.
-- `pos` en metros dentro de ±14. Deja libre `z > 6`: ahí entra la vista.
-- Máximo 5 enlaces `pieceId` a piezas de **esa misma sala**.
+- Solo escenas recreables (batalla, paisaje, lugar, evento, interior, microscópico); retratos, diagramas, mapas, texto y logos no.
+- Describe solo lo que se ve; pocos props bien escalados (6 a 14) mejor que muchos equivocados. Usa `count` para multitudes.
+- Personas y animales: siempre `figure`, `rider` (ya montado) o `horse`, nunca partes sueltas.
+- `pos` en metros dentro de ±14, reflejando la composición de la imagen. Deja libre `z > 6`: ahí entra la vista.
+- Interiores: `terrain` `interior` y sin edificios de exterior como mobiliario (el saneado además reduce su escala y cantidad).
+- Sin enlaces `pieceId`: los props llevan solo `label` en español.
 
 ## 5. Cómo probarlo
 
-- Demo rápida: `?demo=historia` (tiene dioramas) o el palacio con una sala que tenga `diorama`.
+- Demo rápida: `?demo=historia` (Carabobo de biblioteca; Boyacá, Angostura y Maracaibo se recrean desde su foto, con semillas del repo) o el palacio con una sala que tenga `diorama`.
 - Validación visual y de rendimiento (draw calls, FPS, capturas): skill `3d-validation`.
 - Lógica (colocación, terreno determinista, esquema): `npm test -w @mus3o/web` y `-w @mus3o/shared`.
 
@@ -154,3 +167,11 @@ Al entrar, Aris explica qué se ve; no usa IA, solo plantillas sobre los datos d
 - **Salida**: al salir del cuadro se calla la voz, se cierra el globo y se olvida lo contado.
 - **Dónde se ve y se oye**: globo de Aris existente (`arisMessage`, `ui/ArisDialog.tsx`, que dura más con textos largos). Voz solo si el narrador está activo (`N`) y Aris no está silenciada; el estado de lo que dice Aris vive en `useGuideStore` (`line`), para que otro panel (VR) lo lea.
 - **Límites**: si un concepto no tiene texto, solo se nombra; el resumen de Wikipedia se usa únicamente si ya estaba en caché (la guía lo pide para la siguiente vez, nunca espera).
+
+### En mundos de foto
+
+Los props de una foto no enlazan conceptos (`pieceId`), solo llevan `label`. La guía (plantillas, sin IA) funciona así:
+
+- **Introducción** (`buildPhotoIntro`): dice que es una recreación en 3D de la imagen real, con título y autor si ya se conocen (`peekResolvedImage` de la sala), y lista hasta 5 rótulos con su dirección, sin repetir rótulos iguales (sin mayúsculas ni tildes; se queda el más cercano): «soldados realistas (a tu derecha)».
+- **Prop mirado**: el runtime publica `useGuideStore.focusedProp` (`prop:N`, mismo alcance y ángulo que los conceptos, con `layout.labelled`) y Aris dice el rótulo. Si el rótulo coincide con el título de un concepto de la sala (contiene, sin mayúsculas ni tildes, mínimo 4 letras; `matchConcept`), añade el texto de los apuntes y la fuente igual que con un concepto enlazado.
+- `G` repite el prop mirado.

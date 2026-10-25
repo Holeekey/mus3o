@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, Color, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { type Diorama, type ImageSearch } from '@mus3o/shared'
 import { capTextureSize } from '../lib/capTexture'
+import { usePhotoDiorama } from '../diorama/usePhotoDiorama'
 import { creditLine, userImageAsResolved, useResolvedImage } from '../lib/images'
 import { useIntro } from '../intro/store'
 import { buildFrameGeometry } from './frameGeometry'
@@ -99,7 +100,7 @@ export function Painting({
   userImage,
   palette,
   theme,
-  diorama,
+  diorama: libraryDiorama,
   roomId,
   title,
 }: {
@@ -117,6 +118,10 @@ export function Painting({
 }) {
   const resolved = useResolvedImage(userImage ? undefined : search)
   const image = userImage ? userImageAsResolved(userImage.src, userImage.title) : resolved
+  // Diorama de la biblioteca (hecho a mano) manda; si no hay, el cuadro principal pide recrear su foto real.
+  // Si la foto no es una escena (retrato, diagrama...) o no hay IA, el cuadro queda normal, sin portal.
+  const photoDiorama = usePhotoDiorama({ enabled: Boolean(slot.main && !libraryDiorama && !userImage), image, roomId, roomTitle: title })
+  const diorama = libraryDiorama ?? photoDiorama ?? undefined
   const texture = useTexture(image?.src)
   const isIntroPlaying = useIntro((s) => s.phase === 'playing')
   const activeTexture = isIntroPlaying ? null : texture

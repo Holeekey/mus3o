@@ -231,8 +231,16 @@ export const DioramaPropSchema = z.object({
   flow: FlowSchema.optional().catch(undefined),
 });
 
+/**
+ * Foto de fondo de un diorama hecho a partir de una imagen real: solo la ruta del proxy de imágenes del propio
+ * servidor hacia un archivo de Wikimedia (nunca una URL arbitraria que el navegador deba pedir).
+ */
+export const BACKDROP_RE = /^\/api\/image\/file\?u=https%3A%2F%2F(upload|thumb)\.wikimedia\.org%2F[A-Za-z0-9%._~!*'()\-]{1,2000}$/;
+
 export const DioramaSchema = z.object({
   title: z.string().min(1).max(80).catch("Diorama"),
+  /** Diorama recreado desde una foto/cuadro real: la imagen original se muestra al fondo para reconocer la escena. */
+  backdrop: z.string().regex(BACKDROP_RE).optional().catch(undefined),
   terrain: z.enum(TERRAINS).catch("plain"),
   time: z.enum(TIMES).catch("day"),
   palette: z
@@ -260,6 +268,25 @@ export const DioramaSchema = z.object({
 export function parseDiorama(input: unknown): z.infer<typeof DioramaSchema> {
   return DioramaSchema.parse(input ?? {});
 }
+
+/** POST /api/diorama-from-image: recrear en 3D la escena que muestra una imagen de Wikimedia (si es recreable). */
+export const PhotoDioramaRequestSchema = z
+  .object({
+    imageUrl: z.string().min(1).max(2048),
+    title: z.string().trim().max(120).default(""),
+    roomTitle: z.string().trim().max(120).default(""),
+    concepts: z.array(z.string().trim().max(80)).max(12).default([]),
+  })
+  .strict();
+export type PhotoDioramaRequest = z.infer<typeof PhotoDioramaRequestSchema>;
+
+/** `recreatable: false` = la imagen no es una escena (retrato, diagrama, mapa, texto...): el cuadro queda normal, sin portal. */
+export const PhotoDioramaResponseSchema = z.object({
+  recreatable: z.boolean(),
+  reason: z.string().max(160).optional(),
+  diorama: DioramaSchema.optional(),
+});
+export type PhotoDioramaResponse = z.infer<typeof PhotoDioramaResponseSchema>;
 
 export const RoomSchema = z.object({
   id: z.string().min(1),

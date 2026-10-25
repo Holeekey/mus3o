@@ -133,3 +133,77 @@ export function createVisitTracker() {
     },
   }
 }
+
+// --- Mundos recreados desde una foto: los props traen solo un rótulo (qué se ve en la imagen) ---
+
+/** Minúsculas y sin tildes, para comparar rótulos con títulos de conceptos. */
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9ñ]+/g, ' ')
+    .trim()
+
+/** Mínimo de letras para que un título o rótulo cuente como coincidencia (evita que "ADN" case con todo). */
+const MIN_MATCH = 4
+
+/** Concepto de la sala cuyo título contiene el rótulo (o al revés), sin mayúsculas ni tildes. */
+export function matchConcept<T extends { title: string }>(label: string, pieces: T[]): T | undefined {
+  const l = fold(label)
+  if (l.length < MIN_MATCH) return undefined
+  return pieces.find((p) => {
+    const t = fold(p.title)
+    return t.length >= MIN_MATCH && (` ${t} `.includes(` ${l} `) || ` ${l} `.includes(` ${t} `))
+  })
+}
+
+export type PhotoItem = { label: string; direction: string; d?: number }
+
+/** Una entrada por rótulo (sin importar mayúsculas ni tildes): se queda la más cercana. */
+export function dedupeLabels(items: PhotoItem[]): PhotoItem[] {
+  const best = new Map<string, PhotoItem>()
+  const order: string[] = []
+  for (const it of items) {
+    const k = fold(it.label)
+    if (!k) continue
+    const cur = best.get(k)
+    if (!cur) order.push(k)
+    if (!cur || (it.d ?? 0) < (cur.d ?? 0)) best.set(k, it)
+  }
+  return order.map((k) => best.get(k)!)
+}
+
+export type PhotoIntroInput = {
+  /** Título de la imagen real (Wikimedia), si ya se conoce. */
+  imageTitle?: string
+  /** Autor (y año) de la imagen, si se conoce. */
+  artist?: string
+  dioramaTitle: string
+  items: PhotoItem[]
+}
+
+export const PHOTO_INTRO_MAX_ITEMS = 5
+
+/** Introducción de un mundo recreado desde la foto real: qué imagen es y qué se ve, con direcciones. */
+export function buildPhotoIntro({ imageTitle, artist, dioramaTitle, items }: PhotoIntroInput): string {
+  const what = imageTitle?.trim() ? `«${imageTitle.trim()}»${artist?.trim() ? `, de ${artist.trim()}` : ''}` : `«${dioramaTitle.trim()}»`
+  const first = `Estás dentro de una recreación en 3D de ${what}, hecha a partir de la imagen real que cuelga en la sala.`
+  const uniq = dedupeLabels(items)
+  if (!uniq.length) return `${first} Recórrela con calma y compárala con la imagen que ves al fondo.`
+  const shown = uniq.slice(0, PHOTO_INTRO_MAX_ITEMS)
+  const rest = uniq.length - shown.length
+  const list = shown.map((i) => `${i.label.trim()} (${i.direction})`).join(', ')
+  return `${first} Esto es lo que se ve: ${list}${rest > 0 ? ` y ${rest} más` : ''}. Acércate a cada cosa para que te diga qué es.`
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/**
+ * Lo que dice Aris al mirar un prop rotulado de una foto: su rótulo y, si coincide con un concepto de la sala,
+ * también la explicación y la fuente de los apuntes (igual que con un concepto enlazado).
+ */
+export function buildPropNarration(label: string, piece?: PieceInput): string {
+  if (!piece) return stop(cap(label.trim()))
+  return buildPieceNarration({ ...piece, title: cap(label.trim()) })
+}

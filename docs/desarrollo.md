@@ -51,7 +51,9 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
 | `MUSEUM_CACHE_DIR` | No | `.cache/museums` (museos generados, sobrevive a reinicios) |
 | `ANTHROPIC_FALLBACK_MODEL` | No | `claude-haiku-5-5` (respaldo creado de piezas sin asset) |
-| `ANTHROPIC_DIORAMA_MODEL` | No | el principal (Haiku se probó y se descartó: ver `servidor.md`) |
+| `ANTHROPIC_DIORAMA_MODEL` | No | el principal (Haiku se probó y se descartó: ver `servidor.md`). También lo usa `POST /api/diorama-from-image` |
+| `MAX_DAILY_PHOTO_DIORAMAS` / `PHOTO_DIORAMA_RATE_LIMIT` | No | 150 por día / 20 por minuto y por IP (dioramas desde la foto) |
+| `DIORAMA_SEED_DIR` | No | `apps/server/seed/dioramas` (semillas de dioramas de foto, en el repo) |
 | `FLOW_FORMAT` | No | `dsl` (`json` = formato anterior, más caro) |
 
 **Reglas:** `.env` está ignorado por git. Solo el servidor lee variables. Nunca uses `VITE_*` para secretos.
@@ -160,7 +162,7 @@ Lógica en `memory/model.ts` y `palace/keys.ts`, con tests. Actualiza [memoria-y
 
 ### Un tipo de prop del diorama
 
-Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`buildProp`, `variantsFor`), valor nuevo en `KINDS` (schema) y en `DIORAMA_RULES`. Actualiza [diorama.md](./diorama.md).
+Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`buildProp`, `variantsFor`), valor nuevo en `KINDS` (schema) y en `PHOTO_SYSTEM_PROMPT` (`photoDiorama.ts`). Actualiza [diorama.md](./diorama.md).
 
 ## 9. Solución de problemas conocidos
 

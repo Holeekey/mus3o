@@ -9,6 +9,7 @@ import { roomPalettes, type Theme } from '../theme'
 import { DioramaScene } from './DioramaScene'
 import { dioramaFx, dioramaRequest, useDioramaStore } from './dioramaStore'
 import { DIORAMA_SPAWN } from './guide'
+import { propGuideId, useGuideStore } from './guideStore'
 import { getDioramaModel } from './model'
 import { RoomEcho } from './RoomEcho'
 import { applyTouchLook, moveAxes } from '../scene/moveInput'
@@ -341,6 +342,20 @@ export function DioramaRuntime({ layout, theme }: { layout: PalaceLayout; theme:
       st.set(closeCard ? { focusedId: best, openId: null } : { focusedId: best })
     }
     focusedPiece.current = best
+    // Props rotulados sin pieza (dioramas de foto): mismo alcance y de frente, para que Aris diga qué son.
+    let prop: string | null = null
+    if (!best) {
+      let propD = REACH
+      for (const l of model.layout.labelled ?? []) {
+        const vx = l.x - p.x
+        const vz = l.z - p.z
+        const d = Math.hypot(vx, vz)
+        if (d > propD || d < 0.01 || (vx * f.x + vz * f.z) / d < 0.9) continue
+        prop = propGuideId(l.propIndex)
+        propD = d
+      }
+    }
+    if (prop !== useGuideStore.getState().focusedProp) useGuideStore.setState({ focusedProp: prop })
   })
 
   // La luz de enfoque y las etiquetas siguen al modo (en examen los títulos se ocultan).

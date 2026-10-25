@@ -5,7 +5,8 @@ import { readNarratorOn } from '../lib/narratorPref'
 import { canSpeak, speak, stopSpeaking } from '../lib/voice'
 import { useStore } from '../store'
 import { useDioramaStore } from './dioramaStore'
-import { buildIntro, buildPieceNarration, createVisitTracker, DIORAMA_SPAWN, relativeDirection, speechMs, type IntroItem } from './guide'
+import { peekResolvedImage } from '../lib/images'
+import { buildIntro, buildPhotoIntro, buildPieceNarration, buildPropNarration, createVisitTracker, DIORAMA_SPAWN, matchConcept, relativeDirection, speechMs, type IntroItem, type PhotoItem } from './guide'
 import { getDioramaModel } from './model'
 
 // Estado de la guía de Aris dentro de los cuadros. Vive en un store (no en un componente) para que
@@ -14,9 +15,16 @@ import { getDioramaModel } from './model'
 
 export type GuideLine = { kind: 'intro' | 'piece'; id: string; text: string }
 
-type GuideState = { line: GuideLine | null }
+/** `prop:N` = prop rotulado N del diorama activo (dioramas de foto, sin pieza enlazada). */
+export const propGuideId = (index: number) => `prop:${index}`
 
-export const useGuideStore = create<GuideState>(() => ({ line: null }))
+type GuideState = {
+  line: GuideLine | null
+  /** Prop rotulado que se mira ahora (lo escribe el runtime del diorama). */
+  focusedProp: string | null
+}
+
+export const useGuideStore = create<GuideState>(() => ({ line: null, focusedProp: null }))
 
 /** Tiempo que la mirada debe quedarse en un concepto antes de que Aris hable (evita parloteo al barrer la vista). */
 export const DWELL_MS = 650
@@ -55,6 +63,18 @@ export function composeIntro(): GuideLine | null {
   const room = palace?.rooms.find((r) => r.id === portal.roomId)
   const model = getDioramaModel(portal.diorama)
   const from = { x: DIORAMA_SPAWN.x, z: DIORAMA_SPAWN.z }
+  if (portal.diorama.backdrop) {
+    // Mundo recreado desde la foto real: se dice de qué imagen sale y qué se ve (rótulos de los props).
+    const image = room?.imageSearch ? peekResolvedImage(room.imageSearch) : undefined
+    const seen: PhotoItem[] = (model.layout.labelled ?? []).map((l) => ({
+      label: l.label,
+      direction: relativeDirection(DIORAMA_SPAWN.yaw, from, l),
+      d: Math.hypot(l.x - from.x, l.z - from.z),
+    }))
+    seen.sort((a, b) => (a.d ?? 0) - (b.d ?? 0))
+    const text = buildPhotoIntro({ imageTitle: image?.title, artist: image?.artist, dioramaTitle: portal.diorama.title, items: seen })
+    return { kind: 'intro', id: portal.id, text }
+  }
   const items: Array<IntroItem & { d: number }> = []
   const used = new Set<string>()
   for (const l of model.layout.linked) {
@@ -71,11 +91,33 @@ export function composeIntro(): GuideLine | null {
 
 /** Lo que dice Aris de un concepto, solo con los datos del museo. */
 export function composePiece(id: string): GuideLine | null {
+  if (id.startsWith('prop:')) return composeProp(id)
   const piece = findPiece(useStore.getState().palace, id)
   if (!piece) return null
   const wiki = peekWikiInfo(piece.imageSearch)
   if (wiki === undefined) void fetchWikiInfo(piece.imageSearch ?? {}) // para la próxima vez; nunca se espera
   const text = buildPieceNarration({
+    title: piece.title,
+    text: piece.text,
+    sourceLine: piece.source?.line,
+    hasSource: !!piece.source,
+    unverified: piece.unverified,
+    wiki: wiki ? { title: wiki.title, extract: wiki.extract } : null,
+  })
+  return { kind: 'piece', id, text }
+}
+
+/** Prop rotulado de un diorama de foto: su rótulo y, si coincide con un concepto de la sala, sus apuntes y fuente. */
+function composeProp(id: string): GuideLine | null {
+  const ds = useDioramaStore.getState()
+  const portal = ds.activeId ? ds.portals[ds.activeId] : undefined
+  const label = portal?.diorama.props[Number(id.slice(5))]?.label?.trim()
+  if (!portal || !label) return null
+  const room = useStore.getState().palace?.rooms.find((r) => r.id === portal.roomId)
+  const piece = room ? matchConcept(label, room.pieces) : undefined
+  if (!piece) return { kind: 'piece', id, text: buildPropNarration(label) }
+  const wiki = peekWikiInfo(piece.imageSearch)
+  const text = buildPropNarration(label, {
     title: piece.title,
     text: piece.text,
     sourceLine: piece.source?.line,
@@ -119,7 +161,7 @@ export function focusGuide(id: string | null) {
 export function repeatGuide() {
   if (useDioramaStore.getState().phase !== 'inside') return
   clearTimer()
-  const id = useStore.getState().focusedId
+  const id = useStore.getState().focusedId ?? useGuideStore.getState().focusedProp
   const line = (id && composePiece(id)) || composeIntro()
   if (line) {
     if (line.kind === 'piece') visit.claim(line.id)
@@ -136,6 +178,6 @@ export function stopGuide() {
   if (spoke) stopSpeaking()
   spoke = false
   if (mine && useStore.getState().arisMessage === mine.text) useStore.getState().set({ arisMessage: null })
-  useGuideStore.setState({ line: null })
+  useGuideStore.setState({ line: null, focusedProp: null })
   visit.reset()
 }
