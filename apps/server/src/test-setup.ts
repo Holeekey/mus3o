@@ -10,4 +10,8 @@ process.env.MUSEUM_CACHE_DIR = join(dir, "museums");
 process.env.ASSET_CACHE_DIR = join(dir, "assets");
 process.env.IMAGE_SEED_DIR = join(dir, "seed");
 process.env.DIORAMA_SEED_DIR = join(dir, "seed-dioramas");
+process.env.LIBRARY_DIR = join(dir, "library");
+// Las pruebas nunca llaman a servicios reales (ni gastan crédito): las que necesitan una clave la fijan ellas mismas.
+delete process.env.ANTHROPIC_API_KEY;
+delete process.env.POLY_PIZZA_API_KEY;
 afterAll(() => rmSync(dir, { recursive: true, force: true }));

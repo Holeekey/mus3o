@@ -46,7 +46,7 @@ Ver la tabla completa en [servidor.md](./servidor.md) §6. Resumen:
 | `MAX_DAILY_GENERATIONS` | No | `200` |
 | `MAX_DAILY_ARIS_HELP` | No | `150` |
 | `ANTHROPIC_ARIS_MODEL` | No | `claude-haiku-5-5` |
-| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt` y `/api/assets-review`) |
+| `ENABLE_DEBUG_ROUTES` | No | — (`true` activa `/api/improve-prompt`, `/api/assets-review` y `/api/library`) |
 | `POLY_PIZZA_API_KEY` | No | — (sin ella no se buscan modelos 3D; los pedestales usan glifos) |
 | `ASSET_CACHE_DIR` | No | `.cache/assets` (`.glb` descargados y `review.json`) |
 | `MUSEUM_CACHE_DIR` | No | `.cache/museums` (museos generados, sobrevive a reinicios) |
@@ -171,7 +171,7 @@ Constructor en `apps/web/src/diorama/props/`, registrarlo en `props/index.ts` (`
 | `error: packfile … index unavailable` al hacer `git pull` | Un paquete de objetos de git incompleto en el clon local | Observado una vez en esta sesión; el pull terminó como fast-forward. Si vuelve, `git fsck` muestra el estado |
 | Vite: `Failed to resolve import "mammoth" from "src/lib/files.ts"` (u otro paquete) | Se hizo `git pull` con dependencias nuevas sin instalarlas | `npm install` en la raíz; Vite lo toma solo, recarga la página |
 | `git pull`: `git-lfs filter-process: git-lfs: command not found` | El repo usa Git LFS para assets y no está instalado | `brew install git-lfs` y repite el pull |
-| "No pudimos generar el palacio con IA" y en el server `generate-museum falló tras … ms: Error` | La API de Anthropic rechaza la llamada; visto con `400 Your credit balance is too low` (cuenta sin créditos) | Revisa los créditos en la consola de Anthropic. Reintentar no sirve hasta cargarlos |
+| "Aris no pudo generar el museo" y en el server `generate-museum falló tras … ms: Error` | La API de Anthropic rechaza la llamada; visto con `400 Your credit balance is too low` (cuenta sin créditos) | Revisa los créditos en la consola de Anthropic. Reintentar no sirve hasta cargarlos |
 | La landing dice "IA no configurada" | Falta `ANTHROPIC_API_KEY` | Añádela en `.env` y reinicia el server |
 | "Demasiadas solicitudes" (429) | Rate limit 10/min o tope diario de 200 | Espera un minuto; el tope diario se reinicia a medianoche UTC |
 | Un palacio guardado no carga | No pasa `MuseumSchema` tras un cambio de contrato | `merge` lo descarta a propósito. Borra `mus3o-v1` en `localStorage` o regenera el palacio |

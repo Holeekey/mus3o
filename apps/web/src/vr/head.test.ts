@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Vector3 } from 'three'
 import type { Piece } from '@mus3o/shared'
-import { deviceQuaternion, yawOf } from './head'
+import { deviceQuaternion, GYRO_CORRECT, integrateGyro, normAngle, yawOf } from './head'
 import { panelBody, sourceNote } from './panelText'
 
 const forward = (a: number, b: number, g: number, orient = 0) => new Vector3(0, 0, -1).applyQuaternion(deviceQuaternion(a, b, g, orient))
@@ -58,5 +58,56 @@ describe('panelText', () => {
     expect(sourceNote(piece({ unverified: true }), null)).toBe('No está en tus apuntes')
     expect(sourceNote(piece(), { source: 'Wikipedia', title: 'Mitocondria' } as never)).toContain('Wikipedia')
     expect(sourceNote(piece(), null)).toBeNull()
+  })
+})
+
+describe('pantalla y giroscopio', () => {
+  const look = (q: import('three').Quaternion) => new Vector3(0, 0, -1).applyQuaternion(q)
+
+  it('normAngle: window.orientation de iOS (-90) equivale a 270', () => {
+    expect(normAngle(-90)).toBe(270)
+    expect(normAngle(90)).toBe(90)
+    expect(normAngle(360)).toBe(0)
+  })
+
+  it('apaisado a izquierda (90) y a derecha (270): de canto se mira al horizonte, en sentidos opuestos', () => {
+    const l = look(deviceQuaternion(0, 0, -90, 90))
+    const r = look(deviceQuaternion(0, 0, 90, 270))
+    expect(l.y).toBeCloseTo(0)
+    expect(r.y).toBeCloseTo(0)
+    expect(Math.hypot(l.x, l.z)).toBeCloseTo(1)
+    expect(Math.hypot(r.x, r.z)).toBeCloseTo(1)
+    // Cada giro ve hacia el lado contrario del mismo marco de sensor.
+    expect(l.x * r.x + l.z * r.z).toBeCloseTo(-1)
+  })
+
+  it('apaisado: inclinar la cabeza hacia delante mira hacia abajo en ambos sentidos (y hacia atrás, arriba)', () => {
+    expect(look(deviceQuaternion(0, 0, -70, 90)).y).toBeLessThan(-0.3)
+    expect(look(deviceQuaternion(0, 0, 70, 270)).y).toBeLessThan(-0.3)
+    expect(look(deviceQuaternion(0, 0, -110, 90)).y).toBeGreaterThan(0.3)
+  })
+
+  it('integrar el giroscopio reproduce el giro sin esperar al siguiente evento', () => {
+    const q = deviceQuaternion(0, 90, 0, 0)
+    for (let i = 0; i < 100; i++) integrateGyro(q, 0, (90 * Math.PI) / 180, 0, 0.01)
+    expect(yawOf(q)).toBeCloseTo(Math.PI / 2, 2)
+    expect(look(q).x).toBeCloseTo(-1, 2)
+  })
+
+  it('sin velocidad angular o con dt 0 no cambia nada', () => {
+    const q = deviceQuaternion(30, 80, 5, 0)
+    const copy = q.clone()
+    integrateGyro(q, 0, 0, 0, 0.016)
+    integrateGyro(q, 1, 1, 1, 0)
+    expect(q.angleTo(copy)).toBeCloseTo(0)
+  })
+
+  it('la corrección con DeviceOrientation es parcial y converge sin saltos', () => {
+    const target = deviceQuaternion(40, 90, 0, 0)
+    const q = deviceQuaternion(0, 90, 0, 0)
+    const before = q.angleTo(target)
+    q.slerp(target, GYRO_CORRECT)
+    expect(q.angleTo(target)).toBeLessThan(before)
+    expect(q.angleTo(target)).toBeGreaterThan(0)
   })
 })

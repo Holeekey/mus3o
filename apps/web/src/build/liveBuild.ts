@@ -46,7 +46,7 @@ export async function startLiveBuild(request: LiveBuildRequest, onStage?: (stage
   const text = request.text.trim()
   const store = () => useStore.getState()
   store().beginBuildingPalace({
-    title: files ? 'Tu palacio' : looksLikeTopic(text) ? text : 'Tu palacio',
+    title: files ? 'Tu museo' : looksLikeTopic(text) ? text : 'Tu museo',
     sourceText: text || null,
     userImages: files ? request.userImages : {},
     reducedMotion: prefersReducedMotion(),
@@ -76,7 +76,7 @@ export async function startLiveBuild(request: LiveBuildRequest, onStage?: (stage
         finished = true
       } else throw new ApiError(event.message, event.status ?? 502)
     }
-    if (!finished) throw new ApiError('Se cortó la conexión con la IA', 502)
+    if (!finished) throw new ApiError('Se cortó la conexión con Aris', 502)
   } catch (e) {
     if (signal.aborted) return
     const status = (e as { status?: number }).status

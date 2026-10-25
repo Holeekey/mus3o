@@ -126,7 +126,9 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 | `PORT` | `3001` | Puerto HTTP |
 | `WEB_ORIGIN` | `http://localhost:5173` | Origen permitido por CORS |
 | `MAX_DAILY_GENERATIONS` | `200` | Tope diario de llamadas a Claude |
-| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt` |
+| `ENABLE_DEBUG_ROUTES` | (no definida) | `true` habilita `/api/improve-prompt`, `/api/assets-review` y `/api/library` |
+| `LIBRARY_DIR` | `apps/server/seed/library` | Biblioteca propia de modelos (`index.json` + `.glb`); ver «Biblioteca propia» |
+| `LIBRARY_SOURCE_URL` | URL del repo | Enlace que lleva el crédito de los `.glb` propios |
 | `ELEVENLABS_API_KEY` | (vacía) | Activa la voz natural; sin ella el cliente usa la voz del navegador |
 | `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voz por defecto / `eleven_multilingual_v2` | Voz y modelo (el id se valida alfanumérico) |
 | `MAX_DAILY_TTS_CHARS` | `30000` | Tope diario de caracteres enviados a ElevenLabs |
@@ -134,7 +136,10 @@ Ver `.env.example`. Solo el servidor lee estas variables (nunca `VITE_*` para se
 ## 7. Proxy de imágenes (`images.ts`)
 
 - **Resolución:** `resolveImage({ wiki, commons, lang })` busca primero el artículo de Wikipedia (`wikiTitle`) y, si no da imagen, en Commons (`commonsQuery`). `lang` default `es`. Clasifica el resultado como `painting`, `diagram` o `photo` según metadatos.
-- **Caché de resoluciones:** 500 entradas, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda.
+- **Filtro de relevancia** (`relevance.ts`, solo en las búsquedas de reserva, nunca en un acierto exacto de título): un resultado de la búsqueda de Wikipedia debe compartir una palabra con el título pedido o al menos dos con el contexto, y **no puede nombrar un país o gentilicio que ni la consulta ni el contexto mencionan** («Armada en el Caribe» no trae «Armada Argentina»; «Elecciones de 2024» de un palacio EE. UU.-Venezuela no trae las de Uruguay). Se descarta y se prueba el siguiente resultado (hasta 5); si ninguno sirve, 404 y el cuadro queda como lienzo de yeso. La búsqueda automática en Commons (sin `commonsQuery` de la IA) exige además que el nombre del archivo comparta una palabra con el título y no contradiga el país. Determinista, sin llamadas de IA.
+- **Contexto de las piezas:** `attachImageSearches` pone como contexto de una pieza `«sala · título del palacio»` (antes solo la sala), para que el tema del palacio desambigüe.
+- **Caché de resoluciones:** 500 entradas en memoria, también guarda los `null` ("sin imagen"). Un error transitorio no se guarda. En disco cada resultado lleva `v: RESOLVER_VERSION`: la caché ignora lo escrito por versiones anteriores (podía contener la imagen de otro tema); la semilla del repo no se versiona.
+- **`src` de `ResolvedImage`:** siempre la ruta del proxy `/api/image/file?u=<url de Wikimedia codificada>`; la URL que da Commons trae `?utm_source=…` y se conserva dentro de `u` (es la clave de la semilla/caché de dioramas). El cliente (`wikimediaUrlOf`) acepta también una URL https directa de los hosts de Wikimedia.
 - **Concurrencia:** máximo **3** llamadas simultáneas a Wikimedia (un museo puede pedir decenas de imágenes a la vez).
 - **Peticiones idénticas simultáneas:** `resolveImage` y la descarga de `/image/file` comparten la consulta en curso por clave (`resolving` y `loading`) y la limpian al terminar, así un error transitorio no se cachea.
 - **Errores transitorios** (`UpstreamError`: límite de tasa, 5xx, timeout) **no** se cachean como "sin imagen".
@@ -184,6 +189,27 @@ defecto). **Rechazar** un modelo borra su `.glb` y lo mete en una lista negra pe
 asignar. Los museos ya generados y cacheados que lo usan quedan con un 404 en el `.glb` y el cliente cae al glifo procedural.
 Flujo: `curl "$HOST/api/assets-review?status=pending"` → revisar en `sourceUrl` → `POST .../reject` o `.../approve`.
 
+## Biblioteca propia de modelos (`library.ts`)
+
+Para que cada museo salga mejor que el anterior: lo que tú creas, y lo que la IA o el respaldo dibujaron y tú aprobaste, se guarda por palabra clave y **se usa antes que cualquier otra fuente**.
+
+**Orden de resolución por pieza** (`resolveModels`): 1) biblioteca propia aprobada → 2) Poly Pizza → 3) Haiku dibuja un respaldo → 4) receta determinista (`fallbackShapes.ts`). Lo resuelto en 1 no se vuelve a buscar en Poly Pizza (`hydrateMuseumAssets(..., skip)`).
+
+**Entradas** (`index.json`, un `<id>.glb` por cada `.glb`): `kind` `recipe` (partes procedurales, como `Part`) o `glb`; `keywords` (normalizadas: minúsculas, sin signos); `origin` `manual | ai | deterministic`; `status` `pending | approved | rejected`; `uses`.
+- Coincidencia: palabra clave exacta o, si no, su última palabra («ancient sword» → «sword»). Desempate: exacta > `.glb` > recetas, lo tuyo (`manual`) > lo generado, más usos.
+- Los `.glb` se sirven por `/api/assets/lib-….glb` (misma ruta que los de Poly Pizza) y llegan a la pieza como `dynamicAsset` con `license: "own"`; las recetas, como `model` procedural.
+
+**Cómo mejora**
+1. Cada generación registra como `pending` lo que dibujaron Haiku o el respaldo determinista (una entrada por palabra clave y origen; máx. 400 pendientes, las más viejas se descartan; lo rechazado no se vuelve a proponer).
+2. Tú revisas: aprobar (gana prioridad), corregir las partes o palabras clave (queda `manual` y aprobada) o rechazar.
+3. Lo que subes tú (`.glb` o receta) entra ya aprobado.
+
+**Curaduría**
+- Terminal, sin servidor: `npm run library -w @mus3o/server -- list [pending|approved|rejected] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b | approve|reject|reset|remove <id>`.
+- API (solo con `ENABLE_DEBUG_ROUTES=true`, si no 404): `GET /api/library?status=`, `POST /api/library/recipe` (`{keywords, title, parts}`), `POST /api/library/glb?keywords=a,b&title=T` (cuerpo `model/gltf-binary`, ≤ 4 MB, firma `glTF`), `PATCH /api/library/:id`, `POST /api/library/:id/(approve|reject|reset)`, `DELETE /api/library/:id`.
+- Los `.glb` van por **Git LFS** (`.gitattributes`); las recetas son JSON pequeño. Lo aprobado en local se versiona con git. En producción el disco es efímero: cura en local y sube el cambio.
+- Privacidad: solo viajan palabras clave de objeto generadas por la IA, nunca el texto de los apuntes.
+
 ## Costo de generación (flujo `/api/generate-museum`)
 
 Equilibrio: la IA **elige** (conceptos, palabra clave, forma de respaldo) y el servidor **arma** (modelos 3D, imágenes, citas).
@@ -207,8 +233,8 @@ conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre t
 
 Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
 (`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
-(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) UNA llamada por lotes (máx. 12 piezas) con 2 a 5 partes procedurales
-por pieza; las partes se validan con `PartSchema` y las inválidas se descartan. Si falla, la pieza conserva su glifo. Solo corre con
+(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) llamadas en paralelo por lotes de 6 piezas (máx. 24) con 2 a 5 partes procedurales
+por pieza (350 tokens de salida por pieza de tope); una salida cortada se recupera hasta la última pieza completa, las partes se validan con `PartSchema` y las inválidas se descartan. Si un lote falla, o no hay `ANTHROPIC_API_KEY`, entra el **respaldo determinista** (`fallbackShapes.ts`, sin IA ni red): una receta de 2 a 7 partes elegida por la palabra clave del objeto (espada, escudo, llave, libro, corona, torre, lámpara, botella, árbol, barco, cañón, reloj, campana, persona, animal, célula, chip) o, si no hay coincidencia, por la forma del glifo; el color sale del id de la pieza, así que el mismo museo siempre se ve igual. Ninguna pieza sin asset queda con el glifo plano. (Con una sola llamada de 18 piezas la salida llegó al tope, el JSON quedó truncado y todas las piezas se quedaron con el glifo plano.) Solo corre con
 `POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
 
 ### Formato DSL actual y tolerancia del parser
@@ -230,7 +256,7 @@ el servidor arma el resto:
 | Grafo según el modo (exploration/quiz: árbol `related`; education/biography: cadena `next`) | `parseMus3oDSL` (`buildGraph`) |
 | Imágenes de cada cuadro (`imageSearch`), citas (`retrieveSources`), título/forma | Servidor, determinista (`enrichMuseum`) |
 | Modelos 3D | Poly Pizza; solo las piezas sin asset reciben un respaldo de Haiku |
-| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de salas reciben un diorama de la biblioteca o compuesto en el cliente (sin IA); `POST /api/diorama-from-image` solo se usa si una sala queda sin diorama. Ver [diorama.md](./diorama.md) §4 |
+| Dioramas | La IA **no** hace llamada aparte (se quitó `addDioramas`). Solo en salas históricas/geográficas/naturales pide, en la **misma llamada**, líneas `DIO` y `D_PROP` bajo su sala (sin coordenadas); el cliente las compone con `compose.ts` antes que la biblioteca. El resto de mundos sale de la biblioteca hecha a mano o de `POST /api/diorama-from-image`. Ver [diorama.md](./diorama.md) §4 |
 
 Ahorros: prompt del sistema cacheado (`cache_control`), sin `thinking`, sin llamada de dioramas ni de respaldo cuando no hacen falta, y pedidos idénticos
 simultáneos comparten una sola generación y un solo cupo diario (`inFlight` en `app.ts`). Si la salida DSL es inválida (falta `PERIOD` en biography o `QUIZ`

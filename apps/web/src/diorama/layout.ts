@@ -12,7 +12,7 @@ export type Placed = { index: number; prop: DioramaProp; variants: number; insta
 export type Circle = { x: number; z: number; r: number }
 export type Linked = { pieceId: string; label: string; x: number; y: number; z: number; labelY: number; propIndex: number }
 /** Prop con rótulo pero sin pieza enlazada (dioramas de foto): Aris dice qué es al acercarse. */
-export type Labelled = { propIndex: number; label: string; x: number; y: number; z: number }
+export type Labelled = { propIndex: number; label: string; x: number; y: number; z: number; labelY: number }
 export type DioramaLayout = { placed: Placed[]; colliders: Circle[]; linked: Linked[]; labelled: Labelled[] }
 
 const COLLIDER: Partial<Record<DioramaKind, number>> = {
@@ -104,7 +104,8 @@ export function layoutDiorama(d: Diorama, field: HeightField): DioramaLayout {
       linked.push({ pieceId: prop.pieceId, label: prop.label ?? '', x: i.x, y: i.y, z: i.z, labelY: i.y + h + 0.45, propIndex: index })
     } else if (prop.label?.trim() && instances[0]) {
       const i = instances[0]
-      labelled.push({ propIndex: index, label: prop.label.trim(), x: i.x, y: i.y, z: i.z })
+      const h = (prop.pose === 'fallen' ? 0.6 : HEIGHT[prop.kind]) * i.scale
+      labelled.push({ propIndex: index, label: prop.label.trim(), x: i.x, y: i.y, z: i.z, labelY: i.y + h + 0.45 })
     }
   })
   return { placed, colliders, linked, labelled }

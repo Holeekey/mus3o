@@ -10,6 +10,13 @@ import { KeyHint } from './KeyHint'
 /** El guía: lee en voz alta las salas y los conceptos al explorar. Apagado por defecto. */
 export function Narrator({ layout }: { layout: PalaceLayout }) {
   const [on, setOn] = useState(readNarratorOn)
+  // Aviso breve al cambiarlo: apagado, el botón no ocupa lugar en escritorio.
+  const [flash, setFlash] = useState(false)
+  useEffect(() => {
+    if (!flash) return
+    const timer = setTimeout(() => setFlash(false), 2_000)
+    return () => clearTimeout(timer)
+  }, [flash])
   const mode = useStore((s) => s.mode)
   const locked = useStore((s) => s.locked)
   const palace = useStore((s) => s.palace)
@@ -22,6 +29,7 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
   const active = on && supported && mode === 'explore' && locked && !inTransition
 
   const toggle = useCallback(() => {
+    setFlash(true)
     setOn((v) => {
       saveNarratorOn(!v)
       if (v) stopSpeaking()
@@ -96,8 +104,9 @@ export function Narrator({ layout }: { layout: PalaceLayout }) {
   }, [active, openId, palace])
 
   if (!supported || mode !== 'explore') return null
+  // Apagado solo se ve un momento tras cambiarlo (en escritorio); en táctil es el interruptor y queda siempre.
   return (
-    <button type="button" className="narrator" aria-pressed={on} onClick={toggle}>
+    <button type="button" className={flash ? 'narrator is-flash' : 'narrator'} aria-pressed={on} onClick={toggle}>
       Narrador: {on ? 'activado' : 'desactivado'} <KeyHint k="N" />
     </button>
   )

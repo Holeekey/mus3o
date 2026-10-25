@@ -6,7 +6,8 @@ import { arisHelpContext, evaluateArisQuery, speakAris } from './palace/arisBrai
 import { askArisHelp } from './lib/api'
 import { countSources, edgesAtArrival, LIMITS, MuseumSchema, type GraphEdge, type Museum, type Room } from '@mus3o/shared'
 import { attachLibraryDioramas } from './diorama/library'
-import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum, attachDirected, completeDioramas } from './palace/liveDioramas'
+import { resetMainImages } from './lib/images'
+import { attachDioramasToArrivingRoom, attachDioramasToFinalMuseum } from './palace/liveDioramas'
 import { sourceSummary } from './palace/sourceSummary'
 import { cancelBuildSession } from './build/session'
 import { resetDioramaState } from './diorama/dioramaStore'
@@ -165,9 +166,10 @@ export const useStore = create<State>()(
         if (Object.keys(userImages).length > 0) {
           void replaceUserImages(userImages)
         }
-        // Los museos generados por IA solo traen las directivas DIO / D_PROP de sus salas históricas; se componen primero.
-        // Luego la biblioteca (hechos a mano) y, a las salas que sigan sin diorama, uno compuesto sin IA con el pigmento de su fresco.
-        const palace = completeDioramas(attachLibraryDioramas(attachDirected(rawPalace)))
+        // Solo la biblioteca (hechos a mano). El resto de cuadros pide recrear su foto real (diorama/usePhotoDiorama):
+        // nunca se compone un mundo con los conceptos de la sala, ni con las directivas DIO / D_PROP de la IA
+        // (la composición queda solo para la demo `?demo=compuesto`).
+        const palace = attachLibraryDioramas(rawPalace)
         set({
           palace,
           sourceText: capSourceText(sourceText),
@@ -194,6 +196,7 @@ export const useStore = create<State>()(
         })
         // El cuadro activo del palacio anterior no puede sobrevivir al cambio.
         resetDioramaState()
+        resetMainImages()
       },
       beginBuildingPalace: ({ title, sourceText, userImages, reducedMotion }) => {
         if (userImages && Object.keys(userImages).length > 0) {
@@ -226,6 +229,7 @@ export const useStore = create<State>()(
           build: { ...IDLE_BUILD, status: 'building' },
         })
         resetDioramaState()
+        resetMainImages()
         beginBuildIntro({ reducedMotion })
       },
       setBuildTitle: (title) =>
@@ -298,13 +302,14 @@ export const useStore = create<State>()(
           palaceBeforeBuild = null
           abortIntro()
           resetDioramaState()
+          resetMainImages()
           return
         }
         set({
           layout: finalizeLayout(s.layout),
           memorized: learnedMap(s.palace),
           roomKeys: earnedRoomKeys(s.palace, {}, {}),
-          build: { ...IDLE_BUILD, status: 'cut', rooms: n, notice: `La IA se cortó; tu palacio tiene ${n} ${n === 1 ? 'sala' : 'salas'}` },
+          build: { ...IDLE_BUILD, status: 'cut', rooms: n, notice: `Aris se interrumpió; tu museo quedó con ${n} ${n === 1 ? 'sala' : 'salas'}` },
         })
         palaceBeforeBuild = null
         introBuildDone()
@@ -337,6 +342,7 @@ export const useStore = create<State>()(
         })
         abortIntro()
         resetDioramaState()
+        resetMainImages()
       },
       setMode: (mode) => set({ mode, openId: null, exam: {}, reviewIds: null }),
       startReview: () => {

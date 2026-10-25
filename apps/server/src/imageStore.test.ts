@@ -64,6 +64,23 @@ describe("disk cache", () => {
     expect(calls.length).toBe(used);
   });
 
+  it("ignores disk entries written before the relevance gate (no version), but not the repo seed", async () => {
+    const key = queryKey({ wiki: "Roma" });
+    const { createHash } = await import("node:crypto");
+    const name = `${createHash("sha256").update("meta|" + key).digest("hex")}.json`;
+    const stale = JSON.stringify({ image: image("Imagen de otro tema") });
+    mkdirSync(join(tmp, "cache"), { recursive: true });
+    writeFileSync(join(tmp, "cache", name), stale);
+    handler = wikiHandler;
+    expect((await resolveImage({ wiki: "Roma" }))?.title).toBe("Roma"); // se volvió a consultar
+    clearImageCaches();
+    mkdirSync(join(tmp, "seed"), { recursive: true });
+    writeFileSync(join(tmp, "seed", name), stale);
+    const used = calls.length;
+    expect((await resolveImage({ wiki: "Roma" }))?.title).toBe("Imagen de otro tema"); // la semilla manda y no se versiona
+    expect(calls.length).toBe(used);
+  });
+
   it("remembers definitive misses on disk", async () => {
     handler = (url) => (url.includes("wikipedia.org") ? json({}, 404) : notInCommons());
     expect(await resolveImage({ wiki: "Nada", commons: "nada" })).toBeNull();

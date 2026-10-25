@@ -14,7 +14,7 @@ export type ReviewEntry = {
   keywords: string[];
   title: string;
   author: string;
-  license: "CC0" | "CC-BY";
+  license: "CC0" | "CC-BY" | "own";
   score: number;
   sourceUrl: string;
   status: ReviewStatus;

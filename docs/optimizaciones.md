@@ -132,7 +132,7 @@ La entrada baja unos **749 kB sin comprimir y unos 200 kB gzip (−64 % gzip)**.
 
 ### B. `@mus3o/dungeon-core` y los mocks entran en el chunk de la landing
 
-`Landing.tsx` y `App.tsx` importan `mocks/dungeon.ts` (y con él `@mus3o/dungeon-core`), `mocks/historia.ts` y `palace/presets.ts` de forma estática (~29 kB de datos en total en el código fuente). Importarlos con `import()` solo al pulsar "Explorar Mazmorra" o al usar `?demo=…` lo evita. Es un ahorro pequeño comparado con A, y convierte un botón síncrono en uno asíncrono, por eso queda como riesgo bajo.
+`App.tsx` importa `mocks/dungeon.ts` (y con él `@mus3o/dungeon-core`), `mocks/historia.ts` y `palace/presets.ts` de forma estática (~29 kB de datos en total en el código fuente). Importarlos con `import()` solo al usar `?demo=…` lo evita. Es un ahorro pequeño comparado con A, y convierte un botón síncrono en uno asíncrono, por eso queda como riesgo bajo.
 
 ---
 
