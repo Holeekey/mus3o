@@ -125,11 +125,25 @@ async function startXr() {
 
 // ---------- API ----------
 
-export async function enterVr(kind: VrKind): Promise<void> {
+/** WebXR ya falló en esta visita: los siguientes intentos van directo al modo visor. */
+let xrFailed = false
+
+export async function enterVr(requested: VrKind): Promise<void> {
   if (vrRuntime.active) return
+  const kind: VrKind = requested === 'xr' && xrFailed ? 'cardboard' : requested
   try {
     if (kind === 'cardboard') await startCardboard()
-    else await startXr()
+    else {
+      try {
+        await startXr()
+      } catch (err) {
+        // Muchos Android anuncian WebXR pero no abren la sesión (sin servicios de VR, función no soportada...):
+        // en vez de quedarse en el error, se entra al modo visor, que solo necesita la pantalla y los sensores.
+        console.warn('[vr] WebXR no arrancó; se usa el modo visor', err)
+        xrFailed = true
+        await startCardboard()
+      }
+    }
   } catch (err) {
     console.warn('[vr] no se pudo entrar', err)
     if (kind === 'cardboard') stopCardboard()

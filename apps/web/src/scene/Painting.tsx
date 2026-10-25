@@ -95,7 +95,7 @@ function usePlasterCanvas(enabled: boolean, title: string, plaster: string, trim
 
 const NO_SEARCHES: ImageSearch[] = []
 
-/** Cuadro enmarcado con su placa. No dibuja nada hasta que la imagen carga. */
+/** Cuadro enmarcado con su placa. No dibuja nada hasta que la imagen carga, ni nada si no hay imagen. */
 export function Painting({
   slot,
   search,
@@ -158,6 +158,9 @@ export function Painting({
   // Las ocho piezas del marco son una sola geometría (una malla, un draw call).
   const frameGeo = useMemo(() => buildFrameGeometry(ow, oh, FRAME_T, FRAME_DEPTH, WALL_Z), [ow, oh])
   useEffect(() => () => frameGeo.dispose(), [frameGeo])
+  // Sin imagen (o hasta que carga) no hay cuadro: ni marco vacío ni lienzo de yeso. Solo los dioramas de la
+  // biblioteca, mundos hechos a mano, se cuelgan aunque su imagen aún no esté.
+  if (!libraryDiorama && !hasTexture) return null
   const bottom = -oh / 2 - FRAME_T
 
   // Centro de la obra en el mundo (mismo plano que el cuadro plano), para el portal.

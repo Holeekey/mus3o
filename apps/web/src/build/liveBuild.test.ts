@@ -161,21 +161,21 @@ describe('startLiveBuild', () => {
     expect(state().screen).toBe('palace')
     expect(state().palace?.rooms).toHaveLength(2)
     expect(state().build.status).toBe('cut')
-    expect(state().build.notice).toBe('La IA se cortó; tu museo tiene 2 salas')
+    expect(state().build.notice).toBe('Aris se interrumpió; tu museo quedó con 2 salas')
   })
 
   it('a dropped connection after some rooms is also a cut', async () => {
     api.generateMuseumStream.mockImplementation(() => events([{ type: 'room', room: room('a') }, new ApiError('Se cortó la conexión con la IA', 502)]))
     await startLiveBuild(text('Volcanes'))
     expect(state().build.status).toBe('cut')
-    expect(state().build.notice).toBe('La IA se cortó; tu museo tiene 1 sala')
+    expect(state().build.notice).toBe('Aris se interrumpió; tu museo quedó con 1 sala')
   })
 
   it('failure before any room returns to the landing with the usual message', async () => {
     api.generateMuseumStream.mockImplementation(() => events([new ApiError('IA no configurada', 503)]))
     await startLiveBuild(text('Volcanes'))
     expect(state().screen).toBe('landing')
-    expect(state().build.error).toContain('no está configurada')
+    expect(state().build.error).toContain('Aris no está disponible')
     api.generateMuseumStream.mockImplementation(() => events([{ type: 'error', message: 'x', status: 429 }]))
     await startLiveBuild(text('Volcanes'))
     expect(state().build.error).toContain('Demasiadas')

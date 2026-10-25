@@ -3,12 +3,13 @@ import { defaultMmPerPx, lensShift, nextPreset, parseStored, PRESETS, resolveCal
 import { edgeZoom } from './distort'
 
 describe('resolveCalib', () => {
-  it('por defecto: preset VR Box', () => {
+  it('por defecto: sin corrección (los presets de lente son opcionales)', () => {
     const r = resolveCalib('', {})
-    expect(r.preset).toBe('vrbox')
-    expect(r.calib.fov).toBe(PRESETS.vrbox.calib.fov)
-    expect(r.calib.lens).toBe(32)
-    expect(usesDistortion(r.calib)).toBe(true)
+    expect(r.preset).toBe('none')
+    expect(r.calib.fov).toBe(PRESETS.none.calib.fov)
+    expect(r.calib.lens).toBe(0)
+    expect(resolveCalib('', { preset: 'vrbox' }).calib.lens).toBe(32)
+    expect(usesDistortion(r.calib)).toBe(false)
   })
 
   it('los parámetros de URL mandan sobre lo guardado', () => {
@@ -31,7 +32,7 @@ describe('resolveCalib', () => {
 
   it('lo guardado se aplica y la basura se ignora', () => {
     expect(resolveCalib('', { preset: 'cardboard' }).calib.k1).toBe(PRESETS.cardboard.calib.k1)
-    expect(resolveCalib('?vrfov=abc&vrk1=', {}).preset).toBe('vrbox')
+    expect(resolveCalib('?vrfov=abc&vrk1=', {}).preset).toBe('none')
     expect(parseStored('{no json')).toEqual({})
     expect(parseStored('{"preset":"x","values":{"fov":"a","k1":0.2}}')).toEqual({ values: { k1: 0.2 } })
     expect(parseStored(null)).toEqual({})
@@ -53,10 +54,10 @@ describe('resolveCalib', () => {
   })
 
   it('el cambio rápido recorre los presets y vuelve', () => {
+    expect(nextPreset('none')).toBe('vrbox')
     expect(nextPreset('vrbox')).toBe('cardboard')
     expect(nextPreset('cardboard')).toBe('none')
-    expect(nextPreset('none')).toBe('vrbox')
-    expect(nextPreset('custom')).toBe('vrbox')
+    expect(nextPreset('custom')).toBe('none')
   })
 })
 

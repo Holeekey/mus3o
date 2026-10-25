@@ -119,7 +119,7 @@ export function SourcesPanel({ open, onClose, attachments, onAdd, onRemove, erro
           </ul>
           <p className="sources-summary">
             {label}
-            {willDigest && <span className="warn"> · se resumirán con IA antes de generar</span>}
+            {willDigest && <span className="warn"> · Aris los resumirá antes de generar</span>}
           </p>
         </>
       ) : (
