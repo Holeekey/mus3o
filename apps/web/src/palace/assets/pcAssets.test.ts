@@ -126,16 +126,17 @@ describe('Biology & Roman Procedural Assets', () => {
 })
 
 describe('PRESET_PALACES procedural models', () => {
-  it('has 3 preset museums, all valid against MuseumSchema', () => {
-    expect(PRESET_PALACES.length).toBe(3)
+  it('has 4 preset museums, all valid against MuseumSchema', () => {
+    expect(PRESET_PALACES.length).toBe(4)
     for (const preset of PRESET_PALACES) {
       expect(() => MuseumSchema.parse(preset.museum)).not.toThrow()
     }
   })
 
-  it('every piece in all preset palaces uses a detailed procedural model', () => {
+  it('every piece in the hand-made preset palaces uses a detailed procedural model', () => {
     let totalPieces = 0
-    for (const preset of PRESET_PALACES) {
+    // La plantilla generada desde apuntes reales usa los modelos de cualquier museo generado (biblioteca y glifos).
+    for (const preset of PRESET_PALACES.filter((p) => !p.sourceText)) {
       for (const room of preset.museum.rooms) {
         for (const piece of room.pieces) {
           totalPieces++
