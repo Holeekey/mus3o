@@ -302,7 +302,7 @@ export const useStore = create<State>()(
           layout: finalizeLayout(s.layout),
           memorized: learnedMap(s.palace),
           roomKeys: earnedRoomKeys(s.palace, {}, {}),
-          build: { ...IDLE_BUILD, status: 'cut', rooms: n, notice: `La IA se cortó; tu museo tiene ${n} ${n === 1 ? 'sala' : 'salas'}` },
+          build: { ...IDLE_BUILD, status: 'cut', rooms: n, notice: `Aris se interrumpió; tu museo quedó con ${n} ${n === 1 ? 'sala' : 'salas'}` },
         })
         palaceBeforeBuild = null
         introBuildDone()

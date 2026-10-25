@@ -48,8 +48,10 @@ Vite + React + React Three Fiber (three.js). Estado global con Zustand. Solo esc
 | Botón | Qué hace |
 |---|---|
 | Construir museo | Usa el parser local (`parsePalace`), sin IA |
-| Generar con IA | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
-| Entrar al museo | Aparece tras generar con IA |
+| Generar con Aris | Sin adjuntos: `lib/api.ts#generateMuseum` envía `{topic}` si es una línea corta, o `{notes}` si no. Con adjuntos: `generateMuseumFromFiles` envía `{ mode: "exploration", prompt, sources, images }`; si el texto supera `LIMITS.maxNotesChars` o hay más de 5 fuentes (`needsDigest`), antes pide el temario base a `/api/digest-sources` ("Resumiendo tus archivos…"). El texto de ejemplo del editor no se envía con los adjuntos; un texto escrito de más de 2 000 caracteres viaja como fuente "Tus apuntes" |
+| Entrar al museo | Aparece tras generar con Aris |
+
+En la interfaz la IA se presenta como **Aris** (botón, avisos de construcción y errores). Los errores del servidor ("IA no configurada") nunca se muestran tal cual: `lib/api.ts#describeAiError` los traduce.
 | Usar ejemplo: Biología celular | Carga `EXAMPLE_TEXT` en el editor |
 | Explorar Mazmorra | Abre la demo de mazmorra |
 | Continuar "…" | Aparece si hay un palacio guardado; muestra los repasos pendientes |
