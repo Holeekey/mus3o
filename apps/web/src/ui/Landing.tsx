@@ -15,6 +15,7 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { SiteHeader } from './SiteHeader'
 import { SourcesPanel, type Attachment } from './SourcesPanel'
 import { useReveal } from './reveal'
+import { useScrollFade } from './scrollFade'
 import { useShowcaseScroll } from './showcase'
 import type { LobbyMode, WalkApi } from '../scene/LobbyWalker'
 import { touchInput } from '../scene/touchInput'
@@ -53,6 +54,7 @@ export function Landing() {
   const [input, setInput] = useState(EXAMPLE_TEXT)
   const [fileError, setFileError] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  const [sourcesFocus, setSourcesFocus] = useState<'page' | 'wall'>('page')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [validationError, setValidationError] = useState<string | null>(null)
   // Si la IA falló antes de la primera sala, el store nos devuelve aquí con el motivo.
@@ -70,6 +72,13 @@ export function Landing() {
   useFreezeScroll(lobbyMode !== 'off')
   const workbenchRef = useRef<HTMLElement>(null)
   useReveal(workbenchRef)
+  const introRef = useRef<HTMLElement>(null)
+  useScrollFade(introRef)
+  // Solo la copia de abajo: la de la pared del lobby no se mueve con el scroll de la página.
+  const workbenchHeadRef = useRef<HTMLDivElement>(null)
+  useScrollFade(workbenchHeadRef)
+  const heroTitleRef = useRef<HTMLHeadingElement>(null)
+  useScrollFade(heroTitleRef)
   // Al volver desde #equipo con un ancla (#crear, #como-funciona) la sección recién se montó: se baja a mano.
   useEffect(() => {
     const id = window.location.hash.slice(1)
@@ -164,7 +173,10 @@ export function Landing() {
         <span className="tab active">Tus apuntes</span>
         <button
           className="tab tab-file"
-          onClick={() => setSourcesOpen((open) => !open)}
+          onClick={(e) => {
+            setSourcesFocus(e.currentTarget.closest('.lobby-wall') ? 'wall' : 'page')
+            setSourcesOpen((open) => !open)
+          }}
           title="PDF, Word, Excel, CSV, texto, JSON o imágenes"
           aria-expanded={sourcesOpen}
           aria-controls="sources-panel"
@@ -188,6 +200,7 @@ export function Landing() {
           onAdd={onFiles}
           onRemove={removeAttachment}
           error={fileError}
+          focusIn={sourcesFocus}
         />
       </div>
       <div className="editor-status">
@@ -251,8 +264,8 @@ export function Landing() {
 
   const workbenchHead = (
     <header className="workbench-head">
-      <h2 data-reveal>Ahora, <i>el tuyo</i></h2>
-      <p data-reveal>Pega tus apuntes o entra directo a uno de los museos destacados.</p>
+      <h2>Ahora, <i>el tuyo</i></h2>
+      <p>Pega tus apuntes o entra directo a uno de los museos destacados.</p>
     </header>
   )
   const actionButtons = (
@@ -288,7 +301,7 @@ export function Landing() {
     <main id="top" className="landing">
       <SiteHeader />
       <section className="landing-hero">
-        <h1>Un lugar para cada <i>idea</i></h1>
+        <h1 ref={heroTitleRef} className="scroll-fade">Un lugar para cada <i>idea</i></h1>
         <p className="lead">
           Camillo, en el siglo XVI, guardó el saber en los asientos de un teatro. Pega tus apuntes y <span className="inline-logo" role="img" aria-label="mus3o" /> levanta uno:
           cada tema es una sala de un solo color, cada concepto un objeto de yeso sobre su pedestal.
@@ -298,8 +311,18 @@ export function Landing() {
         </a>
       </section>
 
+      <section id="como-funciona" ref={introRef} className="landing-intro scroll-fade" aria-labelledby="como-funciona-title">
+        <header className="workbench-head">
+          <h2 id="como-funciona-title">¿Cómo <i>funciona</i>?</h2>
+          <p>
+            Cada tema de tus apuntes se vuelve una sala y cada concepto, un objeto sobre su pedestal. Baja y entra al
+            lobby: recórrelo en primera persona como un museo de verdad.
+          </p>
+        </header>
+      </section>
+
       {/* Al hacer scroll la maqueta se abre a pantalla completa y luego se vuelve a cerrar. */}
-      <section id="como-funciona" ref={showcaseRef} className="showcase" aria-label="Vista previa del museo">
+      <section ref={showcaseRef} className="showcase" aria-label="Vista previa del museo">
         <div className="showcase-sticky">
           <div className="showcase-frame">
             {EXAMPLE_LAYOUT && (
@@ -350,7 +373,7 @@ export function Landing() {
       </section>
 
       <section id="crear" ref={workbenchRef} className="landing-workbench">
-        {workbenchHead}
+        <div ref={workbenchHeadRef} className="scroll-fade">{workbenchHead}</div>
         {/* Apuntes a la izquierda y palacios destacados a la derecha, a la misma altura. */}
         <div className="workbench-grid" data-reveal>
           {notesEditor}
