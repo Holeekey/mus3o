@@ -13,7 +13,7 @@ import { DWELL_DEFAULTS, dwellIdle, forceDwellFire, updateDwell, type DwellState
 import { occluderDistance, pickGazeTarget, type GazeCandidate, type GazeHit, type Ray } from './gaze'
 import { calibState } from './calib'
 import { comfortFactor, comfortView, pulseVignette, reloadComfort, stepVignette } from './comfort'
-import { disposeStereo, renderStereo } from './distort'
+import { renderStereo } from './stereo'
 import { head } from './head'
 import {
   buttonsIdle,
@@ -463,7 +463,6 @@ export function VrRuntime({ layout }: { layout: PalaceLayout }) {
     muteShadows(scene)
     return () => {
       restoreShadows()
-      disposeStereo()
       const { size } = getState()
       setDpr(Math.min(1.5, window.devicePixelRatio || 1))
       gl.setScissorTest(false)

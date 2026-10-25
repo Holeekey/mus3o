@@ -85,6 +85,20 @@ function markInactive() {
   useVr.setState({ kind: null, panelId: null, hint: null })
 }
 
+// En iPhone apaisado la página debe extenderse bajo el notch y el indicador de inicio (viewport-fit=cover) o el lienzo queda más estrecho que la pantalla.
+let savedViewport: string | null = null
+function coverViewport() {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+  if (!meta || savedViewport !== null) return
+  savedViewport = meta.content
+  if (!/viewport-fit/.test(meta.content)) meta.content = `${meta.content}, viewport-fit=cover`
+}
+function restoreViewport() {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+  if (meta && savedViewport !== null) meta.content = savedViewport
+  savedViewport = null
+}
+
 async function startCardboard() {
   // Todo lo que exige gesto se dispara antes de cualquier await.
   const sensorsP = requestSensors()
@@ -93,6 +107,7 @@ async function startCardboard() {
   // head.ts usa three: se carga aquí y no al abrir la página (el módulo ya está en caché si la escena VR se montó).
   const { head } = await import('./head')
   reloadCalib()
+  coverViewport()
   head.start(granted)
   markActive('cardboard')
   document.addEventListener('visibilitychange', reacquireWakeLock)
@@ -101,6 +116,7 @@ async function startCardboard() {
 }
 
 function stopCardboard() {
+  restoreViewport()
   void import('./head').then((m) => m.head.stop())
   document.removeEventListener('visibilitychange', reacquireWakeLock)
   void wakeLock?.release().catch(() => {})

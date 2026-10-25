@@ -1,31 +1,27 @@
-// Calibración del visor (modo cardboard): FOV, separación de ojos, distorsión de lente y centro de cada lente.
-// Lógica pura (sin DOM salvo `loadCalib`/`saveCalib`, que envuelven localStorage en try/catch) para poder probarla.
+// Calibración del visor (modo cardboard): FOV y separación de las lentes.
+// Lógica pura (sin DOM salvo `loadStored`/`saveStored`/`clearStored`, que envuelven localStorage en try/catch) para poder probarla.
+// La separación se aplica con proyección descentrada (off-axis) en stereo.ts: nunca se remuestrea la imagen.
 
 export type Calib = {
   /** Campo de visión vertical por ojo (grados). */
   fov: number
   /** Separación de las cámaras virtuales (m). */
   ipd: number
-  /** Coeficientes de la distorsión de barril que compensa la lente (0 = sin corrección). */
-  k1: number
-  k2: number
-  /** Distancia (mm) del centro de la pantalla al centro de cada lente. 0 = centro de cada mitad de pantalla (sin ajuste). */
-  lens: number
-  /** Milímetros por píxel CSS de la pantalla (para pasar `lens` a píxeles). */
+  /** Distancia (mm) entre los centros de las dos lentes. null = "auto": cada ojo centrado en su mitad de pantalla (sin desplazamiento). */
+  sep: number | null
+  /** Milímetros por píxel CSS de la pantalla (para pasar mm a píxeles). */
   mmPerPx: number
 }
 
-export type PresetId = 'vrbox' | 'cardboard' | 'none'
+export const DEFAULT_CALIB: Calib = { fov: 85, ipd: 0.064, sep: null, mmPerPx: 0.1655 }
+export const FOV_RANGE = [60, 110] as const
+export const SEP_RANGE = [50, 75] as const
+export const FOV_STEP = 4
+export const SEP_STEP = 1
 
-export const PRESETS: Record<PresetId, { label: string; calib: Omit<Calib, 'mmPerPx'> }> = {
-  // Por defecto, sin corrección: los valores de VR Box y Cardboard son estimados y en un iPhone real marearon más.
-  none: { label: 'Sin corrección', calib: { fov: 85, ipd: 0.064, k1: 0, k2: 0, lens: 0 } },
-  vrbox: { label: 'VR Box', calib: { fov: 92, ipd: 0.064, k1: 0.22, k2: 0.06, lens: 32 } },
-  cardboard: { label: 'Google Cardboard', calib: { fov: 90, ipd: 0.064, k1: 0.34, k2: 0.15, lens: 30 } },
-}
-export const PRESET_ORDER: PresetId[] = ['none', 'vrbox', 'cardboard']
-export const DEFAULT_PRESET: PresetId = 'none'
-export const STORAGE_KEY = 'mus3o.vr.calib'
+/** Formato anterior (presets con k1/k2/lens): sus valores dejaban la imagen partida, se descartan. */
+export const LEGACY_KEY = 'mus3o.vr.calib'
+export const STORAGE_KEY = 'mus3o.vr.calib.v2'
 
 /** Milímetros por píxel CSS: ~0,1655 en un iPhone de 6,1", ~0,159 en Android (1 dp = 1/160"). Se corrige con ?vrmm=. */
 export function defaultMmPerPx(ua: string): number {
@@ -42,70 +38,58 @@ const num = (s: string | null): number | null => {
 /** Limita todo a rangos sensatos: un parámetro absurdo no debe dejar la pantalla en negro. */
 export function sanitizeCalib(c: Calib): Calib {
   return {
-    fov: clamp(c.fov, 60, 130),
+    fov: clamp(c.fov, FOV_RANGE[0], FOV_RANGE[1]),
     ipd: clamp(c.ipd, 0.04, 0.08),
-    k1: clamp(c.k1, -0.2, 0.8),
-    k2: clamp(c.k2, -0.2, 0.8),
-    lens: clamp(c.lens, 0, 60),
+    sep: c.sep === null ? null : clamp(c.sep, SEP_RANGE[0], SEP_RANGE[1]),
     mmPerPx: clamp(c.mmPerPx, 0.05, 0.4),
   }
 }
 
-export function isPreset(v: unknown): v is PresetId {
-  return v === 'vrbox' || v === 'cardboard' || v === 'none'
-}
-
-/** Lo guardado (JSON de localStorage): preset y/o valores sueltos. Tolerante a basura. */
-export type Stored = { preset?: PresetId; values?: Partial<Omit<Calib, 'mmPerPx'>> }
+/** Lo guardado (JSON de localStorage). Tolerante a basura. */
+export type Stored = { fov?: number; sep?: number }
 
 export function parseStored(raw: string | null): Stored {
   if (!raw) return {}
   try {
-    const j = JSON.parse(raw) as { preset?: unknown; values?: Record<string, unknown> }
+    const j = JSON.parse(raw) as Record<string, unknown>
     const out: Stored = {}
-    if (isPreset(j.preset)) out.preset = j.preset
-    if (j.values && typeof j.values === 'object') {
-      const v: Partial<Omit<Calib, 'mmPerPx'>> = {}
-      for (const key of ['fov', 'ipd', 'k1', 'k2', 'lens'] as const) {
-        const n = j.values[key]
-        if (typeof n === 'number' && Number.isFinite(n)) v[key] = n
-      }
-      out.values = v
-    }
+    if (typeof j.fov === 'number' && Number.isFinite(j.fov)) out.fov = j.fov
+    if (typeof j.sep === 'number' && Number.isFinite(j.sep)) out.sep = j.sep
     return out
   } catch {
     return {}
   }
 }
 
-/**
- * Calibración efectiva. Orden: preset (URL > guardado > VR Box) → valores sueltos guardados → parámetros de URL.
- * URL: ?vrpreset=vrbox|cardboard|none ?vrfov= ?vripd= (m, o mm si >1) ?vrk1= ?vrk2= ?vrlens= (mm) ?vrmm= (mm por px CSS).
- */
-export function resolveCalib(search: string, stored: Stored, ua = ''): { calib: Calib; preset: PresetId | 'custom' } {
+/** Calibración efectiva: valores por defecto → guardado → URL. URL (pruebas): ?vrfov= ?vripd= (m, o mm si >1) ?vrsep= (mm) ?vrmm= (mm por px CSS). */
+export function resolveCalib(search: string, stored: Stored, ua = ''): Calib {
   const q = new URLSearchParams(search)
-  const urlPreset = q.get('vrpreset')
-  const preset: PresetId = isPreset(urlPreset) ? urlPreset : (stored.preset ?? DEFAULT_PRESET)
-  const base: Calib = { ...PRESETS[preset].calib, mmPerPx: defaultMmPerPx(ua) }
-  // Los valores sueltos guardados solo cuentan si no se eligió otro preset por URL.
-  if (!isPreset(urlPreset) && stored.values) Object.assign(base, stored.values)
-  let custom = !isPreset(urlPreset) && !!stored.values && Object.keys(stored.values).length > 0
-  const set = (key: keyof Calib, v: number | null, map: (n: number) => number = (n) => n) => {
-    if (v === null) return
-    base[key] = map(v)
-    custom = true
+  const base: Calib = { ...DEFAULT_CALIB, mmPerPx: defaultMmPerPx(ua) }
+  if (stored.fov !== undefined) base.fov = stored.fov
+  if (stored.sep !== undefined) base.sep = stored.sep
+  const fov = num(q.get('vrfov'))
+  if (fov !== null) base.fov = fov
+  const ipd = num(q.get('vripd'))
+  if (ipd !== null) base.ipd = ipd > 1 ? ipd / 1000 : ipd
+  const sep = num(q.get('vrsep'))
+  if (sep !== null) base.sep = sep
+  const mm = num(q.get('vrmm'))
+  if (mm !== null) base.mmPerPx = mm
+  return sanitizeCalib(base)
+}
+
+/** Borra el formato anterior. Recibe el almacenamiento para poder probarlo. */
+export function dropLegacy(storage: Pick<Storage, 'removeItem'>): void {
+  try {
+    storage.removeItem(LEGACY_KEY)
+  } catch {
+    /* almacenamiento bloqueado */
   }
-  set('fov', num(q.get('vrfov')))
-  set('ipd', num(q.get('vripd')), (n) => (n > 1 ? n / 1000 : n))
-  set('k1', num(q.get('vrk1')))
-  set('k2', num(q.get('vrk2')))
-  set('lens', num(q.get('vrlens')))
-  set('mmPerPx', num(q.get('vrmm')))
-  return { calib: sanitizeCalib(base), preset: custom ? 'custom' : preset }
 }
 
 export function loadStored(): Stored {
   try {
+    dropLegacy(localStorage)
     return parseStored(localStorage.getItem(STORAGE_KEY))
   } catch {
     return {}
@@ -120,44 +104,67 @@ export function saveStored(s: Stored): void {
   }
 }
 
+export function clearStored(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 /** Estado vivo (se lee cada frame, sin React). */
-export const calibState = { ...resolveCalib('', {}), }
+export const calibState: { calib: Calib } = { calib: resolveCalib('', {}) }
 
 export function reloadCalib(): void {
-  const r = resolveCalib(typeof window === 'undefined' ? '' : window.location.search, loadStored(), typeof navigator === 'undefined' ? '' : navigator.userAgent)
-  calibState.calib = r.calib
-  calibState.preset = r.preset
+  calibState.calib = resolveCalib(
+    typeof window === 'undefined' ? '' : window.location.search,
+    loadStored(),
+    typeof navigator === 'undefined' ? '' : navigator.userAgent,
+  )
 }
 
-/** Elige un preset y lo guarda (descarta los valores sueltos). */
-export function selectPreset(id: PresetId): void {
-  saveStored({ preset: id })
+/** Guarda valores sueltos (se aplican en vivo). */
+export function saveValues(values: Stored): void {
+  saveStored({ ...loadStored(), ...values })
   reloadCalib()
 }
 
-/** Guarda valores sueltos sobre el preset actual. */
-export function saveValues(values: Partial<Omit<Calib, 'mmPerPx'>>): void {
-  const prev = loadStored()
-  saveStored({ preset: prev.preset ?? DEFAULT_PRESET, values: { ...(prev.values ?? {}), ...values } })
+export function resetCalib(): void {
+  clearStored()
   reloadCalib()
 }
 
-/** Siguiente preset en el orden (para el botón de cambio rápido). */
-export function nextPreset(cur: PresetId | 'custom'): PresetId {
-  const i = cur === 'custom' ? -1 : PRESET_ORDER.indexOf(cur)
-  return PRESET_ORDER[(i + 1) % PRESET_ORDER.length]
+/** Separación "auto" (mm): la que equivale a centrar cada ojo en su mitad de pantalla (centros a un cuarto del ancho). */
+export function autoSepMm(widthPx: number, mmPerPx: number): number {
+  return (widthPx / 2) * mmPerPx
 }
 
 /**
- * Desplazamiento (fracción del ancho de una mitad de pantalla, 0..1) del centro de cada imagen hacia el centro de la pantalla,
- * para que caiga sobre su lente. `widthPx`: ancho CSS de la pantalla. Con lens = 0 no hay ajuste.
+ * Desplazamiento horizontal del punto principal de cada ojo, en NDC (-1..1 del ancho de su mitad), hacia el centro de la pantalla.
+ * El ojo izquierdo usa +shift y el derecho -shift. auto (sep null) = 0. sep menor que la automática → las imágenes se acercan al centro.
+ * offsetPx = (centro de la mitad − media separación de lentes) / mmPerPx;  ndc = 2·offsetPx / (ancho de la mitad).
  */
-export function lensShift(c: Calib, widthPx: number): number {
-  if (c.lens <= 0 || widthPx <= 0) return 0
-  const lensPx = c.lens / c.mmPerPx
-  const halfCenter = widthPx / 4 // centro de cada mitad, medido desde el borde exterior
-  const lensFromEdge = widthPx / 2 - lensPx
-  return clamp((halfCenter * -1 + lensFromEdge) / (widthPx / 2), -0.5, 0.5)
+export function eyeShiftNdc(c: Calib, widthPx: number): number {
+  if (c.sep === null || widthPx <= 0) return 0
+  const halfCenterMm = (widthPx / 4) * c.mmPerPx
+  const lensHalfMm = c.sep / 2
+  const offsetPx = (halfCenterMm - lensHalfMm) / c.mmPerPx
+  return clamp((2 * offsetPx) / (widthPx / 2), -0.6, 0.6)
 }
 
-export const usesDistortion = (c: Calib) => c.k1 !== 0 || c.k2 !== 0 || c.lens > 0
+/** Nueva separación (mm) tras pulsar −/+ (dir = -1 | 1). Si estaba en auto parte de la automática redondeada. */
+export function stepSep(c: Calib, widthPx: number, dir: -1 | 1): number {
+  const cur = c.sep ?? Math.round(autoSepMm(widthPx, c.mmPerPx))
+  return clamp(Math.round(cur) + dir * SEP_STEP, SEP_RANGE[0], SEP_RANGE[1])
+}
+
+/** Nuevo FOV tras pulsar Zoom −/+ (dir = 1 acerca: menos FOV). */
+export function stepFov(c: Calib, dir: -1 | 1): number {
+  return clamp(c.fov - dir * FOV_STEP, FOV_RANGE[0], FOV_RANGE[1])
+}
+
+export function formatSep(c: Calib, widthPx: number): string {
+  return c.sep === null ? `auto (≈ ${Math.round(autoSepMm(widthPx, c.mmPerPx))} mm)` : `${Math.round(c.sep)} mm`
+}
+
+export const formatFov = (c: Calib): string => `${Math.round(c.fov)}°`
