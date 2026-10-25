@@ -1,5 +1,6 @@
-import { Center, Resize, useGLTF } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import { Component, type ReactNode, Suspense, useMemo } from 'react'
+import { computeModelFit } from './modelBounds'
 
 class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -13,19 +14,22 @@ class ModelBoundary extends Component<{ fallback: ReactNode; children: ReactNode
 
 function Model({ url }: { url: string }) {
   const { scene } = useGLTF(url)
-  // Clon propio: varias piezas pueden compartir el mismo .glb sin mutarse entre sí.
-  const clone = useMemo(() => scene.clone(true), [scene])
+  // Clon propio normalizado: centra en X/Z y apoya la base en y = 0
+  const { clone, fit } = useMemo(() => {
+    const c = scene.clone(true)
+    const f = computeModelFit(c, 0.7)
+    return { clone: c, fit: f }
+  }, [scene])
+
   return (
-    <Resize scale={0.7}>
-      <Center bottom>
-        <primitive object={clone} />
-      </Center>
-    </Resize>
+    <group position={fit.offset} scale={fit.scale}>
+      <primitive object={clone} />
+    </group>
   )
 }
 
 /**
- * Modelo 3D externo normalizado (~0,7 m, base en y = 0). Mientras carga o si falla (red, .glb roto)
+ * Modelo 3D externo normalizado (~0,7 m, base en y = 0, centrado en X/Z). Mientras carga o si falla (red, .glb roto)
  * se dibuja `fallback`: el glifo o modelo procedural de siempre.
  */
 export function DynamicTotem({ url, fallback }: { url: string; fallback: ReactNode }) {

@@ -4,8 +4,10 @@ import { Suspense, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { isListeningNow, isSpeakingNow } from '../lib/voice'
+import type { PalaceLayout } from '../palace/layout'
 import { useStore } from '../store'
 import { ARIS_OFFSET, arisVisible } from './arisAnchor'
+import { computeArisPosition } from './arisAvoidance'
 import { arisActivity, isArisPending, profileFacing } from './arisPose'
 
 const MODEL_PATH = '/models/aris-v2/model.glb'
@@ -21,7 +23,7 @@ const _profile = { x: 0, z: 0 }
 
 const DOT_COUNT = 3
 
-function ArisModelInner() {
+function ArisModelInner({ layout }: { layout?: PalaceLayout }) {
   const { scene } = useGLTF(MODEL_PATH)
   const clonedScene = useMemo(() => scene.clone(), [scene])
   // Altura del modelo (en sus unidades) para colocar el indicador de "pensando" sobre la cabeza
@@ -65,6 +67,7 @@ function ArisModelInner() {
     const t = state.clock.getElapsedTime()
     const camera = state.camera
     const currentRoom = useStore.getState().currentRoomId
+    const colliders = layout?.colliders ?? useStore.getState().layout?.colliders ?? []
 
     // 1. Inicialización en el primer frame en el campo de visión del jugador
     if (!initialized.current) {
@@ -73,12 +76,16 @@ function ArisModelInner() {
       _forward.normalize()
       _right.set(-_forward.z, 0, _forward.x)
 
-      currentPos.current
-        .copy(camera.position)
-        .addScaledVector(_forward, ARIS_OFFSET.forward)
-        .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side)
-      currentPos.current.y = camera.position.y - ARIS_OFFSET.down
+      const initPos = computeArisPosition(
+        camera.position,
+        _forward,
+        _right,
+        sideSign.current,
+        colliders,
+        ARIS_OFFSET,
+      )
 
+      currentPos.current.set(initPos.x, initPos.y, initPos.z)
       lastPos.current.copy(currentPos.current)
       group.position.copy(currentPos.current)
       lastRoomId.current = currentRoom
@@ -104,12 +111,16 @@ function ArisModelInner() {
         _forward.normalize()
         _right.set(-_forward.z, 0, _forward.x)
 
-        currentPos.current
-          .copy(camera.position)
-          .addScaledVector(_forward, ARIS_OFFSET.forward)
-          .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side)
-        currentPos.current.y = camera.position.y - ARIS_OFFSET.down
+        const transPos = computeArisPosition(
+          camera.position,
+          _forward,
+          _right,
+          sideSign.current,
+          colliders,
+          ARIS_OFFSET,
+        )
 
+        currentPos.current.set(transPos.x, transPos.y, transPos.z)
         lastPos.current.copy(currentPos.current)
         group.position.copy(currentPos.current)
         isTransitioning.current = false
@@ -126,17 +137,22 @@ function ArisModelInner() {
       sideTimer.current = 0
     }
 
-    // 4. Cálculo del punto de anclaje DENTRO de la pantalla (FOV 70°)
+    // 4. Cálculo del punto de anclaje DENTRO de la pantalla evitando obstáculos
     camera.getWorldDirection(_forward)
     _forward.y = 0
     _forward.normalize()
     _right.set(-_forward.z, 0, _forward.x)
 
-    _targetPos
-      .copy(camera.position)
-      .addScaledVector(_forward, ARIS_OFFSET.forward) // Adelante en el campo visual
-      .addScaledVector(_right, sideSign.current * ARIS_OFFSET.side) // Al lateral visible de la pantalla
-    _targetPos.y = camera.position.y - ARIS_OFFSET.down
+    const placement = computeArisPosition(
+      camera.position,
+      _forward,
+      _right,
+      sideSign.current,
+      colliders,
+      ARIS_OFFSET,
+    )
+
+    _targetPos.set(placement.x, placement.y, placement.z)
 
     // 5. Seguimiento con Lerp elástico (framerate-independent exponential decay)
     const followFactor = 1 - Math.exp(-6.0 * dt)
@@ -258,10 +274,10 @@ function ArisModelInner() {
   )
 }
 
-export function ArisCompanion() {
+export function ArisCompanion({ layout }: { layout?: PalaceLayout } = {}) {
   return (
     <Suspense fallback={null}>
-      <ArisModelInner />
+      <ArisModelInner layout={layout} />
     </Suspense>
   )
 }
