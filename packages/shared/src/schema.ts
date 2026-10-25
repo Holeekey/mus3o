@@ -106,7 +106,8 @@ export const DynamicAssetSchema = z.object({
   url: z.string().regex(/^\/api\/assets\/[A-Za-z0-9_-]{1,64}\.glb$/),
   title: z.string().max(120),
   author: z.string().max(120),
-  license: z.enum(["CC0", "CC-BY"]),
+  /** "own" = de la biblioteca propia del proyecto. */
+  license: z.enum(["CC0", "CC-BY", "own"]),
   sourceUrl: z
     .string()
     .url()
