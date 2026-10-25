@@ -184,7 +184,7 @@ export function World({ layout, theme = DEFAULT_THEME }: { layout: PalaceLayout;
         </Suspense>
       )}
       <HideDuringIntro>
-        <ArisCompanion />
+        <ArisCompanion layout={layout} />
       </HideDuringIntro>
       {vrAvailable && (
         <Suspense fallback={null}>
