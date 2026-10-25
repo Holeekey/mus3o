@@ -1,4 +1,5 @@
 import { handleDioramaKey, useDioramaStore } from '../diorama/dioramaStore'
+import { arisConversation } from '../palace/arisConversationRuntime'
 import { introState } from '../intro/store'
 import { canListen } from '../lib/voice'
 import { findDoor } from '../palace/inputKeys'
@@ -81,6 +82,17 @@ export function openAris(options: { unlock: boolean } = { unlock: true }) {
   if (s.openId && inExamScope(s, s.openId)) return
   s.setArisPromptOpen(true)
   if (options.unlock) pointerLock.unlock()
+}
+
+/**
+ * T: enciende o apaga la conversación por voz con Aris (si no se puede escuchar, abre la consulta escrita).
+ * Mismas reglas que openAris: no dentro del cuadro ni con una tarjeta de examen abierta.
+ */
+export function talkToAris() {
+  const s = useStore.getState()
+  if (introState.active || s.arisPromptOpen || useDioramaStore.getState().phase !== 'room') return
+  if (s.openId && inExamScope(s, s.openId)) return
+  arisConversation.talk()
 }
 
 /** Q: vuelve del cuadro a la sala. */

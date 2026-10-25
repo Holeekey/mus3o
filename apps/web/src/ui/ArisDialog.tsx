@@ -54,6 +54,8 @@ export function ArisPrompt() {
   const askAris = useStore((s) => s.askAris)
   const isMuted = useStore((s) => s.arisMuted)
   const toggleMute = useStore((s) => s.toggleArisMute)
+  const palace = useStore((s) => s.palace)
+  const setArisPending = useStore((s) => s.setArisPending)
   const [query, setQuery] = useState('')
 
   const handleFinalResult = (transcript: string) => {
@@ -73,6 +75,8 @@ export function ArisPrompt() {
   } = useSpeechRecognition({
     onFinalResult: handleFinalResult,
     autoSendDelayMs: 400,
+    keyterms: palace?.rooms.flatMap((r) => r.pieces.map((p) => p.title)),
+    onProcessing: () => setArisPending(true),
   })
 
   const submit = (e: React.FormEvent) => {
@@ -87,6 +91,7 @@ export function ArisPrompt() {
 
   const cancel = () => {
     stopListening()
+    setArisPending(false)
     setOpen(false)
     pointerLock.lock()
   }

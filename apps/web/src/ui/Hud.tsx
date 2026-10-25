@@ -14,6 +14,8 @@ import { FreeExploreToggle } from './FreeExploreToggle'
 import { DioramaMinimap } from '../diorama/DioramaMinimap'
 import { useDioramaStore } from '../diorama/dioramaStore'
 import { ArisDialog, ArisPrompt } from './ArisDialog'
+import { ArisVoicePill } from './ArisVoicePill'
+import { arisConversation } from '../palace/arisConversationRuntime'
 import { useCardScroll } from './cardScroll'
 import { ConceptInfo } from './ConceptInfo'
 import { ExamCard } from './ExamCard'
@@ -133,6 +135,13 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
   const currentRoomId = useStore((s) => s.currentRoomId)
   const inDiorama = useDioramaStore((s) => s.phase === 'inside' || s.phase === 'leaving')
   const arisAvailable = useDioramaStore((s) => s.phase === 'room')
+
+  // La conversación por voz arranca sola la primera vez que se entra al museo (el clic de entrada es el gesto que
+  // permite audio y micrófono) y se apaga al salir de la pantalla.
+  useEffect(() => {
+    if (locked && arisAvailable) arisConversation.autoStart()
+  }, [locked, arisAvailable])
+  useEffect(() => () => arisConversation.stop(), [])
   const focusedId = useStore((s) => s.focusedId)
   const focusedDoorId = useStore((s) => s.focusedDoorId)
   const hasKey = useStore((s) => s.hasKey)
@@ -313,14 +322,15 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
             useStore.getState().setArisPromptOpen(true)
             pointerLock.unlock()
           }}
-          title="Consultar a Aris (T)"
+          title="Escribir a Aris (Shift+T)"
         >
           <span>🤖 Aris</span>
-          <kbd>T</kbd>
+          <kbd>Shift+T</kbd>
         </button>
       )}
 
       <ArisDialog />
+      <ArisVoicePill />
       <ArisPrompt />
 
       <TouchControls layout={layout} />
@@ -357,7 +367,7 @@ export function Hud({ layout }: { layout: PalaceLayout }) {
                   <br />
                   <kbd>W A S D</kbd> moverte · <kbd>Shift</kbd> correr · <kbd>Mouse</kbd> mirar
                   <br />
-                  <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> Aris · <kbd>N</kbd> narrador
+                  <kbd>E</kbd> examinar · <kbd>M</kbd> memorizar · <kbd>T</kbd> hablar con Aris · <kbd>N</kbd> narrador
                   {mode === 'exam' && (
                     <>
                       <br />

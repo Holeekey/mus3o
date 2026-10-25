@@ -25,12 +25,64 @@ function recognitionCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+// --- Actividad de voz ---
+// Para que la UI reaccione (Aris gira hacia ti al escucharte y de perfil al hablar): si el micrófono está abierto y
+// si suena voz de verdad (cuando empieza el audio, no cuando se pide).
+let speakingNow = false
+let micSessions = 0
+const activityListeners = new Set<() => void>()
+function notifyActivity(): void {
+  activityListeners.forEach((f) => f())
+}
+function setSpeaking(v: boolean): void {
+  if (speakingNow === v) return
+  speakingNow = v
+  notifyActivity()
+}
+export const isSpeakingNow = (): boolean => speakingNow
+export const isListeningNow = (): boolean => micSessions > 0
+/** Avisa cuando cambia isSpeakingNow() o isListeningNow(). Devuelve la función que cancela la suscripción. */
+export function onVoiceActivity(cb: () => void): () => void {
+  activityListeners.add(cb)
+  return () => void activityListeners.delete(cb)
+}
+
+// --- Dictado con ElevenLabs (opcional) ---
+// Mismo esquema que la voz: el servidor dice si está configurado y cualquier fallo cae al dictado del navegador.
+// `sttEnabled` solo es true cuando /api/stt/status ya respondió que sí (ver warmVoice).
+let sttEnabled = false
+let sttStatus: Promise<boolean> | null = null
+function remoteStt(): Promise<boolean> {
+  sttStatus ??=
+    typeof fetch === 'function'
+      ? fetch('/api/stt/status')
+          .then((r) => (r.ok ? r.json() : { enabled: false }))
+          .then((j: { enabled?: boolean }) => j.enabled === true)
+          .catch(() => false)
+          .then((v) => (sttEnabled = v))
+      : Promise.resolve(false)
+  return sttStatus
+}
+
+const hasMic = () => typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function'
+const remoteListenReady = () => sttEnabled && hasMic()
+
+/** Consulta al servidor qué voz y dictado remotos hay, para que la primera frase no espere ese viaje. */
+export function warmVoice(): void {
+  void remoteTts()
+  void remoteStt()
+}
+
 export function canListen(): boolean {
-  return recognitionCtor() !== null
+  return recognitionCtor() !== null || remoteListenReady()
 }
 
 export type ListenOptions = {
   lang?: string
+  /** Términos que conviene reconocer bien (solo lo usa el dictado remoto; máx. 50 de hasta 20 caracteres). */
+  keyterms?: string[]
+  /** Micrófono abierto de forma continua (conversación): el dictado remoto filtra ruido de fondo y muletillas. */
+  ambient?: boolean
   onInterim?: (text: string) => void
   /** Todas las alternativas del resultado final, de más a menos probable. */
   onFinal: (alternatives: string[]) => void
@@ -38,8 +90,67 @@ export type ListenOptions = {
   onError?: (code: string) => void
 }
 
-/** Empieza a escuchar; devuelve la función que lo detiene. Un solo resultado final por llamada. */
-export function listen({ lang = 'es-ES', onInterim, onFinal, onError }: ListenOptions): () => void {
+/**
+ * Empieza a escuchar; devuelve la función que lo detiene. Un solo resultado final por llamada.
+ * Con ElevenLabs disponible dicta por ahí (texto parcial en vivo y cualquier navegador); si falla antes de dar una
+ * frase, sigue con el dictado del navegador. Sin permiso de micrófono no hay respaldo posible: se avisa 'not-allowed'.
+ */
+export function listen(o: ListenOptions): () => void {
+  let ended = false
+  const end = () => {
+    if (ended) return
+    ended = true
+    micSessions--
+    notifyActivity()
+  }
+  micSessions++
+  notifyActivity()
+  const stop = startListening({
+    ...o,
+    onFinal: (alts) => {
+      end()
+      o.onFinal(alts)
+    },
+    onError: (code) => {
+      end()
+      o.onError?.(code)
+    },
+  })
+  return () => {
+    end()
+    stop()
+  }
+}
+
+function startListening(o: ListenOptions): () => void {
+  if (!remoteListenReady()) return listenBrowser(o)
+  let stopped = false
+  let stopInner: () => void = () => {}
+  const toBrowser = () => {
+    if (!stopped) stopInner = listenBrowser(o)
+  }
+  void import('./scribe').then(({ listenScribe }) => {
+    if (stopped) return
+    stopInner = listenScribe({
+      keyterms: o.keyterms,
+      ambient: o.ambient,
+      onInterim: o.onInterim,
+      onFinal: o.onFinal,
+      onNoSpeech: () => o.onError?.('no-speech'),
+      onFail: (code) => {
+        if (stopped) return
+        if (code === 'not-allowed') o.onError?.(code)
+        else toBrowser()
+      },
+    })
+  }, toBrowser)
+  return () => {
+    stopped = true
+    stopInner()
+  }
+}
+
+function listenBrowser({ lang = 'es-ES', onInterim, onFinal, onError }: ListenOptions): () => void {
   const Ctor = recognitionCtor()
   if (!Ctor) {
     onError?.('unsupported')
@@ -130,6 +241,9 @@ function remoteTts(): Promise<boolean> {
   return remoteEnabled
 }
 
+// Si ElevenLabs no responde a tiempo se cae al navegador: el silencio se nota más que la voz genérica.
+const REMOTE_TIMEOUT_MS = 2500
+
 let currentAudio: HTMLAudioElement | null = null
 let currentUrl: string | null = null
 let abort: AbortController | null = null
@@ -150,16 +264,21 @@ function releaseAudio(): void {
 
 async function speakRemote(text: string, mine: number): Promise<boolean> {
   if (typeof Audio === 'undefined' || !(await remoteTts())) return false
-  abort = new AbortController()
+  if (mine !== token) return true
+  const ctrl = new AbortController()
+  abort = ctrl
+  // El timeout aborta la petición; el catch la trata como fallo (no como cancelación) y cae al navegador.
+  const timer = setTimeout(() => ctrl.abort(), REMOTE_TIMEOUT_MS)
   try {
     const res = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 500) }),
-      signal: abort.signal,
+      signal: ctrl.signal,
     })
     if (!res.ok) return false
     const blob = await res.blob()
+    clearTimeout(timer)
     if (mine !== token) return true // llegó tarde: otra frase o un stop ya la reemplazó
     const audioUrl = URL.createObjectURL(blob)
     currentUrl = audioUrl
@@ -169,12 +288,16 @@ async function speakRemote(text: string, mine: number): Promise<boolean> {
         URL.revokeObjectURL(audioUrl)
         currentUrl = null
         currentAudio = null
+        setSpeaking(false)
       }
     }
     await currentAudio.play()
+    if (mine === token) setSpeaking(true)
     return true
   } catch {
     return mine !== token // si la cancelaron a propósito no se cae al navegador
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -182,18 +305,26 @@ export function canSpeak(): boolean {
   return synth() !== null
 }
 
-function speakBrowser(text: string, lang: string): void {
+function speakBrowser(text: string, lang: string, pitch: number, rate: number, mine: number): void {
   const s = synth()
   if (!s) return
   try {
     s.cancel()
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang
-    u.rate = 1
+    u.pitch = pitch
+    u.rate = rate
     const voice = pickSpanishVoice(s.getVoices())
     if (voice) {
       u.voice = voice
       u.lang = voice.lang
+    }
+    // Solo cuenta si esta frase sigue vigente: al cancelar, el navegador dispara 'end' de la anterior tarde.
+    u.onstart = () => {
+      if (mine === token) setSpeaking(true)
+    }
+    u.onend = u.onerror = () => {
+      if (mine === token) setSpeaking(false)
     }
     s.speak(u)
   } catch {
@@ -201,17 +332,20 @@ function speakBrowser(text: string, lang: string): void {
   }
 }
 
-export function speak(text: string, { lang = 'es-ES' }: { lang?: string } = {}): void {
+export type SpeakOptions = { lang?: string; pitch?: number; rate?: number }
+
+export function speak(text: string, { lang = 'es-ES', pitch = 1, rate = 1 }: SpeakOptions = {}): void {
   if (!text.trim()) return
   stopSpeaking()
   const mine = token
   void speakRemote(text, mine).then((done) => {
-    if (!done && mine === token) speakBrowser(text, lang)
+    if (!done && mine === token) speakBrowser(text, lang, pitch, rate, mine)
   })
 }
 
 export function stopSpeaking(): void {
   token++
+  setSpeaking(false)
   releaseAudio()
   try {
     synth()?.cancel()

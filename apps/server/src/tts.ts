@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { sanitizeDisplayText } from "@mus3o/shared";
 import { takeBudget } from "./budgetStore";
+import { describeUpstreamError } from "./elevenlabs";
 
 // Soporte opcional de ElevenLabs. Sin ELEVENLABS_API_KEY queda desactivado y el cliente
 // usa la síntesis del navegador. La clave vive solo aquí: el navegador nunca la ve.
@@ -63,7 +64,7 @@ ttsRouter.post("/tts", async (req, res) => {
     });
     if (!upstream.ok) {
       // Nunca se reenvía el cuerpo del proveedor (puede incluir datos de la cuenta).
-      console.error(`tts falló: HTTP ${upstream.status}`);
+      console.error(`tts falló: ${await describeUpstreamError(upstream)}`);
       res.status(502).json({ error: "No se pudo generar la voz", fallback: "browser" });
       return;
     }

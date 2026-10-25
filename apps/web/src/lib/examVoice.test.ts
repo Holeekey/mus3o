@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DENIED_NOTICE, TYPING_NOTICE, examVoiceReducer, initialVoiceState } from './examVoice'
+import { DENIED_NOTICE, TYPING_NOTICE, examKeyterms, examVoiceReducer, initialVoiceState } from './examVoice'
 import { pickSpanishVoice } from './voice'
 
 describe('examVoiceReducer', () => {
@@ -38,5 +38,19 @@ describe('pickSpanishVoice', () => {
     expect(pickSpanishVoice([v('es-ES'), v('es-MX')])?.lang).toBe('es-MX')
     expect(pickSpanishVoice([v('en-US'), v('es-ES')])?.lang).toBe('es-ES')
     expect(pickSpanishVoice([v('en-US')])).toBeNull()
+  })
+})
+
+describe('examKeyterms', () => {
+  const rooms = [
+    { pieces: [{ id: 'a1', title: 'Aorta' }, { id: 'a2', title: 'Vena cava' }] },
+    { pieces: [{ id: 'b1', title: 'Mitocondria' }] },
+  ]
+  it('pone primero los conceptos de la sala del concepto e incluye los de las demás salas', () => {
+    expect(examKeyterms(rooms, 'b1')).toEqual(['Mitocondria', 'Aorta', 'Vena cava'])
+  })
+  it('conserva el orden si el concepto no está en ninguna sala, y tolera un museo vacío', () => {
+    expect(examKeyterms(rooms, 'zzz')).toEqual(['Aorta', 'Vena cava', 'Mitocondria'])
+    expect(examKeyterms([], 'a1')).toEqual([])
   })
 })

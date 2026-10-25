@@ -9,7 +9,7 @@ import { roomAt, type PalaceLayout } from '../palace/layout'
 import { isDoorOpen, playerPose, useStore } from '../store'
 import { introState } from '../intro/store'
 import { pointerLock } from './pointerLock'
-import { examine, openAris, toggleMemorize } from './actions'
+import { examine, openAris, talkToAris, toggleMemorize } from './actions'
 import { applyTouchLook } from './moveInput'
 import { touchInput } from './touchInput'
 import { EYE, stepWalk } from './walk'
@@ -64,7 +64,7 @@ export function Player({ layout }: { layout: PalaceLayout }) {
       if (!allowed.has(e.code)) return
       if (e.code === 'KeyE') examine(layoutRef.current)
       if (e.code === 'KeyM') toggleMemorize()
-      if (e.code === 'KeyT') openAris()
+      if (e.code === 'KeyT') (e.shiftKey ? openAris() : talkToAris())
     }
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false
