@@ -4,11 +4,12 @@
  *   npm run library -w @mus3o/server -- show <id>
  *   npm run library -w @mus3o/server -- add-glb <archivo.glb> --keywords "sword,blade" [--title "Espada"]
  *   npm run library -w @mus3o/server -- add-recipe <partes.json> --keywords "key" [--title "Llave"]
+ *   npm run library -w @mus3o/server -- import <dibujos.json> [--origin ai|manual]   (lote de recetas revisadas, entran aprobadas)
  *   npm run library -w @mus3o/server -- approve|reject|reset|remove <id>
  * Escribe en LIBRARY_DIR (por defecto apps/server/seed/library): lo que apruebes aquí lo versionas con git.
  */
 import { readFile } from "node:fs/promises";
-import { addGlb, addRecipe, getEntry, libraryDir, listLibrary, removeEntry, setLibraryStatus, type LibraryStatus } from "../src/library";
+import { addGlb, addRecipe, getEntry, importRecipes, libraryDir, listLibrary, removeEntry, setLibraryStatus, type LibraryStatus } from "../src/library";
 
 const [cmd, ...rest] = process.argv.slice(2);
 const flag = (name: string) => {
@@ -51,6 +52,14 @@ async function main() {
       console.log(line(await addRecipe({ keywords: keywords(), title: flag("title") ?? "", parts })));
       return;
     }
+    case "import": {
+      const file = positional[0];
+      if (!file) throw new Error("Falta el archivo .json ({ palabra: partes })");
+      const origin = flag("origin") === "manual" ? "manual" : "ai";
+      const { added, skipped } = await importRecipes(JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>, origin);
+      console.log(`${added.length} añadidas, ${skipped.length} omitidas${skipped.length ? ` (${skipped.join(", ")})` : ""}`);
+      return;
+    }
     case "approve":
     case "reject":
     case "reset": {
@@ -63,7 +72,7 @@ async function main() {
       console.log((await removeEntry(positional[0] ?? "")) ? "Eliminada" : "No encontrada");
       return;
     default:
-      console.log("Comandos: list [estado] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b [--title T] | approve|reject|reset|remove <id>");
+      console.log("Comandos: list [estado] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b [--title T] | import <json> [--origin ai|manual] | approve|reject|reset|remove <id>");
   }
 }
 

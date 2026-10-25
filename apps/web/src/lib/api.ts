@@ -45,10 +45,10 @@ export async function generateMuseum(text: string, signal?: AbortSignal): Promis
 /** Mensaje para el usuario según el estado HTTP de un fallo de la IA (el mismo con y sin streaming). */
 export function describeAiError(status?: number): string {
   return status === 503
-    ? "Aris no está disponible ahora. Puedes construir el museo sin Aris."
+    ? "Aris no está disponible ahora. Puedes usar «Construir offline»."
     : status === 429
       ? "Demasiadas solicitudes. Intenta en un minuto."
-      : "Aris no pudo generar el museo. Intenta de nuevo o constrúyelo sin Aris.";
+      : "Aris no pudo generar el museo. Intenta de nuevo o usa «Construir offline».";
 }
 
 /** Parte un flujo de texto en líneas completas; lo que queda sin salto de línea espera al siguiente trozo. */

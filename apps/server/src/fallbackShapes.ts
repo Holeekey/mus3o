@@ -30,6 +30,7 @@ const ball = (r: number, x: number, y: number, z: number, color: string): Part =
 const cone = (r: number, h: number, x: number, y: number, z: number, color: string, seg = 12): Part => ({ shape: "cone", args: [r, h, seg], pos: [x, y + h / 2, z], rot: [0, 0, 0], color });
 
 const RECIPES: { match: RegExp; build: Recipe }[] = [
+  { match: /\b(ram|dimm|memory (module|stick|card)|memoria)\b/, build: (c) => [box(2, 0.7, 0.12, 0, 0.1, 0, "#3f9d6b"), box(0.38, 0.34, 0.16, -0.65, 0.2, 0, c.main), box(0.38, 0.34, 0.16, -0.15, 0.2, 0, c.main), box(0.38, 0.34, 0.16, 0.35, 0.2, 0, c.main), box(1.9, 0.12, 0.14, 0, 0, 0, c.accent), box(0.1, 0.3, 0.1, 0.95, 0.8, 0, c.light)] },
   { match: /\b(sword|dagger|blade|knife|saber|sabre|spear|lance)\b/, build: (c) => [box(0.16, 1.4, 0.05, 0, 0.5, 0, c.light), box(0.7, 0.1, 0.12, 0, 0.4, 0, c.accent), cyl(0.06, 0.06, 0.4, 0, 0, 0, c.dark), ball(0.09, 0, -0.05, 0, c.accent)] },
   { match: /\b(shield|armor|armour|helmet|crest|badge)\b/, build: (c) => [cyl(0.8, 0.8, 0.14, 0, 0.5, 0, c.main, 16, [Math.PI / 2, 0, 0]), cyl(0.35, 0.35, 0.18, 0, 0.5, 0, c.accent, 16, [Math.PI / 2, 0, 0]), cone(0.4, 0.5, 0, 0, 0, c.dark, 6)] },
   { match: /\b(key|lock|padlock|gate|door)\b/, build: (c) => [cyl(0.32, 0.32, 0.12, 0, 1.3, 0, c.accent, 14, [Math.PI / 2, 0, 0]), cyl(0.07, 0.07, 1.3, 0, 0, 0, c.main), box(0.35, 0.1, 0.1, 0.18, 0.3, 0, c.main), box(0.25, 0.1, 0.1, 0.12, 0.5, 0, c.main)] },
@@ -69,16 +70,16 @@ export function deterministicParts(piece: Pick<Piece, "id" | "title" | "searchKe
   return z.array(PartSchema).max(8).parse(recipe(colors));
 }
 
-const needsModel = (p: Piece) => !p.dynamicAsset && (!p.model || p.model.type === "glyph");
+const needsModel = (p: Piece, skip: ReadonlySet<string>) => !skip.has(p.id) && (!p.model || p.model.type === "glyph");
 
-/** Da un modelo procedural fijo a toda pieza que sigue sin asset ni modelo creado. Nunca llama a la red. */
-export function applyDeterministicModels(museum: Museum): Museum {
-  if (!museum.rooms.some((r) => r.pieces.some(needsModel))) return museum;
+/** Da un modelo procedural fijo a toda pieza sin modelo creado (aunque tenga un asset por descargar, que es el respaldo si falla). Nunca llama a la red. */
+export function applyDeterministicModels(museum: Museum, skip: ReadonlySet<string> = new Set()): Museum {
+  if (!museum.rooms.some((r) => r.pieces.some((p) => needsModel(p, skip)))) return museum;
   return {
     ...museum,
     rooms: museum.rooms.map((room) => ({
       ...room,
-      pieces: room.pieces.map((p) => (needsModel(p) ? { ...p, model: { type: "procedural" as const, parts: deterministicParts(p) } } : p)),
+      pieces: room.pieces.map((p) => (needsModel(p, skip) ? { ...p, model: { type: "procedural" as const, parts: deterministicParts(p) } } : p)),
     })),
   };
 }

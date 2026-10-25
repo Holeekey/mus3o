@@ -8,7 +8,14 @@ export interface CostProvider {
 }
 
 export class AStarNavigator implements INavigationGraph {
-  constructor(private readonly costProvider: CostProvider) {}
+  /**
+   * `heuristic` es opcional (por defecto Manhattan, válida en rejillas). Para grafos cuyas coordenadas no
+   * reflejan la distancia real (p. ej. salas indexadas en una línea) hay que pasar una heurística admisible.
+   */
+  constructor(
+    private readonly costProvider: CostProvider,
+    private readonly heuristic: (a: Position2D, b: Position2D) => number = AStarNavigator.manhattanDistance
+  ) {}
 
   public getNeighbors(pos: Position2D): Position2D[] {
     return this.costProvider.getNeighbors(pos);
@@ -41,7 +48,7 @@ export class AStarNavigator implements INavigationGraph {
     gScore.set(startKey, 0);
 
     const fScore = new Map<string, number>();
-    fScore.set(startKey, AStarNavigator.manhattanDistance(start, goal));
+    fScore.set(startKey, this.heuristic(start, goal));
 
     const positions = new Map<string, Position2D>();
     positions.set(startKey, start);
@@ -88,7 +95,7 @@ export class AStarNavigator implements INavigationGraph {
         if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
           cameFrom.set(neighborKey, current);
           gScore.set(neighborKey, tentativeG);
-          const h = AStarNavigator.manhattanDistance(neighbor, goal);
+          const h = this.heuristic(neighbor, goal);
           fScore.set(neighborKey, tentativeG + h);
           openSet.add(neighborKey);
         }

@@ -60,7 +60,7 @@ const GLYPH_MAP: Record<string, Glyph> = {
   pointer: "cone",
 };
 
-const LINE_TAG = /^[-*•\d.)\s]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE|DIO|D_PROP)\**\s*:\s*\**/i;
+const LINE_TAG = /^[\s>*•\d.)\-\[\]xX]*\**(ROOM|PIECE|TITLE|PERIOD|QUIZ|IMAGE|DIO|D_PROP)\**\s*(?::|：|-(?=\s)|\|)\s*\**/i;
 
 const HEX_REGEX = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -153,11 +153,14 @@ export type DslRoom = Room & { requires: string[]; related?: string[] };
 
 export type DslLineKind = "ROOM" | "PIECE" | "TITLE" | "PERIOD" | "QUIZ" | "IMAGE" | "DIO" | "D_PROP";
 
-/** Clasifica una línea del DSL (tolerante a viñetas, negritas y mayúsculas); `body` ya lleva las barras normalizadas. */
+/** Clasifica una línea del DSL (tolerante a viñetas, negritas, mayúsculas, dos puntos asiáticos y pipes directos). */
 export function classifyDslLine(trimmed: string): { kind?: DslLineKind; body: string } {
-  const tag = LINE_TAG.exec(trimmed);
+  // ：→: y ｜→| tienen el mismo largo, así que el índice de la etiqueta vale también sobre el texto original.
+  // Solo se normaliza el cuerpo para las barras; los dos puntos de ancho completo del contenido se respetan.
+  const normalized = trimmed.replace(/：/g, ":").replace(/｜/g, "|");
+  const tag = LINE_TAG.exec(normalized);
   if (!tag) return { body: "" };
-  return { kind: tag[1].toUpperCase() as DslLineKind, body: trimmed.slice(tag[0].length).replace(/｜/g, "|") };
+  return { kind: tag[1].toUpperCase() as DslLineKind, body: trimmed.slice(tag[0].length).replace(/｜/g, "|").trim() };
 }
 
 const DEFAULT_PALETTE = { primary: "#3b82f6", fogColor: "#0f172a" };

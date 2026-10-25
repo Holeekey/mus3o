@@ -90,7 +90,7 @@ export function Landing() {
     // Sin adjuntos, el server acepta hasta LIMITS.maxNotesChars caracteres de apuntes para la IA.
     // Con adjuntos, el prompt maestro resume lo que no entra.
     if (!withFiles && input.trim().length > LIMITS.maxNotesChars) {
-      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes construir el museo sin Aris con todo el texto.`)
+      setValidationError(`Para generar con Aris usa hasta ${LIMITS.maxNotesChars.toLocaleString('es')} caracteres (tienes ${input.trim().length.toLocaleString('es')}). Puedes usar «Construir offline» con todo el texto.`)
       return
     }
     setValidationError(null)
@@ -246,19 +246,16 @@ export function Landing() {
       </div>
     </div>
   )
+  // Aris es la experiencia principal; construir offline (parser local, sin Aris) queda como alternativa discreta.
   const primaryActions = (
-    <>
-      <button className="btn btn-primary btn-lg" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
-        Construir museo
-      </button>
-      <button
-        className={attachments.length > 0 ? 'btn btn-primary btn-lg' : 'btn'}
-        disabled={!input.trim() && attachments.length === 0}
-        onClick={generateWithAi}
-      >
-        Generar con Aris
-      </button>
-    </>
+    <button className="btn btn-primary btn-lg" disabled={!input.trim() && attachments.length === 0} onClick={generateWithAi}>
+      Generar con Aris
+    </button>
+  )
+  const offlineAction = (
+    <button className="btn btn-ghost" disabled={!result.ok} onClick={() => result.ok && enterPalace(result.palace, input)}>
+      Construir offline
+    </button>
   )
 
   const workbenchHead = (
@@ -279,6 +276,7 @@ export function Landing() {
           {dueText && <span className="due-chip"> · {dueText}</span>}
         </button>
       )}
+      {offlineAction}
     </>
   )
   // En la pared del lobby va "Crea tu palacio" tal cual: texto guía, apuntes | palacios destacados y acciones.

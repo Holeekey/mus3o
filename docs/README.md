@@ -20,6 +20,7 @@ Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio (la rama VR a
 | [arquitectura.md](./arquitectura.md) | Monorepo, stack, flujo de punta a punta, dónde vive cada cosa | Llegas nuevo o necesitas ubicar algo |
 | [contrato-shared.md](./contrato-shared.md) | Esquemas Zod de `packages/shared`: `Museum`, salas, piezas, grafo, diorama, límites | Tocas datos, validación o el JSON que devuelve la IA |
 | [servidor.md](./servidor.md) | Endpoints, rate limits, caché, tope diario, llamadas a Claude, prompts, proxy de imágenes, **modelos 3D de Poly Pizza, flujo DSL, costos y mediciones** | Tocas `apps/server` |
+| [plan-biblioteca-modelos.md](./plan-biblioteca-modelos.md) | Biblioteca propia de modelos: costos medidos Haiku vs Sonnet, semilla de 80 objetos y fases siguientes | Tocas la biblioteca o el respaldo de modelos 3D |
 | [frontend.md](./frontend.md) | Pantallas, store de Zustand, parser de apuntes, layout del palacio, escena 3D, HUD, controles, Aris | Tocas `apps/web` |
 | [memoria-y-examen.md](./memoria-y-examen.md) | Curva de olvido, llaves, puertas, examen, repaso, "máquina del tiempo" | Tocas progreso, llaves o repaso |
 | [vr.md](./vr.md) | Modo VR para visores de teléfono: WebXR y respaldo cardboard, interacción por mirada, HTTPS en el teléfono | Tocas `apps/web/src/vr`, o quieres probar en un visor |
@@ -27,6 +28,8 @@ Equipo 5 del Platanus Hack 26. Alcance de la demo: solo escritorio (la rama VR a
 | [fuentes-e-imagenes.md](./fuentes-e-imagenes.md) | Trazabilidad de citas, verificación contra los apuntes, imágenes de Wikimedia | Tocas `sources`, citas o cuadros con imagen real |
 | [estado-y-pendientes.md](./estado-y-pendientes.md) | Qué está hecho, qué no, resultados de tests, discrepancias conocidas | Quieres saber el estado real antes de empezar |
 | [optimizaciones.md](./optimizaciones.md) | Mejoras de rendimiento ya investigadas (6 seguras, con archivo, línea, prueba y medidas del build) | Vas a optimizar peso, CPU o trabajo repetido |
+| [catalogo-optimizaciones.md](./catalogo-optimizaciones.md) | Catálogo de las 18 optimizaciones activas e implementadas en código (LLM, red, 3D, frontend, almacenamiento) con su razonamiento e implicaciones | Necesitas conocer en profundidad cada decisión de rendimiento y ahorro aplicada |
+| [reporte-costos-y-ahorros.md](./reporte-costos-y-ahorros.md) | Análisis cuantitativo de costos por museo, tarifas de tokens y proyección de escalamiento | Evalúas presupuesto de IA, tarifas y ahorro acumulado |
 | [revision-dev.md](./revision-dev.md) | Informe de revisión formal de la rama `dev`: hallazgos de concurrencia, memoria e I/O (todos resueltos) | Vas a auditar o consultar el estado de hallazgos de `dev` |
 | [auditoria-seguridad-y-fallbacks.md](./auditoria-seguridad-y-fallbacks.md) | Auditoría de fallos delicados/medios, resiliencia WebGL, upstream de IA y fallbacks desacoplados | Analizas estabilidad, resiliencia o arquitectura de contingencia |
 | [desarrollo.md](./desarrollo.md) | Cómo correr, probar, variables de entorno, flujo de git, errores comunes | Vas a levantar el proyecto o abrir un PR |

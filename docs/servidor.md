@@ -55,7 +55,7 @@ el tipo de error y la latencia (`generate-museum falló tras N ms: <Nombre>`).
 5. **Rate limit general** en `/api/*` (excepto imágenes): **10 peticiones por minuto por IP**.
 6. **Validación del cuerpo:** primero el formato legacy (`{ topic }` o `{ notes }`), luego `GenerateMuseumRequestSchema`.
 7. **Caché** (antes de tocar el presupuesto).
-8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Vive en memoria: se reinicia al reiniciar el proceso.
+8. **Tope diario** `MAX_DAILY_GENERATIONS` (default **200**). Cuenta solo fallos de caché. Se reinicia a medianoche UTC. Los topes diarios (generaciones, TTS, Aris, dioramas) los lleva `budgetStore.ts`: memoria más archivo en `.cache/budget/<namespace>.json` (`BUDGET_CACHE_DIR`), con escritura atómica, así sobreviven a un reinicio del proceso mientras el disco persista.
 
 Por qué: el documento [seguridad.md](./seguridad.md) pide limitar el costo de créditos en una demo pública.
 
@@ -175,12 +175,24 @@ el modelo que mejor **coincide**:
    Sin coincidencia (0) se descarta: mejor el glifo procedural que un objeto equivocado. A igual coincidencia, CC0 antes que CC-BY
    (se excluyen NC/ND/SA).
 3. **Reparto**: piezas con la misma palabra reciben modelos distintos si hay alternativas.
-4. **Descarga** en paralelo a `assetStore.ts` (solo HTTPS a `*.poly.pizza`, tope 4 MB, firma `glTF`; prueba hasta 3 candidatos)
-   y rellena `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`).
+4. **Asignación diferida** (`deferFirst`): el museo recibe de inmediato `piece.dynamicAsset` (URL relativa `/api/assets/<id>.glb`) **sin
+   descargar nada**; la URL de descarga queda registrada en `review.json`. La generación solo espera a la búsqueda (rápida) y nunca a
+   decenas de descargas bajo un tope compartido de 2,5 s, que en una red real fallaba o dejaba el museo esperando.
+5. **Descarga bajo demanda** (`GET /api/assets/:id.glb`, `assetRoutes.ts`): la primera petición baja el `.glb` (solo HTTPS a `*.poly.pizza`,
+   tope 4 MB, firma `glTF`, timeout de 20 s), lo guarda y las siguientes lo sirven del disco. Peticiones simultáneas del mismo modelo comparten
+   una descarga y se limitan a 6 a la vez. Además, tras generar, se **calienta en segundo plano** (4 a la vez) para que casi todo esté listo
+   cuando el cliente lo pide.
+6. **Respaldo siempre presente:** toda pieza lleva su modelo procedural de respaldo (Haiku refinado o receta determinista) aunque tenga un
+   asset asignado: si el `.glb` no llega (bloqueo, red, 404) el cliente muestra ese modelo en vez del glifo plano.
 
-Timeout de 2500 ms por fase (`AbortController`); ante cualquier fallo la pieza conserva su glifo. Sin `POLY_PIZZA_API_KEY`
-la etapa no hace nada. El cliente lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra
-el crédito en la ficha (`Hud.tsx`) si la licencia es CC-BY.
+Cortacircuito: un 403/429/HTML al descargar, o un 401/403 en la búsqueda (clave inválida), pausa búsqueda y descargas 10 min; mientras tanto
+las peticiones de `.glb` responden 404 al instante y el cliente usa el respaldo. Sin `POLY_PIZZA_API_KEY` la etapa no hace nada. El cliente
+lo dibuja con `DynamicTotem.tsx` (`Resize` 0,7 + `Center bottom` + `scene.clone`) y muestra el crédito en la ficha (`Hud.tsx`) si la licencia
+es CC-BY.
+
+**Variables de entorno en desarrollo:** `loadEnv.ts` lee el `.env` de la **raíz** del repo (y el de `apps/server` si existe). Antes se usaba
+`dotenv/config`, que solo miraba el directorio de trabajo: `npm run dev -w @mus3o/server` arranca en `apps/server`, así que las claves del
+`.env` de la raíz (Poly Pizza, voz…) no se cargaban y Poly Pizza quedaba desactivado sin avisar.
 
 ### Revisión de modelos
 
@@ -203,6 +215,8 @@ Para que cada museo salga mejor que el anterior: lo que tú creas, y lo que la I
 1. Cada generación registra como `pending` lo que dibujaron Haiku o el respaldo determinista (una entrada por palabra clave y origen; máx. 400 pendientes, las más viejas se descartan; lo rechazado no se vuelve a proponer).
 2. Tú revisas: aprobar (gana prioridad), corregir las partes o palabras clave (queda `manual` y aprobada) o rechazar.
 3. Lo que subes tú (`.glb` o receta) entra ya aprobado.
+
+**Semilla:** `seed/library/index.json` trae 80 objetos dibujados con Sonnet (lista en `keywords.txt`). Sembrar más: `npm run library:draw -w @mus3o/server -- --keywords "a,b" --out dibujos.json` (Sonnet, ~$0,0034 por objeto, avisa el costo) y `library import dibujos.json`. Haiku cuesta ~$0,00014 por pieza pero dibuja peor; Sonnet es ~25× más caro por pieza, así que solo se usa para sembrar, no por museo. Plan y mediciones: [plan-biblioteca-modelos.md](./plan-biblioteca-modelos.md).
 
 **Curaduría**
 - Terminal, sin servidor: `npm run library -w @mus3o/server -- list [pending|approved|rejected] | show <id> | add-glb <archivo> --keywords a,b [--title T] | add-recipe <json> --keywords a,b | approve|reject|reset|remove <id>`.
@@ -231,11 +245,18 @@ conserva su glifo. La hidratación de Poly Pizza (`hydrateMuseumAssets`) corre t
 
 ### Buscar primero, crear solo lo que falta
 
-Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo: 1) `hydrateMuseumAssets` busca el asset de cada pieza; 2) `fillMissingModels`
-(`modelFallback.ts`) toma **solo** las piezas que quedaron sin `dynamicAsset` (sin coincidencia, error o timeout) y pide a un modelo barato
-(`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento, 20 s) llamadas en paralelo por lotes de 6 piezas (máx. 24) con 2 a 5 partes procedurales
-por pieza (350 tokens de salida por pieza de tope); una salida cortada se recupera hasta la última pieza completa, las partes se validan con `PartSchema` y las inválidas se descartan. Si un lote falla, o no hay `ANTHROPIC_API_KEY`, entra el **respaldo determinista** (`fallbackShapes.ts`, sin IA ni red): una receta de 2 a 7 partes elegida por la palabra clave del objeto (espada, escudo, llave, libro, corona, torre, lámpara, botella, árbol, barco, cañón, reloj, campana, persona, animal, célula, chip) o, si no hay coincidencia, por la forma del glifo; el color sale del id de la pieza, así que el mismo museo siempre se ve igual. Ninguna pieza sin asset queda con el glifo plano. (Con una sola llamada de 18 piezas la salida llegó al tope, el JSON quedó truncado y todas las piezas se quedaron con el glifo plano.) Solo corre con
-`POLY_PIZZA_API_KEY` y `ANTHROPIC_API_KEY` definidas: sin búsqueda activa todas las piezas "faltarían" y se pagaría de más.
+Orden en `resolveModels` (`claude.ts`), para el DSL y el flujo, por pieza: 1) **biblioteca propia** aprobada; 2) `hydrateMuseumAssets` asigna el asset de Poly Pizza
+(sin descargarlo, ver arriba); 3) `fillMissingModels` (`modelFallback.ts`) pide a un modelo barato (`ANTHROPIC_FALLBACK_MODEL`, por defecto Haiku, sin razonamiento,
+20 s) el modelo procedural de **toda pieza que aún no tenga uno** (incluidas las de Poly Pizza, porque es su respaldo si el `.glb` no llega), en llamadas en paralelo
+por lotes de 6 (máx. 24); 4) **respaldo determinista** (`fallbackShapes.ts`, sin IA ni red) para lo que siga sin modelo.
+
+- **Prompt refinado** (`FALLBACK_MODEL_SYSTEM_PROMPT`): 4 a 8 partes, dibujar el objeto de «objeto» y no el concepto, ~2 m centrado con base en y = 0, grosor mínimo
+  0,08 m, colores medios y vivos (nunca negro ni gris oscuro) y un ejemplo de calidad. Medido con los mismos objetos: Haiku pasó de bloques pequeños y oscuros a
+  objetos coloridos y reconocibles (placa base, servidor, teclado, router, monitor…), casi al nivel de Sonnet, por ~$0,00017 por pieza (Sonnet: ~$0,0034–0,0045).
+- Tope de 350 tokens de salida por pieza; una salida cortada se recupera hasta la última pieza completa; las partes se validan con `PartSchema`.
+- El determinista elige una receta de 2 a 7 partes por la palabra clave (espada, escudo, llave, libro, corona, torre, lámpara, botella, árbol, barco, cañón, reloj,
+  campana, persona, animal, célula, chip, memoria RAM) o, sin coincidencia, por la forma del glifo; el color sale del id de la pieza.
+- Lo dibujado en 3 y 4 se registra como pendiente en la biblioteca (salvo las piezas con asset de Poly Pizza).
 
 ### Formato DSL actual y tolerancia del parser
 

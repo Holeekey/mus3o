@@ -1,5 +1,6 @@
 import { chooseCenterpiece, type Centerpiece } from './centerpiece'
 import { buildDecor, decorBox, hash, pickIdentity, type FloorStyle, type RoomDecor, type RoomIdentity } from './roomIdentity'
+import { angleOfSide, ringAngles, routeStarts } from './route'
 import { emptyGrid, extraGridLinks, placeRoom, planRoomGrid, type Diorama, type Glyph, type GraphEdge, type ImageSearch, type IncrementalGrid, type Museum, type Piece, type MonumentType, type RoomPaletteDescriptor, type RoomTheme } from '@mus3o/shared'
 
 // Todo en metros, plano XZ. Y es la altura.
@@ -28,6 +29,8 @@ export type PedestalLayout = { concept: Piece; x: number; z: number; shape: Shap
 export type RoomLayout = {
   id: string
   index: number
+  /** Número de su primer tótem en el recorrido de todo el museo: la sala 2 sigue donde terminó la 1 (palace/route.ts). */
+  firstOrder: number
   title: string
   color: string
   x: number
@@ -192,6 +195,7 @@ function sideToward(a: { row: number; col: number }, b: { row: number; col: numb
 }
 
 const opposite: Record<Side, Side> = { n: 's', s: 'n', e: 'w', w: 'e' }
+const ALL_SIDES: Side[] = ['n', 's', 'e', 'w']
 
 // Divide cada pared en dos tramos cuando tiene puerta.
 function roomWalls(x: number, z: number, w: number, d: number, h: number, doors: Side[]): Box[] {
@@ -238,13 +242,17 @@ const entryCorner = (r: Pick<RoomLayout, 'x' | 'z' | 'w' | 'd'>) => ({ x: r.x - 
  * `prev` es la identidad de la sala anterior (para no repetir estilo) y `spawn` el punto de entrada si el jugador
  * aparece en esta sala. Todo lo demás sale de la propia sala: no cambia cuando llegan salas nuevas.
  */
-function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[], prev: RoomIdentity | null, spawn: { x: number; z: number } | null): RoomLayout {
+function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: RoomSize, doors: Side[], entry: Side | null, firstOrder: number, prev: RoomIdentity | null, spawn: { x: number; z: number } | null): RoomLayout {
   const { w, d, radius, aspect } = size
   const height = 4.5 + (hash(room.name) % 3) * 1.2
   const count = room.pieces.length
-  const offset = Math.PI / Math.max(count, 1) + Math.PI / 4
+  // Recorrido de estudio: el tótem 1 queda junto a la entrada y los demás siguen en orden (palace/route.ts).
+  // Se esquivan los cuatro lados donde puede haber puerta, no solo los actuales: en la construcción en vivo una
+  // sala gana puertas después, y sus tótems no deben moverse.
+  const entryAngle = spawn ? Math.atan2(spawn.z - z, spawn.x - x) : entry ? angleOfSide(entry) : 0
+  const angles = ringAngles(count, entryAngle, ALL_SIDES.map(angleOfSide))
   const pedestals = room.pieces.map((concept, k) => {
-    const a = (k / Math.max(count, 1)) * Math.PI * 2 + offset
+    const a = angles[k]
     const px = x + Math.cos(a) * radius * aspect
     const pz = z + Math.sin(a) * radius
     return {
@@ -269,6 +277,7 @@ function makeRoomLayout(room: RoomInput, i: number, x: number, z: number, size: 
   return {
     id: room.id,
     index: i,
+    firstOrder,
     title: room.name,
     color: room.palette?.primary || ROOM_COLORS[i % ROOM_COLORS.length],
     x,
@@ -382,20 +391,23 @@ export function buildLayout(palace: Museum): PalaceLayout {
   const cell = Math.max(...sizes.map((s) => Math.max(s.w, s.d))) + CORRIDOR_LEN
 
   const doorsOf: Side[][] = palace.rooms.map(() => [])
+  const entryOf: (Side | null)[] = palace.rooms.map(() => null)
   for (const [i, j] of links) {
     const s = sideToward(cells[i], cells[j])
     doorsOf[i].push(s)
     doorsOf[j].push(opposite[s])
+    entryOf[j] ??= opposite[s] // se entra por la puerta del primer enlace que llega a la sala
   }
 
   const startIndex = indexOf.get(plan.start) ?? 0
+  const starts = routeStarts(palace.rooms)
   const rooms: RoomLayout[] = []
   palace.rooms.forEach((room, i) => {
     const x = cells[i].col * cell
     const z = cells[i].row * cell
     const prev = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
     const spawn = i === startIndex ? entryCorner({ x, z, w: sizes[i].w, d: sizes[i].d }) : null
-    rooms.push(makeRoomLayout(room, i, x, z, sizes[i], doorsOf[i], prev, spawn))
+    rooms.push(makeRoomLayout(room, i, x, z, sizes[i], doorsOf[i], entryOf[i], starts[i], prev, spawn))
   })
 
   const corridors: CorridorLayout[] = []
@@ -441,23 +453,26 @@ const sameSides = (a: Side[], b: Side[]) => a.length === b.length && [...a].sort
 /** Arma el layout de un palacio en construcción reutilizando los objetos que no cambiaron. */
 function assembleStream(prev: PalaceLayout, inputs: RoomInput[], grid: IncrementalGrid, edges: GraphEdge[], links: Array<[number, number]>): PalaceLayout {
   const doorsOf: Side[][] = inputs.map(() => [])
+  const entryOf: (Side | null)[] = inputs.map(() => null)
+  const starts = routeStarts(inputs)
   const sides = links.map(([a, b]) => sideToward(grid.cells[a], grid.cells[b]))
   links.forEach(([a, b], k) => {
     doorsOf[a].push(sides[k])
     doorsOf[b].push(opposite[sides[k]])
+    entryOf[b] ??= opposite[sides[k]]
   })
   const rooms: RoomLayout[] = []
   inputs.forEach((input, i) => {
     const old = prev.rooms[i]
     // Misma sala, mismo contenido y mismas puertas: se conserva el objeto.
-    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i])) {
+    if (old && prev.stream?.inputs[i] === input && sameSides(old.doors, doorsOf[i]) && old.firstOrder === starts[i]) {
       rooms.push(old)
       return
     }
     const before = i > 0 ? { floorStyle: rooms[i - 1].floorStyle, decorKind: rooms[i - 1].decor.kind } : null
     // La primera sala es donde aparece el jugador (STREAM_SPAWN).
     rooms.push(
-      makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i], before, i === 0 ? STREAM_SPAWN : null),
+      makeRoomLayout(input, i, grid.cells[i].col * STREAM_CELL, grid.cells[i].row * STREAM_CELL, roomSize(input, i), doorsOf[i], entryOf[i], starts[i], before, i === 0 ? STREAM_SPAWN : null),
     )
   })
   const corridors: CorridorLayout[] = []

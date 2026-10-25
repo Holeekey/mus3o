@@ -219,6 +219,36 @@ export async function addRecipe(input: { keywords: string[]; title: string; part
   return entry;
 }
 
+/** Alta en lote de recetas ya revisadas (p. ej. dibujadas con un modelo fuerte): entran aprobadas con el origen indicado. */
+export async function importRecipes(recipes: Record<string, unknown>, origin: LibraryOrigin = "ai"): Promise<{ added: string[]; skipped: string[] }> {
+  const map = await load();
+  const added: string[] = [];
+  const skipped: string[] = [];
+  const now = new Date().toISOString();
+  for (const [raw, parts] of Object.entries(recipes)) {
+    const key = normalizeKeyword(raw);
+    const ok = PartsSchema.safeParse(parts);
+    // Un mismo origen y palabra clave no se duplica (ni siquiera si estaba pendiente o rechazada).
+    if (!key || !ok.success || [...map.values()].some((e) => e.kind === "recipe" && e.origin === origin && e.keywords.includes(key) && e.status !== "pending")) {
+      skipped.push(raw);
+      continue;
+    }
+    // Una pendiente del mismo origen se promueve en vez de duplicarse.
+    const pending = [...map.values()].find((e) => e.kind === "recipe" && e.origin === origin && e.keywords.includes(key) && e.status === "pending");
+    if (pending) {
+      pending.parts = ok.data;
+      pending.status = "approved";
+      pending.updatedAt = now;
+    } else {
+      const id = newId();
+      map.set(id, { id, kind: "recipe", keywords: [key], title: key, parts: ok.data, origin, status: "approved", uses: 0, createdAt: now, updatedAt: now });
+    }
+    added.push(key);
+  }
+  if (added.length > 0) await queueSave(map);
+  return { added, skipped };
+}
+
 export async function addGlb(input: { keywords: string[]; title: string; data: Buffer }): Promise<LibraryEntry> {
   if (!isGlb(input.data)) throw new Error("El archivo no es un .glb válido");
   if (input.data.length > MAX_ASSET_BYTES) throw new Error(`El .glb supera ${MAX_ASSET_BYTES / 1024 / 1024} MB`);

@@ -14,25 +14,32 @@ describe("fillMissingModels", () => {
     { ...base, id: "miss", searchKeyword: "anvil", model: { type: "glyph" as const, shape: "box" as const } },
   ];
 
-  it("pide solo las piezas sin asset y les pone el modelo creado", async () => {
+  it("dibuja también las piezas con asset por descargar (es su respaldo si falla) y salta las que ya resolvió la biblioteca", async () => {
     let prompt = "";
-    const out = await fillMissingModels(museum(pieces), async (p) => {
-      prompt = p;
-      return JSON.stringify({ miss: parts, hit: parts });
-    });
+    const out = await fillMissingModels(
+      museum(pieces),
+      async (p) => {
+        prompt = p;
+        return JSON.stringify({ miss: parts, hit: parts });
+      },
+      new Set(["hit"]),
+    );
     expect(prompt).toContain('"id":"miss"');
     expect(prompt).not.toContain('"id":"hit"');
     const [hit, miss] = out.rooms[0].pieces;
     expect(hit.model?.type).toBe("glyph");
     expect(miss.model?.type).toBe("procedural");
+
+    const withAsset = await fillMissingModels(museum(pieces), async () => JSON.stringify({ miss: parts, hit: parts }));
+    expect(withAsset.rooms[0].pieces.map((p) => p.model?.type)).toEqual(["procedural", "procedural"]);
   });
 
-  it("no llama a la IA si todas las piezas tienen asset", async () => {
+  it("no llama a la IA si todas las piezas ya están resueltas", async () => {
     let called = false;
     await fillMissingModels(museum([pieces[0]]), async () => {
       called = true;
       return "{}";
-    });
+    }, new Set(["hit"]));
     expect(called).toBe(false);
   });
 

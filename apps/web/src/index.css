@@ -1669,3 +1669,8 @@ body:has(.hint) .touch-tip { display: none; }
   .pause-more { margin-top: 10px; }
   .pause-controls .memory-panel { margin-top: 10px; padding-top: 10px; }
 }
+
+/* Teléfonos angostos: el cartel muestra solo el progreso de la sala (el total partía la línea en tres). */
+@media (max-width: 420px) {
+  .plaque-total { display: none; }
+}

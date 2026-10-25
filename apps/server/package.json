@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "library": "tsx scripts/library.ts",
+    "library:draw": "tsx scripts/library-draw.ts",
     "test": "vitest run"
   },
   "dependencies": {

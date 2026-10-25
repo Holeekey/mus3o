@@ -4,8 +4,8 @@ import { moveAxes } from './moveInput'
 
 // Caminata en primera persona: la comparten el museo (Player) y el lobby de la landing (LobbyWalker).
 export const EYE = 1.7
-export const WALK = 4.5
-export const RUN = 8
+export const WALK = 6.0
+export const RUN = 10.0
 
 /**
  * Avanza la cámara un frame según teclado (WASD/flechas, Shift para correr) o joystick táctil,
