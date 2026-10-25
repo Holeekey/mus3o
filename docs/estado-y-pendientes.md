@@ -25,7 +25,7 @@
 | Examen y repaso | ✅ Funciona | Respuesta escrita con tolerancia a tipeo y pista visual mnemotécnica |
 | Diorama ("entrar al cuadro") | ✅ Funciona | Portal, transición, biblioteca de props, terrenos. Los mundos salen de la biblioteca (a mano) o de la **foto real** del cuadro (visión); sin foto recreable, cuadro normal |
 | Aris (asistente por reglas) | ✅ Funciona | Voz del navegador, búsqueda aproximada, compañero 3D con glTF comprimido (318 KB) |
-| Mazmorra (sandbox `dungeon-core`) | 🟡 Demo | Solo se usa desde `mocks/dungeon.ts` y el botón "Explorar Mazmorra" |
+| Mazmorra (sandbox `dungeon-core`) | 🟡 Demo | Solo se usa desde `mocks/dungeon.ts` y la URL `?demo=dungeon` (el botón "Explorar Mazmorra" se quitó del inicio) |
 | Persistencia en el navegador | ✅ Funciona | `mus3o-v1` y `mus3o-memory-v1`, validado al cargar |
 | Despliegue en Render | ✅ Configurado | Blueprint `render.yaml`, plan Starter ($7/mo), `/api/health`, servicio SPA y guía en `docs/deployment-render.md` |
 

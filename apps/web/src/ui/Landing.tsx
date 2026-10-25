@@ -3,7 +3,6 @@ import { LIMITS, type Source } from '@mus3o/shared'
 import { startLiveBuild } from '../build/liveBuild'
 import { sourceSummary } from '../palace/sourceSummary'
 import { fileKindOf, readImageAttachment, readTextAttachment } from '../lib/files'
-import { dungeonDemoMuseum } from '../mocks/dungeon'
 import { EXAMPLE_TEXT } from '../palace/example'
 import { PRESET_PALACES } from '../palace/presets'
 import { buildLayout } from '../palace/layout'
@@ -273,9 +272,6 @@ export function Landing() {
       {primaryActions}
       <button className="btn btn-ghost" onClick={() => setInput(EXAMPLE_TEXT)}>
         Usar ejemplo: Biología celular
-      </button>
-      <button className="btn btn-ghost" onClick={() => enterPalace(dungeonDemoMuseum)}>
-        Explorar Mazmorra
       </button>
       {saved && (
         <button className="btn btn-ghost" onClick={resume}>
