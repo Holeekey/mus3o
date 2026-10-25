@@ -143,3 +143,35 @@ describe('routeHintText', () => {
     expect(routeHintText({ number: 4, title: 'ADN', fresh: false, room: 'Núcleo' })).toBe('Sala completa → sigue en «Núcleo»: 4 · ADN')
   })
 })
+
+describe('study route in every way a museum is created', () => {
+  const continuous = (rooms: { index: number; firstOrder: number; pedestals: unknown[] }[]) => {
+    let expected = 1
+    for (const room of [...rooms].sort((a, b) => a.index - b.index)) {
+      expect(room.firstOrder).toBe(expected)
+      expected += room.pedestals.length
+    }
+  }
+
+  it('numbers featured, demo and dungeon museums in one sequence (built at once)', async () => {
+    const { buildLayout } = await import('./layout')
+    const { PRESET_PALACES } = await import('./presets')
+    const { historiaMuseum } = await import('../mocks/historia')
+    const { dungeonDemoMuseum } = await import('../mocks/dungeon')
+    const museums = [...PRESET_PALACES.map((p) => p.museum), historiaMuseum, dungeonDemoMuseum]
+    expect(museums.length).toBeGreaterThan(3)
+    for (const museum of museums) continuous(buildLayout(museum).rooms)
+  })
+
+  it('numbers a museum built live room by room (Aris) the same way', async () => {
+    const { appendRoomToLayout, emptyLayout } = await import('./layout')
+    const { PRESET_PALACES } = await import('./presets')
+    for (const { museum } of PRESET_PALACES) {
+      let layout = emptyLayout()
+      for (const room of museum.rooms) {
+        layout = appendRoomToLayout(layout, room)
+        continuous(layout.rooms)
+      }
+    }
+  })
+})
