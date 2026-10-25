@@ -2,20 +2,29 @@
 
 **Proyecto:** mus3o — Palacios de la Memoria 3D  
 **Rama:** `feature/diorama-semantic-dsl`  
-**Fecha:** 24 de Octubre, 2026  
-**Estado:** Documento de Diseño y Análisis de Factibilidad Arquitectónica
+**Fecha:** 24 de Octubre, 2026 (revisado tras análisis de viabilidad)  
+**Estado:** Documento de diseño. Nada implementado todavía.
+
+> **Sobre las cifras.** Los conteos de tokens de este documento son **estimaciones por inspección de código, no
+> mediciones**. Los costos usan los precios vigentes de los modelos que el código realmente usa (sección 4). Antes
+> de implementar, hay que sacar la línea base real con el log `tokens (diorama): ...` de `claude.ts` (sección 6).
 
 ---
 
 ## 1. Resumen Ejecutivo y Diagnóstico
 
-Actualmente, el flujo principal del museo (`/api/generate-museum`) utiliza un pipeline Low-Token DSL eficiente para las salas y piezas. Sin embargo, cuando una sala activa un diorama inmersivo ("mundo vivo"), el servidor ejecuta una **segunda llamada HTTP separada** en [`apps/server/src/claude.ts:250-275`](file:///home/jr_g/Develop/platanus-hack-26-ve-team-5/apps/server/src/claude.ts#L250-L275) (`addDioramas`):
-1. **Sobrecarga de Transporte y Contexto:** Se re-envía el system prompt y la lista de salas, pagando tokens de entrada redundantes.
-2. **JSON Masivo con Números Flotantes:** Se pide a la IA un payload JSON con 8 a 16 props. Cada prop incluye coordenadas x/z, rotaciones, escalas y colores hexadecimales (`"pos": [-4.2, 8.15], "rotY": 1.57, "scale": 1.2`), consumiendo entre **1.500 y 3.000 tokens de salida**.
-3. **Modelo Ineficiente:** Se ejecuta en Claude 3.5 Sonnet ($15.00 / MTok salida), costando **~$0.025 a $0.045 USD adicionales** y sumando ~15 segundos de latencia a la generación del museo.
-4. **Desconexión con el Compositor Existente:** En el frontend ya existe un motor de composición procedural determinista ([`apps/web/src/diorama/compose.ts`](file:///home/jr_g/Develop/platanus-hack-26-ve-team-5/apps/web/src/diorama/compose.ts)) capaz de ubicar props, evitar colisiones y aplicar arquetipos a **costo cero absoluto**.
+El flujo principal del museo (`/api/generate-museum`) usa un pipeline DSL de pocos tokens para salas y piezas.
+Cuando el modelo marca una sala como `diorama` (máximo 2, `dsl.ts:259` y `:378`), el servidor ejecuta una
+**segunda llamada HTTP** en `apps/server/src/claude.ts:250` (`addDioramas`):
 
-Este plan articula una solución en **4 capas** para que la IA actúe como **Director de Arte Semántico**, delegando la matemática espacial a `compose.ts` y fusionando la directiva dentro del flujo DSL principal sin llamadas HTTP extra.
+1. **Contexto reenviado:** se envía otra vez un system prompt (`DIORAMA_SYSTEM_PROMPT`, con `DIORAMA_RULES`, que es largo) y la lista de salas. Ese prompt ya va con `cache_control: ephemeral`, así que parte de la entrada se paga como lectura de caché.
+2. **JSON con números flotantes:** se pide un objeto por sala con 8 a 16 props, cada uno con `pos`, `rotY`, `scale` y colores hex. Estimación: **1.500 a 3.000 tokens de salida** (`max_tokens: 4000`).
+3. **Latencia añadida:** la llamada espera a que termine el DSL principal y corre con timeout de 60 s. Corre en paralelo solo con `resolveModels` (`completeMuseum`, `claude.ts:318`), no con la llamada principal.
+4. **Compositor sin aprovechar:** `apps/web/src/diorama/compose.ts` ya compone dioramas de forma determinista y sin costo (`composeDiorama`, `attachComposedDioramas`), y `store.ts:127` lo aplica a toda sala sin diorama.
+
+El modelo por defecto es `claude-sonnet-5-5` (`claude.ts:50`; el diorama usa `ANTHROPIC_DIORAMA_MODEL` o el principal, `:55`).
+
+Este plan articula 4 capas: la IA actúa como **director de arte semántico**, `compose.ts` resuelve la geometría, y la directiva viaja dentro de la llamada principal.
 
 ---
 
@@ -23,126 +32,161 @@ Este plan articula una solución en **4 capas** para que la IA actúe como **Dir
 
 ```mermaid
 flowchart TD
-    subgraph Actual["Flujo Actual (2 Llamadas HTTP — 3.365 Tokens)"]
-        A1["Cliente pide museo"] --> B1["Llamada 1: Claude Sonnet (DSL salas)"]
+    subgraph Actual["Flujo actual (2 llamadas)"]
+        A1["Cliente pide museo"] --> B1["Llamada 1: Sonnet 5.5 (DSL salas)"]
         B1 --> C1["parseMus3oDSL detecta 'diorama'"]
-        C1 --> D1["Llamada 2: Claude Sonnet (JSON masivo 1.500+ tokens)"]
+        C1 --> D1["Llamada 2: Sonnet 5.5 (JSON de props)"]
         D1 --> E1["parseDiorama valida JSON"]
-        E1 --> F1["Cliente 3D (Latencia total: ~27s | Costo: ~$0.052 USD)"]
+        E1 --> F1["Cliente 3D"]
     end
 
-    subgraph Optimizado["Flujo 4 Capas (1 Sola Llamada — 2.000 Tokens)"]
-        A2["Cliente pide museo"] --> B2["Única llamada: Claude Sonnet (DSL + Micro-DSL)"]
-        B2 --> C2["Líneas DIO y D_PROP (~70 tokens)"]
-        C2 --> D2["Motor compose.ts calcula coordenadas, slots y colisiones"]
-        D2 --> E2["Objeto Diorama final ensamblado deterministamente"]
-        E2 --> F2["Cliente 3D (Latencia total: ~13s | Costo: ~$0.029 USD)"]
+    subgraph Optimizado["Flujo propuesto (1 llamada)"]
+        A2["Cliente pide museo"] --> B2["Única llamada: Sonnet 5.5 (DSL + micro-DSL)"]
+        B2 --> C2["Líneas DIO y D_PROP"]
+        C2 --> D2["Cliente: compose.ts hidrata coordenadas y colisiones"]
+        D2 --> E2["Diorama final validado con DioramaSchema"]
+        E2 --> F2["Escena 3D"]
     end
 ```
 
----
+### Capa 1: Separar semántica (LLM) de geometría (`compose.ts`)
 
-### Capa 1: Desacoplar Semántica (LLM) de Geometría (`compose.ts`)
-- **Veredicto de Factibilidad:** **100% Viable y Altamente Recomendada.**
-- **Diagnóstico:** Los LLMs son probabilísticos y deficientes calculando números continuos en 3D. Pedirles `x: 12.4, z: -5.2` genera props flotando en el aire, colisiones contra obstáculos y un gasto innecesario de tokens.
-- **Qué debe hacer el LLM:**
-  - Actuar como Director de Arte Semántico.
-  - Seleccionar: arquetipo (`battle`, `naval`, `nature`, `cell`, `city`, etc.), atmósfera/hora (`day`, `sunset`, `night`, `storm`) y zonas relativas (`center`, `front`, `flanks`, `background`, `path`).
-- **Qué debe hacer `compose.ts`:**
-  - Recibir la directiva semántica.
-  - Usar sus algoritmos de distribución en arco (`arcSlots`), terreno facetado (`heightAt`), y cálculo de dispersión con semilla pseudoaleatoria (`mulberry32`).
-  - Asignar automáticamente `pos`, `rotY`, `scale` y paleta cromática armónica.
-- **Ajuste Arquitectónico Necesario:**
-  - `compose.ts` vive actualmente en `apps/web/src/diorama/compose.ts`. Para que el servidor o el paquete compartido (`@mus3o/shared`) puedan usarlo sin depender del bundle de Vite, las funciones puras de composición geométrica deben residir o ser importables por `@mus3o/shared` o invocadas como paso de hidratación final en el servidor.
-  - **Decisión recomendada:** Trasladar la lógica matemática pura de arquetipos y colocación de slots a `packages/shared/src/diorama/` o exponer una función de hidratación `hydrateDioramaFromDirectives`.
+- **Veredicto:** viable, con más trabajo del que parece.
+- **Diagnóstico:** el modelo es poco fiable con coordenadas continuas. Pedir `pos: [x, z]` produce props fuera de lugar o colisionando, y gasta tokens.
+- **Qué hace el LLM:** elige arquetipo, hora y zonas relativas (`center`, `front`, `flanks`, `background`, `path`).
+- **Qué hace `compose.ts`:** asigna `pos`, `rotY`, `scale` y paleta.
+- **Realidad del código que condiciona el diseño:**
+  - Hoy `compose.ts` solo tiene `arcSlots(n)` (abanico para piezas enlazadas) y `navalSlots`. **No existen zonas semánticas**: interpretar `center/front/background/path` es diseño nuevo, no una exposición de algo existente.
+  - `compose.ts` importa `./terrain` (`heightField`, `shoreZ`), que depende de THREE, además de `./library` y `./random`. **No se puede mover tal cual a `@mus3o/shared`** ni usar en el servidor.
+- **Decisión:** **hidratar en el cliente.** El servidor solo transporta las directivas (campo `directives` de la sala) y el cliente llama a `hydrateDioramaFromDirectives`, de la misma forma que `attachComposedDioramas` ya corre en `store.ts`. No se mueve ningún módulo.
+  - Alternativa descartada por ahora: mover a `shared` lo que no depende de THREE (`random`, `arcSlots`, clasificación) e hidratar en el servidor. Solo conviene si se necesita un museo ya hidratado en la caché de disco.
+- **Primera iteración sin zonas:** reutilizar `arcSlots` para los props enlazados a piezas y `ambientFor` para el ambiente. Las zonas se añaden después, si la calidad lo pide.
 
----
+### Capa 2: Micro-DSL semántico
 
-### Capa 2: Nuevo Micro-DSL Semántico (De 1.500 tokens a ~70 tokens)
-- **Veredicto de Factibilidad:** **100% Viable.**
-- **Gramática Propuesta:**
-  En lugar de un árbol JSON profundo, el modelo emite de 3 a 6 líneas compactas:
+- **Veredicto:** viable, pero la gramática original **pierde expresividad** del esquema actual.
+- **Gramática propuesta (ampliada):**
   ```text
-  DIO: battle | sunset | 4821
+  DIO: battle | sunset | historic | 4821
   D_PROP: center | monument | idle | 1 | p1 | Tratado de Paz
-  D_PROP: front | rider | charging | 6 | p2 | Carga de Páez
-  D_PROP: background | flag | drift | 8 | p3 | Estandartes
+  D_PROP: front | rider | charging | 6 | p2 | Carga de Páez | #2b4c94
+  D_PROP: background | flag | drift | 8 | p3 | Estandartes | #ffffff #a8322d saltire
   ```
-- **Comparativa Cuantitativa de Salida:**
-  - Formato JSON actual: ~120 tokens por prop × 12 props = **~1.440 tokens**.
-  - Formato Micro-DSL: ~12 tokens por línea × 5 líneas = **~60 a 75 tokens**.
-  - **Reducción de salida en diorama:** **-95% de tokens**.
+  Campos: `zona | kind | pose | count | pieceId | label` y, opcionalmente, `color`, `secondary` y `pattern`.
+- **Qué NO cubre la gramática y cómo se resuelve:**
+
+  | Capacidad actual de `DioramaPropSchema` | Tratamiento |
+  |---|---|
+  | `color`, `secondary`, `pattern` (banderas, p. ej. Cruz de Borgoña) | Campos opcionales al final de `D_PROP` |
+  | `terrain` (`river`, `coast`, `mountains`...) | Campo opcional en `DIO`; si falta, se deriva del arquetipo como hace `compose.ts` |
+  | Terrenos científicos `organic`, `cellular`, `vessel` y su kit (`nucleus`, `blood-cell` con `flow`, `valveType`...) | **Fuera del micro-DSL en esta fase.** Estas salas siguen por el camino JSON actual (`addDioramas`) hasta que exista un equivalente |
+  | `parts` (props `custom`) y `y` | Fuera de alcance; solo vía JSON |
+
+- **Estimación de tokens de salida del diorama:** JSON actual ~1.500 (≈120 por prop × 12). Micro-DSL ~12 a 20 por línea × 5 a 6 líneas = **~60 a 120**. Reducción estimada: **~92 a 96 %**. Es una estimación, no una medición.
+
+### Capa 3: Fusión de llamadas
+
+- **Veredicto:** viable y es la mejora más valiosa. Elimina un viaje de red completo y la espera al DSL principal.
+- **Implementación:**
+  1. `packages/shared/src/dsl.ts`: añadir `DIO` y `D_PROP` a `DslLineKind` y a `LINE_TAG`/`classifyDslLine` (`dsl.ts:150-158`). El parser de una sola vez y el incremental **comparten `DslAccumulator`**, así que ambos caminos las leen sin trabajo duplicado. Asociar las directivas a la sala en curso (`current`).
+  2. `apps/server/src/prompts.ts`: reemplazar `DIORAMA_RULES` por la especificación del micro-DSL en `FLOW_DSL_SYSTEM_PROMPT`.
+  3. Servidor, **dos puntos de entrada**: `claude.ts:302` (camino sin streaming) y `stream.ts:119` (streaming). Ambos llaman hoy a `completeMuseum(..., dioramaRooms)`.
+  4. `addDioramas` se conserva **solo** para las salas con terreno científico (ver Capa 2) y como respaldo; sale del camino crítico del resto.
+- **Riesgos de la fusión:**
+  - Hoy un diorama roto no afecta al museo (llamada aparte, `maxRetries: 0`). Tras la fusión, una línea `D_PROP` malformada pasa por el parser principal. **Debe tolerarse**: descartar la línea inválida, nunca la sala ni el museo, igual que `DioramaSchema` descarta props inválidos.
+  - Sube la salida de la llamada principal. Revisar `maxTokens` del flujo (`flowDslPrompt`) para evitar truncamientos.
+  - Confirmar si el prompt entra en la clave de caché (`cache.ts:16` hashea la clave `k`; no se verificó qué la compone). Si la incluye, los museos cacheados con el prompt anterior no se reutilizan, lo cual es aceptable pero hay que saberlo.
+- **Latencia:** se elimina la segunda llamada. El ahorro real es el tiempo de esa llamada (sin medir; ver sección 6).
+
+### Capa 4: Modelo y fallback sin costo
+
+- **Veredicto:** viable; gran parte ya existe.
+- **Estrategia:**
+  1. **Llamada fusionada:** modelo principal (`claude-sonnet-5-5`). El micro-DSL añade del orden de 100 tokens de salida.
+  2. **Fallback sin costo:** si falta `DIO:` para una sala o no hay datos (demo/offline), actúa `attachComposedDioramas` (`compose.ts:665`), que ya rellena toda sala sin diorama. No requiere código nuevo.
+  3. **Aris:** el endpoint "rediseña este diorama" usaría `ANTHROPIC_FALLBACK_MODEL` (`claude-haiku-5-5`) con `thinking: { type: "disabled" }` (`noThinking`, `claude.ts:59`). **Coordinar con `feature/aris-haiku-fallback`**, que ya cablea Haiku, para no duplicar.
 
 ---
 
-### Capa 3: Fusión de Llamadas (Zero-Call Overhead)
-- **Veredicto de Factibilidad:** **100% Viable y el Mayor Salto en Latencia.**
-- **Diagnóstico:** Tener la función `addDioramas` en `apps/server/src/claude.ts:250` obliga al backend a esperar a que termine el DSL principal, extraer las salas marcadas y abrir una segunda conexión HTTPS con un timeout de 60 segundos.
-- **Implementación de la Fusión:**
-  1. En `packages/shared/src/dsl.ts`: `classifyDslLine` reconoce las etiquetas `DIO:` y `D_PROP:` asociándolas inmediatamente a la sala activa (`currentRoom`).
-  2. En `apps/server/src/prompts.ts`: En el prompt del flujo principal, se instruye al modelo:
-     *"En las 1 o 2 salas más visualmente representables, añade debajo de sus PIECEs las directivas del diorama: una línea `DIO: <arquetipo> | <hora>` y 3 a 5 líneas `D_PROP: <zona> | <kind> | <pose> | <count> | <pieceId> | <label>`."*
-  3. `addDioramas` se retira por completo del camino crítico de generación.
-- **Ganancia Operativa:**
-  - **Llamadas a Claude por museo:** Pasa de 2 llamadas a **1 llamada única**.
-  - **Latencia de punta a punta:** Cae de 27 segundos a **~12–14 segundos** (casi el doble de velocidad para el usuario).
+## 3. Matriz de Componentes a Modificar
 
----
-
-### Capa 4: Degradación de Modelo (Model Tiering) y Fallback Cero-Costo
-- **Veredicto de Factibilidad:** **100% Viable.**
-- **Estrategia Híbrida:**
-  1. **En la llamada fusionada:** Se utiliza el modelo principal (`Sonnet 3.5`). Como el Micro-DSL solo añade ~70 tokens de salida, el costo del diorama pasa de $0.025 USD a **$0.001 USD** (ahorro del 96%).
-  2. **Fallback Automático (Costo Cero / 0 tokens):**
-     Si la IA no incluye líneas `DIO:` para una sala, o si el usuario navega a un cuadro en modo demo/offline, entra en acción `attachComposedDioramas` de `compose.ts`. El sistema clasifica el título y conceptos de la sala con `classifyRoom()` y genera la maqueta con props en abanico a **costo $0.00 USD y 0 ms**.
-  3. **Endpoint Independiente / Aris:** Si en el futuro un usuario solicita desde el juego *"Aris, rediseña este diorama"*, ese endpoint específico se despacha con `Claude 3.5 Haiku` (`ANTHROPIC_FALLBACK_MODEL`) con `thinking: disabled` y Micro-DSL, costando apenas **~$0.0003 USD**.
-
----
-
-## 3. Matriz de Componentes a Modificar e Implementar
-
-| Archivo / Módulo | Estado Actual | Qué se Modifica / Implementa |
+| Archivo / Módulo | Estado actual | Qué se modifica |
 |---|---|---|
-| `packages/shared/src/dsl.ts` | Reconoce `ROOM: ... diorama ...` | Añadir soporte para líneas `DIO:` y `D_PROP:`. Acumular directivas en `DslRoom`. |
-| `packages/shared/src/schema.ts` | Define `DioramaSchema` completo | Mantener `DioramaSchema` intacto como contrato final de salida. Añadir esquema ligero `DioramaDirectiveSchema` para el parser. |
-| `apps/web/src/diorama/compose.ts` | Genera escenas completas desde reglas fijas | Exponer `hydrateDioramaFromDirectives(directives, room)` para mapear zonas semánticas a coordenadas y colisiones reales. |
-| `apps/server/src/prompts.ts` | `DIORAMA_RULES` pide JSON masivo de 16 props | Reemplazar `DIORAMA_RULES` por la especificación compacta del Micro-DSL (5 líneas de ejemplo). |
-| `apps/server/src/claude.ts` | Ejecuta `addDioramas` como 2da llamada HTTP | Eliminar `addDioramas` de `generateFlowMuseum` (el DSL ya entrega el diorama ensamblado). |
-| `apps/server/src/cache.ts` | Cachea el `Museum` en disco | Sin cambios; el museo se almacena ya enriquecido con su diorama validado. |
+| `packages/shared/src/dsl.ts` | Reconoce `ROOM`, `PIECE`, `TITLE`, `PERIOD`, `QUIZ`, `IMAGE`; marca salas `diorama` | Añadir `DIO` y `D_PROP` a `DslLineKind`/`classifyDslLine`; acumular directivas en la sala; tolerar líneas inválidas |
+| `packages/shared/src/schema.ts` | `DioramaSchema` completo (24 props máx., `KINDS`, `POSES`) | Dejar `DioramaSchema` intacto. Añadir un esquema ligero `DioramaDirectiveSchema` y el campo opcional `directives` en la sala |
+| `apps/web/src/diorama/compose.ts` | `composeDiorama`, `attachComposedDioramas`, `arcSlots` | Añadir `hydrateDioramaFromDirectives(directives, room)`. **No se mueve a `shared`** (depende de THREE vía `terrain`) |
+| `apps/web/src/store.ts` | Llama a `attachComposedDioramas` (`:127`) | Hidratar las directivas antes del relleno compuesto |
+| `apps/server/src/prompts.ts` | `DIORAMA_RULES` pide JSON de 8 a 16 props | Especificación del micro-DSL en `FLOW_DSL_SYSTEM_PROMPT`; conservar las reglas JSON para terrenos científicos |
+| `apps/server/src/claude.ts` | `addDioramas` como 2.ª llamada (`:250`), invocada desde `completeMuseum` (`:318`) | Limitar `addDioramas` a salas científicas/respaldo |
+| `apps/server/src/stream.ts` | Llama `completeMuseum` con `parser.dioramaRooms` (`:119`) | Mismo ajuste que `claude.ts:302` |
+| `apps/server/src/cache.ts` | Cachea el `Museum` en disco | Sin cambios de código; verificar qué compone la clave |
 
 ---
 
-## 4. Impacto Financiero y de Rendimiento Proyectado
+## 4. Impacto Financiero y de Rendimiento (estimado)
 
-Comparativa entre el sistema anterior y el sistema tras implementar las 4 capas:
+**Precios vigentes (USD por millón de tokens):**
 
-| Métrica | Arquitectura Inicial (JSON Separado) | Arquitectura 4 Capas (Micro-DSL Fusionado) | Ahorro / Ganancia |
+| Modelo | Entrada | Salida | Lectura de caché |
 |---|---|---|---|
-| **Llamadas HTTP a Claude por Museo** | 2 llamadas | **1 llamada única** | **-50% conexiones** |
-| **Tokens de Salida dedicados a Dioramas** | ~1.518 tokens | **~75 tokens** | **-95.1% tokens diorama** |
-| **Tokens de Salida Totales del Museo** | ~3.365 tokens | **~1.920 tokens** | **-42.9% tokens totales** |
-| **Costo de Generación (con Diorama)** | **$0.0523 USD** | **$0.0298 USD** | **-43.0% ($0.0225 USD/museo)** |
-| **Latencia de Entrega al Cliente** | ~27 segundos | **~13 segundos** | **2.08× más rápido** |
-| **Calidad y Variedad Visual** | Idéntica (props low-poly) | Idéntica + mejor colocación anti-colisiones | **Cero pérdida visual** |
+| `claude-sonnet-5-5` | $2,00 | $10,00 | $0,20 |
+| `claude-haiku-5-5` (prompts hasta 100K) | $0,10 | $0,50 | n/d |
+
+**Cálculo solo de salida** (los tokens de entrada de la 2.ª llamada no están medidos y se excluyen):
+
+| Métrica | Actual | Propuesto | Diferencia |
+|---|---|---|---|
+| Llamadas a Claude por museo con diorama | 2 | 1 | −1 llamada |
+| Tokens de salida del diorama (estimado) | ~1.518 | ~75 a 120 | ~−92 a −95 % |
+| Tokens de salida totales (estimado) | ~3.365 | ~1.920 a 1.970 | ~−41 a −43 % |
+| Costo de salida del diorama | ~$0,0152 | ~$0,0008 a $0,0012 | ~−$0,014 |
+| Costo de salida total del museo | ~$0,0337 | ~$0,0192 a $0,0197 | ~−$0,014 (≈ −42 %) |
+| Costo por diorama con Aris (Haiku 5.5, ~100 tokens de salida y ~2.000 de entrada) | n/a | ~$0,0003 | — |
+| Latencia | **sin medir** | **sin medir** | se quita una llamada completa |
+
+Notas:
+- Las cifras anteriores del documento ($0,0523 → $0,0298, 27 s → 13 s) usaban el precio de "Sonnet 3.5" ($15/MTok de salida), que no es el modelo del código, y tiempos sin fuente. Quedan **retiradas**.
+- Con el precio correcto el ahorro absoluto por museo es de ~1,4 centavos de dólar, menor que el estimado antes. El beneficio dominante es la **latencia y la robustez**, no el costo.
+- **Calidad visual:** la afirmación "cero pérdida" no se sostiene para banderas con patrón ni para dioramas científicos; por eso la Capa 2 añade campos opcionales y deja los terrenos científicos en el camino JSON.
 
 ---
 
-## 5. Plan de Implementación Paso a Paso (Checklist)
+## 5. Plan de Implementación (checklist)
 
-### Fase 1: Motor Semántico en `compose.ts`
-- [ ] Implementar `hydrateDioramaFromDirectives` en `compose.ts` que interprete las zonas (`center`, `front`, `left`, `right`, `background`, `path`) y devuelva un `Diorama` válido según `DioramaSchema`.
-- [ ] Añadir suite de pruebas en `compose.test.ts` verificando que un Micro-DSL produzca props no colisionantes con alturas de terreno correctas.
+Orden revisado: primero la fusión con hidratación mínima, que entrega casi todo el valor; las zonas semánticas van después.
 
-### Fase 2: Extensión del Parser DSL (`@mus3o/shared`)
-- [ ] Agregar reconocimiento de líneas `DIO:` y `D_PROP:` en `packages/shared/src/dsl.ts`.
-- [ ] Enlazar el acumulador de sala para que asocie las directivas antes de emitir el museo final.
-- [ ] Pruebas unitarias en `packages/shared/src/dsl.test.ts`.
+### Fase 0: Línea base (medir antes de tocar)
+- [ ] Generar 5 museos de temas distintos con diorama y anotar del log `tokens (diorama): entrada X, salida Y, caché leída Z` y el tiempo de la llamada de diorama frente al total.
+- [ ] Reemplazar las estimaciones de la sección 4 por esos números.
 
-### Fase 3: Fusión en Prompts y Servidor (`apps/server`)
-- [ ] Actualizar `flowDslPrompt` en `apps/server/src/prompts.ts` con la especificación del Micro-DSL.
-- [ ] Desacoplar `addDioramas` del pipeline principal en `apps/server/src/claude.ts`.
-- [ ] Comprobar flujo de extremo a extremo con `pnpm test -w @mus3o/server`.
+### Fase 1: Parser (`@mus3o/shared`)
+- [ ] Reconocer `DIO:` y `D_PROP:` en `packages/shared/src/dsl.ts` y acumularlas en la sala (vale para el parser de una pasada y el incremental).
+- [ ] Líneas inválidas: se descartan sin afectar la sala.
+- [ ] Pruebas en `packages/shared/src/dsl.test.ts`, incluida una entrada por el parser incremental.
 
-### Fase 4: Validación Visual y Verificación
-- [ ] Correr pruebas de integración y typecheck en todo el monorepo (`pnpm run typecheck`).
-- [ ] Levantar el entorno local con `pnpm run dev` y validar visualmente con `?demo=historia` que el diorama cargue con sus rótulos, colisiones y atmósfera íntegros.
+### Fase 2: Hidratación en el cliente (`apps/web`)
+- [ ] `hydrateDioramaFromDirectives` en `compose.ts`, primero con `arcSlots` y `ambientFor`, sin zonas.
+- [ ] Conectarla en `store.ts` antes de `attachComposedDioramas`.
+- [ ] Pruebas en `apps/web/src/diorama/compose.test.ts`: resultado válido según `DioramaSchema`, props enlazados con `pieceId` existente, sin solapes (`MIN_LINK_SPACING`).
+
+### Fase 3: Prompts y servidor (`apps/server`)
+- [ ] Especificación del micro-DSL en `FLOW_DSL_SYSTEM_PROMPT` (`prompts.ts`).
+- [ ] Limitar `addDioramas` a salas científicas/respaldo, en `claude.ts:302` y `stream.ts:119`.
+- [ ] Revisar `maxTokens` de la llamada principal.
+- [ ] `npm run test -w @mus3o/server`.
+
+### Fase 4: Zonas semánticas (opcional, si la calidad lo pide)
+- [ ] Diseñar `center/front/flanks/background/path` sobre el compositor.
+
+### Fase 5: Verificación
+- [ ] `npm run typecheck`.
+- [ ] `npm run dev` y revisión manual con `?demo=historia` (rótulos, colisiones, atmósfera) y con un tema científico, para comprobar que sigue por el camino JSON.
+- [ ] Repetir la medición de la Fase 0 y actualizar la sección 4.
+
+---
+
+## 6. Qué falta por verificar
+
+- Línea base real de tokens y latencia (Fase 0).
+- Qué compone la clave de caché de `cache.ts`.
+- Calidad visual del micro-DSL frente al JSON en los temas del demo.
