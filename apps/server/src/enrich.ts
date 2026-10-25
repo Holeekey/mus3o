@@ -27,7 +27,14 @@ const search = (title: string, lang: string, context: string): ImageSearch => ({
   context: context.slice(0, 120),
 });
 
-/** Pone `imageSearch` en cada sala (contexto: título del museo) y pieza (contexto: sala) que no la tenga. */
+/** Contexto de una pieza: su sala y el tema del palacio ("Armada" + "Despliegue militar" + "Estados Unidos y Venezuela"). Cabe en 120. */
+export function pieceContext(roomName: string, museumTitle: string): string {
+  if (!museumTitle) return roomName.slice(0, 120);
+  const room = roomName.slice(0, 50);
+  return `${room} · ${museumTitle.slice(0, 120 - room.length - 3)}`;
+}
+
+/** Pone `imageSearch` en cada sala (contexto: título del museo) y pieza (contexto: sala + título del museo) que no la tenga. */
 export function attachImageSearches(museum: Museum, text: string): Museum {
   const lang = detectLang(text || museum.title);
   return {
@@ -36,7 +43,7 @@ export function attachImageSearches(museum: Museum, text: string): Museum {
       ...room,
       imageSearch: room.imageSearch ?? search(room.name, lang, museum.title),
       pieces: room.pieces.map((piece) =>
-        piece.imageSearch || piece.image ? piece : { ...piece, imageSearch: search(piece.title, lang, room.name) },
+        piece.imageSearch || piece.image ? piece : { ...piece, imageSearch: search(piece.title, lang, pieceContext(room.name, museum.title)) },
       ),
     })),
   };

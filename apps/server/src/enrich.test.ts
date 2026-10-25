@@ -34,7 +34,7 @@ describe("enrichMuseum", () => {
     expect(JSON.stringify(base)).toBe(snapshot);
     const room = out.rooms[0];
     expect(room.imageSearch).toEqual({ wikiTitle: room.name, lang: "es", context: base.title });
-    expect(room.pieces[0].imageSearch).toEqual({ wikiTitle: "José Antonio Páez", lang: "es", context: room.name });
+    expect(room.pieces[0].imageSearch).toEqual({ wikiTitle: "José Antonio Páez", lang: "es", context: `${room.name} · ${base.title}` });
   });
 
   it("keeps an existing imageSearch", () => {

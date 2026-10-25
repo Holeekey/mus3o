@@ -130,6 +130,94 @@ describe("image endpoints", () => {
     expect(calls.some((u) => u.includes("generator=search"))).toBe(true);
   });
 
+  describe("relevance gate on search fallbacks", () => {
+    const TOPIC = "El conflicto del 3 de enero de 2026 entre Estados Unidos y Venezuela";
+    const summary = (title: string) =>
+      json({ type: "standard", title, originalimage: { source: `https://upload.wikimedia.org/wikipedia/commons/a/ab/${encodeURIComponent(title)}.jpg` } });
+    /** Wikipedia simulada: la búsqueda devuelve `search`; el resumen exacto de la consulta no existe, el de cada resultado sí. */
+    const wiki = (search: string[], exactMissing = true) => {
+      handler = (url) => {
+        if (url.includes("list=search")) return json({ query: { search: search.map((title) => ({ title })) } });
+        const m = /page\/summary\/([^?]+)/.exec(url);
+        if (m) {
+          const t = decodeURIComponent(m[1]).replace(/_/g, " ");
+          return search.includes(t) || !exactMissing ? summary(t) : json({}, 404);
+        }
+        return json({ query: { pages: {} } });
+      };
+    };
+    const get = (wikiTitle: string, context: string) =>
+      fetch(`${base}/api/image?wiki=${encodeURIComponent(wikiTitle)}&context=${encodeURIComponent(context)}&lang=es`);
+
+    it("rejects a different country: 'Armada en el Caribe' never becomes 'Armada Argentina'", async () => {
+      wiki(["Armada Argentina"]);
+      const res = await get("Armada en el Caribe", `Despliegue militar en el Caribe · ${TOPIC}`);
+      expect(res.status).toBe(404);
+      expect(calls.some((u) => u.includes("Armada_Argentina"))).toBe(false);
+    });
+
+    it("rejects 'Elecciones generales de Uruguay de 2024' for a US-Venezuela palace and takes the next hit", async () => {
+      wiki(["Elecciones generales de Uruguay de 2024", "Elecciones presidenciales de Venezuela de 2024"]);
+      const res = await get("Elecciones de 2024 disputadas", `Antecedentes de la tensión · ${TOPIC}`);
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toBe("Elecciones presidenciales de Venezuela de 2024");
+      expect(calls.some((u) => u.includes("Uruguay"))).toBe(false);
+    });
+
+    it("rejects the Uruguay elections even when the context names no country at all", async () => {
+      wiki(["Elecciones generales de Uruguay de 2024"]);
+      expect((await get("Elecciones de 2024 disputadas", "Antecedentes de la tensión")).status).toBe(404);
+    });
+
+    it("accepts a hit that names a country present in the context (demonyms count)", async () => {
+      wiki(["Ataques de Estados Unidos contra supuestos narcotraficantes (2025-presente)"]);
+      const res = await get("Ataques a lanchas", `Despliegue militar · ${TOPIC}`);
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toMatch(/^Ataques de Estados Unidos/);
+      wiki(["Historia de la Armada venezolana"]);
+      expect((await get("Armada naval", `Flota · ${TOPIC}`)).status).toBe(200);
+    });
+
+    it("accepts a generic room title that matches the palace topic through the context", async () => {
+      wiki(["Relaciones Estados Unidos-Venezuela"]);
+      const res = await get("Antecedentes de la tensión", TOPIC);
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toBe("Relaciones Estados Unidos-Venezuela");
+    });
+
+    it("rejects a hit that shares no word with the title and fewer than two with the context", async () => {
+      wiki(["Venezuela"]);
+      expect((await get("Fuga a Varennes", "República y Terror · La Revolución Francesa")).status).toBe(404);
+    });
+
+    it("does not gate an exact title hit", async () => {
+      wiki([], false);
+      const res = await get("Armada Argentina", TOPIC);
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toBe("Armada Argentina");
+    });
+
+    it("gates the automatic Commons search by file name, but trusts an explicit commons query", async () => {
+      const files = (name: string) => {
+        const page = commonsPage();
+        (page.query.pages["1"] as { title: string }).title = `File:${name}`;
+        return json(page);
+      };
+      const onlyCommons = (name: string) => {
+        handler = (url) => (url.includes("generator=search") ? files(name) : json({}, 404));
+      };
+      onlyCommons("Armada Argentina 2010.jpg");
+      expect((await get("Armada en el Caribe", TOPIC)).status).toBe(404);
+      onlyCommons("US Navy ships.jpg");
+      expect((await get("Flota en el Caribe", TOPIC)).status).toBe(404);
+      onlyCommons("Flota del Caribe.jpg");
+      expect((await get("Flota naval del Caribe", TOPIC)).status).toBe(200);
+      onlyCommons("US Navy ships.jpg");
+      const explicit = await fetch(`${base}/api/image?wiki=Armada%20en%20el%20Caribe&commons=navy%20caribbean&lang=es`);
+      expect(explicit.status).toBe(200);
+    });
+  });
+
   it("answers 404 when nothing has an image", async () => {
     handler = (url) => (url.includes("wikipedia.org") ? json({}, 404) : json({ query: { pages: {} } }));
     const res = await fetch(`${base}/api/image?wiki=Nada&commons=nothing`);

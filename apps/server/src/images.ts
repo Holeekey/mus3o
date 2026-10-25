@@ -2,6 +2,7 @@ import express from "express";
 import type { Router } from "express";
 import type { ResolvedImage } from "@mus3o/shared";
 
+import { contradictsCountry } from "./relevance";
 import {
   readCacheFile,
   readCacheMeta,
@@ -208,12 +209,14 @@ async function fromWikipedia(title: string, lang: string): Promise<ResolvedImage
   };
 }
 
-async function fromCommons(query: string): Promise<ResolvedImage | null> {
+/** `accept` filtra por el nombre del archivo (solo en la búsqueda automática; la consulta de Commons dada por la IA se respeta). */
+async function fromCommons(query: string, accept?: (fileTitle: string) => boolean): Promise<ResolvedImage | null> {
   const data = await getJson(
     `${COMMONS}?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=5&${IIPROP}`,
   );
   const pages = Object.values<CommonsPage>(data?.query?.pages ?? {}).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   for (const page of pages) {
+    if (accept && !accept((page.title ?? "").replace(/^File:/, ""))) continue;
     const resolved = toResolved(page);
     if (resolved) return resolved;
   }
@@ -243,21 +246,27 @@ export function genericKind(title: string): "strict" | "weak" | null {
   return t[0] === t[0].toLowerCase() && t[0] !== t[0].toUpperCase() ? "weak" : null;
 }
 
-/** Búsqueda en Wikipedia: el mejor resultado cuyo título comparte palabras significativas con la consulta. */
+/**
+ * Búsqueda en Wikipedia: los resultados cuyo título comparte palabras significativas con la consulta, del mejor al peor.
+ * Filtro de relevancia (solo aquí, nunca en un acierto exacto): el resultado debe compartir una palabra con el título
+ * pedido o al menos dos con el contexto, y no puede nombrar un país que ni la consulta ni el contexto mencionan
+ * ("Armada en el Caribe" no trae "Armada Argentina"; "Elecciones de 2024" de EE. UU. no trae las de Uruguay).
+ */
 export async function searchTitles(title: string, context: string, lang: string): Promise<string[]> {
   const q = [title, context].filter(Boolean).join(" ");
   const data = await getJson(
-    `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=3&format=json`,
+    `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=5&format=json`,
   );
   const hits: string[] = (data?.query?.search ?? []).map((h: any) => String(h?.title ?? "")).filter(Boolean);
   const own = new Set(words(title));
-  const all = new Set([...own, ...words(context)]);
+  const ctx = new Set(words(context));
+  const all = new Set([...own, ...ctx]);
   return hits
     .map((hit, i) => {
       const w = words(hit);
-      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length };
+      return { hit, i, mine: w.filter((x) => own.has(x)).length, any: w.filter((x) => all.has(x)).length, ctx: w.filter((x) => ctx.has(x) && !own.has(x)).length };
     })
-    .filter((h) => h.any > 0)
+    .filter((h) => (h.mine > 0 || h.ctx >= 2) && !contradictsCountry(title, context, h.hit))
     .sort((a, b) => b.mine - a.mine || b.any - a.any || a.i - b.i)
     .map((h) => h.hit);
 }
@@ -329,8 +338,11 @@ async function retrieve(wiki: string, commons: string, context: string, lang: st
   }
   if (generic) return commons ? fromCommons(commons) : null;
   // Con la consulta de Commons dada se usa tal cual; sin ella, solo se busca por título + contexto.
-  const query = commons || (context ? `${wiki} ${context}` : "");
-  return query ? fromCommons(query) : null;
+  if (commons) return fromCommons(commons);
+  if (!context) return null;
+  // Búsqueda automática por título + contexto: el archivo debe nombrar algo del título y no contradecir el país.
+  const own = new Set(words(wiki));
+  return fromCommons(`${wiki} ${context}`, (file) => words(file).some((w) => own.has(w)) && !contradictsCountry(wiki, context, file));
 }
 
 // LRU de archivos: 60 entradas / 40 MB.
