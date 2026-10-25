@@ -325,6 +325,19 @@ html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 .team-text { padding-block: 8px; }
 .team-name { display: block; font-family: var(--font-display); font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.1; letter-spacing: -0.05em; color: var(--bg); }
 .team-bio { margin: 12px 0 0; font-size: clamp(0.98rem, 1.3vw, 1.08rem); line-height: 1.65; color: var(--ink-muted); text-wrap: pretty; hyphens: auto; }
+/* Enlace al LinkedIn de cada persona, subrayado con el acento como el resto de la página. */
+.team-link {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 14px;
+  font-weight: 700;
+  color: var(--bg);
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent);
+  transition: border-color 0.2s ease;
+}
+.team-link:hover { border-bottom-color: var(--bg); }
+.team-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 @media (max-width: 600px) {
   .team-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
   .team-text { padding: 0 4px 4px; }
