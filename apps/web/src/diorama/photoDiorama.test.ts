@@ -20,7 +20,18 @@ describe('wikimediaUrlOf', () => {
   it('extracts the Wikimedia file behind the image proxy', () => {
     expect(wikimediaUrlOf(SRC('Carabobo'))).toBe('https://upload.wikimedia.org/wikipedia/commons/a/ab/Carabobo.jpg')
   })
-  it('ignores user uploads and anything that is not the proxy', () => {
+  it('accepts both shapes the resolver can give: proxy path and direct Wikimedia URL, tracking params included', () => {
+    const direct = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Prise_de_la_Bastille.jpg/960px-Prise_de_la_Bastille.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail'
+    const thumb = direct.replace('upload.', 'thumb.')
+    expect(wikimediaUrlOf(direct)).toBe(direct)
+    expect(wikimediaUrlOf(thumb)).toBe(thumb)
+    expect(wikimediaUrlOf(`/api/image/file?u=${encodeURIComponent(thumb)}`)).toBe(thumb)
+  })
+  it('ignores user uploads and anything that is not Wikimedia over https', () => {
+    expect(wikimediaUrlOf('http://upload.wikimedia.org/a.jpg')).toBeNull()
+    expect(wikimediaUrlOf('https://upload.wikimedia.org.evil.com/a.jpg')).toBeNull()
+    expect(wikimediaUrlOf('/api/image/file?u=https%3A%2F%2Fevil.example%2Fa.jpg')).toBeNull()
+    expect(wikimediaUrlOf('')).toBeNull()
     expect(wikimediaUrlOf('blob:http://localhost/abc')).toBeNull()
     expect(wikimediaUrlOf('data:image/png;base64,AAAA')).toBeNull()
     expect(wikimediaUrlOf('https://evil.example/a.jpg')).toBeNull()
@@ -109,10 +120,10 @@ describe('library dioramas vs generated ones', () => {
     expect(r.diorama?.title).toMatch(/carabobo/i)
   })
 
-  it('rooms without a library match get a composed diorama with no AI call', () => {
+  it('rooms without a library match get NO concept-composed diorama anymore', () => {
     const r = attachDioramasToArrivingRoom([], room('t', 'Teoría de conjuntos'))
-    expect(r.diorama).toBeDefined()
+    expect(r.diorama).toBeUndefined()
     const museum = attachDioramasToFinalMuseum({ ...historiaMuseum, rooms: [room('a', 'Álgebra'), room('b', 'Geometría')] })
-    expect(museum.rooms.every((x) => x.diorama)).toBe(true)
+    expect(museum.rooms.every((x) => !x.diorama)).toBe(true)
   })
 })
