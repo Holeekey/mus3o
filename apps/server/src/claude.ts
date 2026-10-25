@@ -99,14 +99,14 @@ export function enrichMuseum(museum: Museum, notes?: string): Museum {
 }
 
 /** Buscar primero: trae assets y, solo para las piezas que quedaron sin modelo, la IA dibuja un respaldo. */
-async function resolveModels(museum: Museum): Promise<Museum> {
+export async function resolveModels(museum: Museum): Promise<Museum> {
   const hydrated = await hydrateMuseumAssets(museum);
-  // Sin búsqueda activa no hay "faltantes" que rellenar (todas las piezas conservan su glifo).
-  if (!polyEnabled() || !process.env.ANTHROPIC_API_KEY) return hydrated;
+  if (!process.env.ANTHROPIC_API_KEY) return hydrated;
+  const modelName = FALLBACK_MODEL();
   return fillMissingModels(hydrated, async (prompt, maxTokens) => {
     const res = await getClient().messages.create({
-      model: FALLBACK_MODEL(),
-      thinking: { type: "disabled" },
+      model: modelName,
+      ...noThinking(modelName),
       max_tokens: maxTokens,
       system: FALLBACK_MODEL_SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
