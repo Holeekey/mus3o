@@ -1646,3 +1646,26 @@ body:has(.hint) .touch-tip { display: none; }
   .plaque-meta, .plaque-memory { display: none; }
 }
 
+
+/* Pausa en pantallas bajas y anchas (teléfono horizontal): dos columnas, texto a la izquierda y
+   controles a la derecha, para que todo se vea sin desplazar el panel. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .pause { padding: 8px; place-items: center; }
+  .pause-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    width: min(880px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+    padding: 14px 18px;
+    overflow: hidden;
+  }
+  .pause-info, .pause-controls { min-height: 0; max-height: calc(100dvh - 44px); overflow-y: auto; }
+  .pause-panel h1 { margin: 2px 0 6px; font-size: 1.3rem; }
+  .pause-panel .muted { font-size: 0.85rem; line-height: 1.4; }
+  .pause-keys { margin-top: 8px; font-size: 0.8rem; line-height: 1.45; }
+  .pause-actions { margin-top: 0; flex-direction: column; align-items: stretch; gap: 6px; }
+  .pause-actions .btn { width: 100%; padding-block: 7px; text-align: center; }
+  .pause-more { margin-top: 10px; }
+  .pause-controls .memory-panel { margin-top: 10px; padding-top: 10px; }
+}
